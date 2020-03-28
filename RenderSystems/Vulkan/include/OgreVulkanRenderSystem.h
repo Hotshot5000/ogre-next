@@ -229,6 +229,8 @@ namespace Ogre
 
         virtual void _hlmsPipelineStateObjectCreated( HlmsPso *newPso );
         virtual void _hlmsPipelineStateObjectDestroyed( HlmsPso *pos );
+
+        VulkanDevice *getVulkanDevice() const { return mDevice;  }
     };
 }  // namespace Ogre
 

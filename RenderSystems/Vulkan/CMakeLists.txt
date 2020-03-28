@@ -24,19 +24,24 @@ include_directories(
 
 # TODO These paths are hardcoded
 include_directories(
-    /home/matias/Projects/vulkan/1.1.121.1/x86_64/include
+    C:/VulkanSDK/1.2.131.2/Include
+	C:/VulkanSDK/1.2.131.2/glslang
 )
 
 ogre_add_library(RenderSystem_Vulkan ${OGRE_LIB_TYPE} ${HEADER_FILES} ${SOURCE_FILES})
 #target_link_libraries(RenderSystem_Vulkan OgreMain)
 
-link_directories( /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib )
+link_directories( C:/VulkanSDK/1.2.131.2/lib )
 target_link_libraries(RenderSystem_Vulkan vulkan
-    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libglslang.a
-    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libOSDependent.a
-    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libOGLCompiler.a
-    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libHLSL.a
-    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libSPIRV.a )
+#    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libglslang.a
+#    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libOSDependent.a
+#    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libOGLCompiler.a
+#    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libHLSL.a
+#    /home/matias/Projects/vulkan/1.1.121.1/x86_64/lib/libSPIRV.a 
+	C:/VulkanSDK/1.2.131.2/Lib/shaderc_combined.lib
+	C:/VulkanSDK/1.2.131.2/Lib/VkLayer_utils.lib
+	C:/VulkanSDK/1.2.131.2/Lib/vulkan-1.lib
+)
 
 if (OGRE_CONFIG_THREADS)
   target_link_libraries(RenderSystem_Vulkan ${OGRE_THREAD_LIBRARIES})

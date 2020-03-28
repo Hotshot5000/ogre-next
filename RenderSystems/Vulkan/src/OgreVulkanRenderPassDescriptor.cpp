@@ -40,10 +40,12 @@ THE SOFTWARE.
 #include "OgreVulkanMappings.h"
 #include "OgreVulkanUtils.h"
 
-#include <execinfo.h>  //backtrace
+//#include <execinfo.h>  //backtrace
 
 namespace Ogre
 {
+    
+
     VulkanRenderPassDescriptor::VulkanRenderPassDescriptor( VulkanQueue *graphicsQueue,
                                                             VulkanRenderSystem *renderSystem ) :
         mRenderPass( 0 ),
@@ -551,6 +553,14 @@ namespace Ogre
         }
         mNumImageViews = 0u;
     }
+
+    bool VulkanRenderPassDescriptor::cannotInterruptRendering() const { return false; }
+
+    uint32 VulkanRenderPassDescriptor::checkForClearActions( VulkanRenderPassDescriptor *other ) const
+    {
+        return 0;
+    }
+
     //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::notifySwapchainCreated( VulkanWindow *window )
     {
@@ -646,6 +656,12 @@ namespace Ogre
             if( mColour->resolveTexture )
                 ++attachmentIdx;
         }
+    }
+
+    uint32 VulkanRenderPassDescriptor::willSwitchTo( VulkanRenderPassDescriptor *newDesc,
+        bool warnIfRtvWasFlushed ) const
+    {
+        return 0;
     }
 #if VULKAN_DISABLED
     //-----------------------------------------------------------------------------------

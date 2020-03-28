@@ -101,6 +101,10 @@ namespace Ogre
         virtual void _setToDisplayDummyTexture( void );
 
         virtual bool _isDataReadyImpl( void ) const;
+
+        VkImageType getVulkanTextureType( void ) const;
+
+        VkImageViewType getVulkanTextureViewType( void ) const;
     };
 
     class _OgreVulkanExport VulkanTextureGpuRenderTarget : public VulkanTextureGpu

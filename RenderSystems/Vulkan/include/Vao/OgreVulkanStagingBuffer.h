@@ -48,6 +48,9 @@ namespace Ogre
         void *mMappedPtr;
 
         uint8 *mVulkanDataPtr;
+        // VulkanBufferInterface * mBufferInterface;
+        VkDeviceMemory mDeviceMemory;
+        VkBuffer mVboName;
 
         virtual void *mapImpl( size_t sizeBytes );
         virtual void unmapImpl( const Destination *destinations, size_t numDestinations );
@@ -55,7 +58,9 @@ namespace Ogre
 
     public:
         VulkanStagingBuffer( size_t internalBufferStart, size_t sizeBytes, VaoManager *vaoManager,
-                             bool uploadOnly );
+                             bool uploadOnly, VkDeviceMemory deviceMemory, VkBuffer vboName,
+                             VulkanDynamicBuffer *dynamicBuffer );        
+
         virtual ~VulkanStagingBuffer();
 
         virtual StagingStallType uploadWillStall( size_t sizeBytes );

@@ -32,6 +32,9 @@ THE SOFTWARE.
 
 #include "OgreException.h"
 #include "OgreVector2.h"
+#include "OgreVulkanMappings.h"
+#include "OgreVulkanTextureGpuManager.h"
+#include "OgreVulkanUtils.h"
 
 namespace Ogre
 {
@@ -47,7 +50,48 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     VulkanTextureGpu::~VulkanTextureGpu() {}
     //-----------------------------------------------------------------------------------
-    void VulkanTextureGpu::createInternalResourcesImpl( void ) {}
+    void VulkanTextureGpu::createInternalResourcesImpl( void )
+    {
+        if( mPixelFormat == PFG_NULL )
+            return;  // Nothing to do
+
+        VkImageCreateInfo imageInfo;
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = getVulkanTextureType();
+        imageInfo.extent.width = mWidth;
+        imageInfo.extent.height = mHeight;
+        imageInfo.extent.depth = getDepth();
+        imageInfo.mipLevels = mNumMipmaps;
+        imageInfo.arrayLayers = getNumSlices();
+        imageInfo.format = VulkanMappings::get( mPixelFormat );
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.flags = 0;
+
+        if( mTextureType == TextureTypes::TypeCube )
+            imageInfo.arrayLayers /= 6u;
+
+        if( isRenderToTexture() )
+        {
+            imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        }
+        if( isUav() )
+        {
+            imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+        }
+
+        String textureName = getNameStr();
+
+        VulkanTextureGpuManager *textureManager =
+            static_cast<VulkanTextureGpuManager *>( mTextureManager );
+        VulkanDevice *device = textureManager->getDevice();
+
+        VkResult imageResult = vkCreateImage( device->mDevice, &imageInfo, 0, &mFinalTextureName );
+        checkVkResult( imageResult, "createInternalResourcesImpl" );
+    }
     //-----------------------------------------------------------------------------------
     void VulkanTextureGpu::destroyInternalResourcesImpl( void ) {}
     //-----------------------------------------------------------------------------------
@@ -84,6 +128,42 @@ namespace Ogre
     void VulkanTextureGpu::_setToDisplayDummyTexture( void ) {}
     //-----------------------------------------------------------------------------------
     bool VulkanTextureGpu::_isDataReadyImpl( void ) const { return true; }
+    //-----------------------------------------------------------------------------------
+    VkImageType VulkanTextureGpu::getVulkanTextureType( void ) const
+    {
+        // clang-format off
+        switch( mTextureType )
+        {
+        case TextureTypes::Unknown: return VK_IMAGE_TYPE_2D;
+        case TextureTypes::Type1D: return VK_IMAGE_TYPE_1D;
+        case TextureTypes::Type1DArray: return VK_IMAGE_TYPE_1D;
+        case TextureTypes::Type2D: return VK_IMAGE_TYPE_2D;
+        case TextureTypes::Type2DArray: return VK_IMAGE_TYPE_2D;
+        case TextureTypes::TypeCube: return VK_IMAGE_TYPE_3D;
+        case TextureTypes::TypeCubeArray: return VK_IMAGE_TYPE_3D;
+        case TextureTypes::Type3D: return VK_IMAGE_TYPE_3D;
+        default: return VK_IMAGE_TYPE_2D;
+        }
+        // clang-format on
+    }
+    //-----------------------------------------------------------------------------------
+    VkImageViewType VulkanTextureGpu::getVulkanTextureViewType( void ) const
+    {
+        // clang-format off
+        switch( mTextureType )
+        {
+        case TextureTypes::Unknown: return VK_IMAGE_VIEW_TYPE_2D;
+        case TextureTypes::Type1D: return VK_IMAGE_VIEW_TYPE_1D;
+        case TextureTypes::Type1DArray: return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+        case TextureTypes::Type2D: return VK_IMAGE_VIEW_TYPE_2D;
+        case TextureTypes::Type2DArray: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        case TextureTypes::TypeCube: return VK_IMAGE_VIEW_TYPE_CUBE;
+        case TextureTypes::TypeCubeArray: return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+        case TextureTypes::Type3D: return VK_IMAGE_VIEW_TYPE_3D;
+        default: return VK_IMAGE_VIEW_TYPE_2D;
+        }
+        // clang-format on
+    }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------

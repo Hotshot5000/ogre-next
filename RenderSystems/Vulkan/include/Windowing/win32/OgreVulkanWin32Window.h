@@ -1,4 +1,6 @@
 #pragma once
+
+#include <windows.h>
 #include "OgreVulkanWindow.h"
 
 namespace Ogre
@@ -6,8 +8,34 @@ namespace Ogre
 
 class OgreVulkanWin32Window : public VulkanWindow
 {
+private:
+
+    HWND mHwnd;  // Win32 Window handle
+    HDC mHDC;
+    uint32 mColourDepth;
+    bool mIsExternal;
+    char *mDeviceName;
+    bool mIsExternalGLControl;
+    bool mOwnsGLContext;
+    bool mSizing;
+    bool mClosed;
+    bool mHidden;
+    bool mVisible;
+    bool mHwGamma;
+    bool mIsTopLevel;
+    uint8 mMsaaCount;
+    DWORD mWindowedWinStyle;    // Windowed mode window style flags.
+    DWORD mFullscreenWinStyle;  // Fullscreen mode window style flags.
+
+    static bool mClassRegistered;
+
+    /// Return the target window style depending on the fullscreen parameter.
+    DWORD getWindowStyle( bool fullScreen ) const;
+
+    void createWindow( const String &windowName, uint32 width, uint32 height );
 public:
-    OgreVulkanWin32Window( const String &title, uint32 width, uint32 height, bool fullscreenMode );
+    OgreVulkanWin32Window( FastArray<const char *> &inOutRequiredInstanceExts, const String &title,
+                           uint32 width, uint32 height, bool fullscreenMode );
 
     virtual ~OgreVulkanWin32Window();
 
@@ -17,7 +45,9 @@ public:
     virtual void setHidden( bool hidden ) override;
     virtual bool isHidden() const override;
     virtual void _initialize( TextureGpuManager *textureGpuManager ) override;
-    
+
+    virtual void destroy() override;
 };
+
 
 }  // namespace Ogre

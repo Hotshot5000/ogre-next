@@ -37,6 +37,9 @@ THE SOFTWARE.
 
 #include "OgreHeaderPrefix.h"
 
+#include "OgreVulkanRenderSystem.h"
+#include "OgreVulkanDevice.h"
+
 namespace Ogre
 {
     /** \addtogroup Core
@@ -65,6 +68,11 @@ namespace Ogre
         virtual ~VulkanTextureGpuManager();
 
         TextureGpu *createTextureGpuWindow( VulkanWindow *window );
+
+        VulkanDevice *getDevice()
+        {
+            return static_cast<VulkanRenderSystem *>( mRenderSystem )->getVulkanDevice();
+        }
     };
 
     /** @} */

@@ -79,13 +79,7 @@ namespace Ogre
 
         mDynamicBufferMultiplier = dynBufferMultiplier;
 
-        VertexElement2Vec vertexElements;
-        vertexElements.push_back( VertexElement2( VET_UINT1, VES_COUNT ) );
-        uint32 *drawIdPtr =
-            static_cast<uint32 *>( OGRE_MALLOC_SIMD( 4096 * sizeof( uint32 ), MEMCATEGORY_GEOMETRY ) );
-        for( uint32 i = 0; i < 4096; ++i )
-            drawIdPtr[i] = i;
-        mDrawId = createVertexBuffer( vertexElements, 4096, BT_IMMUTABLE, drawIdPtr, true );
+        
     }
     //-----------------------------------------------------------------------------------
     VulkanVaoManager::~VulkanVaoManager()
@@ -114,6 +108,17 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
+    void VulkanVaoManager::initDrawIdVertexBuffer()
+    {
+        VertexElement2Vec vertexElements;
+        vertexElements.push_back( VertexElement2( VET_UINT1, VES_COUNT ) );
+        uint32 *drawIdPtr =
+            static_cast<uint32 *>( OGRE_MALLOC_SIMD( 4096 * sizeof( uint32 ), MEMCATEGORY_GEOMETRY ) );
+        for( uint32 i = 0; i < 4096; ++i )
+            drawIdPtr[i] = i;
+        mDrawId = createVertexBuffer( vertexElements, 4096, BT_IMMUTABLE, drawIdPtr, true );
+    }
+    //-----------------------------------------------------------------------------------
     void VulkanVaoManager::getMemoryStats( MemoryStatsEntryVec &outStats, size_t &outCapacityBytes,
                                            size_t &outFreeBytes, Log *log ) const
     {
@@ -123,6 +128,15 @@ namespace Ogre
     }
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::cleanupEmptyPools( void ) { TODO_whenImplemented_include_stagingBuffers; }
+
+    bool VulkanVaoManager::supportsCoherentMapping() const
+    { return false;
+    }
+
+    bool VulkanVaoManager::supportsNonCoherentMapping() const
+    { return false;
+    }
+
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::determineBestMemoryTypes( void )
     {
@@ -194,10 +208,14 @@ namespace Ogre
         {
             mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_DEFAULT] =
                 mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT];
+            mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT] =
+                mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT];
         }
         if( mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT] >= numMemoryTypes )
         {
             mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_DEFAULT] =
+                mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT];
+            mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT] =
                 mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT];
         }
     }
@@ -408,267 +426,267 @@ namespace Ogre
         }
     }
     //-----------------------------------------------------------------------------------
-    void VulkanVaoManager::determineBestMemoryTypes( void )
-    {
-        for( size_t i = 0u; i < MAX_VBO_FLAG; ++i )
-            mBestVkMemoryTypeIndex[i] = std::numeric_limits<uint32>::max();
-
-        const VkPhysicalDeviceMemoryProperties &memProperties = mDevice->mMemoryProperties;
-        const uint32 numMemoryTypes = memProperties.memoryTypeCount;
-
-        for( uint32 i = 0u; i < numMemoryTypes; ++i )
-        {
-            if( memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT )
-            {
-                uint32 newValue = i;
-                const uint32 oldValue = mBestVkMemoryTypeIndex[CPU_INACCESSIBLE];
-                if( oldValue < numMemoryTypes )
-                {
-                    if( !( memProperties.memoryTypes[oldValue].propertyFlags &
-                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ) )
-                    {
-                        // We had already found our best match
-                        newValue = oldValue;
-                    }
-                }
-                mBestVkMemoryTypeIndex[CPU_INACCESSIBLE] = newValue;
-            }
-
-            // Find memory that isn't coherent (many desktop GPUs don't provide this)
-            if( ( memProperties.memoryTypes[i].propertyFlags &
-                  ( VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) ) ==
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT &&
-                mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT] >= numMemoryTypes )
-            {
-                mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT] = i;
-            }
-
-            // Find memory that is coherent, prefer write-combined (aka uncached)
-            if( ( memProperties.memoryTypes[i].propertyFlags &
-                  ( VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) ) ==
-                ( VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) )
-            {
-                uint32 newValue = i;
-                const uint32 oldValue = mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT];
-                if( oldValue < numMemoryTypes )
-                {
-                    if( !( memProperties.memoryTypes[oldValue].propertyFlags &
-                           VK_MEMORY_PROPERTY_HOST_CACHED_BIT ) )
-                    {
-                        // We already found our best match
-                        newValue = oldValue;
-                    }
-                }
-                mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT] = newValue;
-            }
-        }
-
-        // Set CPU_ACCESSIBLE_DEFAULT
-        if( mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT] >= numMemoryTypes )
-        {
-            mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_DEFAULT] =
-                mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT];
-        }
-        if( mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT] >= numMemoryTypes )
-        {
-            mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_DEFAULT] =
-                mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT];
-        }
-    }
-    //-----------------------------------------------------------------------------------
-    void VulkanVaoManager::allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType,
-                                        size_t &outVboIdx, size_t &outBufferOffset )
-    {
-        OGRE_ASSERT_LOW( alignment > 0 );
-
-        VboFlag vboFlag = bufferTypeToVboFlag( bufferType );
-
-        if( bufferType >= BT_DYNAMIC_DEFAULT )
-            sizeBytes *= mDynamicBufferMultiplier;
-
-        VboVec::const_iterator itor = mVbos[vboFlag].begin();
-        VboVec::const_iterator endt = mVbos[vboFlag].end();
-
-        // clang-format off
-        // Find a suitable VBO that can hold the requested size. We prefer those free
-        // blocks that have a matching stride (the current offset is a multiple of
-        // bytesPerElement) in order to minimize the amount of memory padding.
-        size_t bestVboIdx   = (size_t)-1;
-        size_t bestBlockIdx = (size_t)-1;
-        bool foundMatchingStride = false;
-        // clang-format on
-
-        while( itor != endt && !foundMatchingStride )
-        {
-            BlockVec::const_iterator blockIt = itor->freeBlocks.begin();
-            BlockVec::const_iterator blockEn = itor->freeBlocks.end();
-
-            while( blockIt != blockEn && !foundMatchingStride )
-            {
-                const Block &block = *blockIt;
-
-                // Round to next multiple of alignment
-                size_t newOffset = ( ( block.offset + alignment - 1 ) / alignment ) * alignment;
-                size_t padding = newOffset - block.offset;
-
-                if( sizeBytes + padding <= block.size )
-                {
-                    // clang-format off
-                    bestVboIdx      = static_cast<size_t>( itor - mVbos[vboFlag].begin());
-                    bestBlockIdx    = static_cast<size_t>( blockIt - itor->freeBlocks.begin() );
-                    // clang-format on
-
-                    if( newOffset == block.offset )
-                        foundMatchingStride = true;
-                }
-
-                ++blockIt;
-            }
-
-            ++itor;
-        }
-
-        if( bestBlockIdx == (size_t)-1 )
-        {
-            // clang-format off
-            bestVboIdx      = mVbos[vboFlag].size();
-            bestBlockIdx    = 0;
-            foundMatchingStride = true;
-            // clang-format on
-
-            Vbo newVbo;
-
-            size_t poolSize = std::max( mDefaultPoolSize[vboFlag], sizeBytes );
-
-            // No luck, allocate a new buffer.
-            OGRE_ASSERT_LOW( mBestVkMemoryTypeIndex[vboFlag] <
-                             mDevice->mMemoryProperties.memoryTypeCount );
-
-            VkMemoryAllocateInfo memAllocInfo;
-            makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
-            memAllocInfo.allocationSize = poolSize;
-            memAllocInfo.memoryTypeIndex = mBestVkMemoryTypeIndex[vboFlag];
-
-            VkResult result = vkAllocateMemory( mDevice->mDevice, &memAllocInfo, NULL, &newVbo.vboName );
-            checkVkResult( result, "vkAllocateMemory" );
-
-            newVbo.sizeBytes = poolSize;
-            newVbo.freeBlocks.push_back( Block( 0, poolSize ) );
-            newVbo.dynamicBuffer = 0;
-
-            if( vboFlag != CPU_INACCESSIBLE )
-            {
-                newVbo.dynamicBuffer = new VulkanDynamicBuffer( newVbo.vboName, newVbo.sizeBytes, this,
-                                                                bufferType, mDevice );
-            }
-
-            mVbos[vboFlag].push_back( newVbo );
-        }
-
-        // clang-format off
-        Vbo &bestVbo        = mVbos[vboFlag][bestVboIdx];
-        Block &bestBlock    = bestVbo.freeBlocks[bestBlockIdx];
-        // clang-format on
-
-        size_t newOffset = ( ( bestBlock.offset + alignment - 1 ) / alignment ) * alignment;
-        size_t padding = newOffset - bestBlock.offset;
-        // clang-format off
-        // Shrink our records about available data.
-        bestBlock.size   -= sizeBytes + padding;
-        bestBlock.offset = newOffset + sizeBytes;
-        // clang-format on
-
-        if( !foundMatchingStride )
-        {
-            // This is a stride changer, record as such.
-            StrideChangerVec::iterator itStride = std::lower_bound( bestVbo.strideChangers.begin(),
-                                                                    bestVbo.strideChangers.end(),  //
-                                                                    newOffset, StrideChanger() );
-            bestVbo.strideChangers.insert( itStride, StrideChanger( newOffset, padding ) );
-        }
-
-        if( bestBlock.size == 0u )
-            bestVbo.freeBlocks.erase( bestVbo.freeBlocks.begin() + bestBlockIdx );
-
-        // clang-format off
-        outVboIdx       = bestVboIdx;
-        outBufferOffset = newOffset;
-        // clang-format on
-    }
-    //-----------------------------------------------------------------------------------
-    void VulkanVaoManager::deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes,
-                                          BufferType bufferType )
-    {
-        VboFlag vboFlag = bufferTypeToVboFlag( bufferType );
-
-        if( bufferType >= BT_DYNAMIC_DEFAULT )
-            sizeBytes *= mDynamicBufferMultiplier;
-
-        Vbo &vbo = mVbos[vboFlag][vboIdx];
-        StrideChangerVec::iterator itStride =
-            std::lower_bound( vbo.strideChangers.begin(), vbo.strideChangers.end(),  //
-                              bufferOffset, StrideChanger() );
-
-        if( itStride != vbo.strideChangers.end() && itStride->offsetAfterPadding == bufferOffset )
-        {
-            // clang-format off
-            bufferOffset    -= itStride->paddedBytes;
-            sizeBytes       += itStride->paddedBytes;
-            // clang-format on
-
-            vbo.strideChangers.erase( itStride );
-        }
-
-        // See if we're contiguous to a free block and make that block grow.
-        vbo.freeBlocks.push_back( Block( bufferOffset, sizeBytes ) );
-        mergeContiguousBlocks( vbo.freeBlocks.end() - 1, vbo.freeBlocks );
-    }
-    //-----------------------------------------------------------------------------------
-    void VulkanVaoManager::mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks )
-    {
-        BlockVec::iterator itor = blocks.begin();
-        BlockVec::iterator endt = blocks.end();
-
-        while( itor != endt )
-        {
-            if( itor->offset + itor->size == blockToMerge->offset )
-            {
-                itor->size += blockToMerge->size;
-                size_t idx = itor - blocks.begin();
-
-                // When blockToMerge is the last one, its index won't be the same
-                // after removing the other iterator, they will swap.
-                if( idx == blocks.size() - 1u )
-                    idx = blockToMerge - blocks.begin();
-
-                efficientVectorRemove( blocks, blockToMerge );
-
-                blockToMerge = blocks.begin() + idx;
-                itor = blocks.begin();
-                endt = blocks.end();
-            }
-            else if( blockToMerge->offset + blockToMerge->size == itor->offset )
-            {
-                blockToMerge->size += itor->size;
-                size_t idx = blockToMerge - blocks.begin();
-
-                // When blockToMerge is the last one, its index won't be the same
-                // after removing the other iterator, they will swap.
-                if( idx == blocks.size() - 1u )
-                    idx = itor - blocks.begin();
-
-                efficientVectorRemove( blocks, itor );
-
-                blockToMerge = blocks.begin() + idx;
-                itor = blocks.begin();
-                endt = blocks.end();
-            }
-            else
-            {
-                ++itor;
-            }
-        }
-    }
+    // void VulkanVaoManager::determineBestMemoryTypes( void )
+    // {
+    //     for( size_t i = 0u; i < MAX_VBO_FLAG; ++i )
+    //         mBestVkMemoryTypeIndex[i] = std::numeric_limits<uint32>::max();
+    //
+    //     const VkPhysicalDeviceMemoryProperties &memProperties = mDevice->mMemoryProperties;
+    //     const uint32 numMemoryTypes = memProperties.memoryTypeCount;
+    //
+    //     for( uint32 i = 0u; i < numMemoryTypes; ++i )
+    //     {
+    //         if( memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT )
+    //         {
+    //             uint32 newValue = i;
+    //             const uint32 oldValue = mBestVkMemoryTypeIndex[CPU_INACCESSIBLE];
+    //             if( oldValue < numMemoryTypes )
+    //             {
+    //                 if( !( memProperties.memoryTypes[oldValue].propertyFlags &
+    //                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ) )
+    //                 {
+    //                     // We had already found our best match
+    //                     newValue = oldValue;
+    //                 }
+    //             }
+    //             mBestVkMemoryTypeIndex[CPU_INACCESSIBLE] = newValue;
+    //         }
+    //
+    //         // Find memory that isn't coherent (many desktop GPUs don't provide this)
+    //         if( ( memProperties.memoryTypes[i].propertyFlags &
+    //               ( VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) ) ==
+    //                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT &&
+    //             mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT] >= numMemoryTypes )
+    //         {
+    //             mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT] = i;
+    //         }
+    //
+    //         // Find memory that is coherent, prefer write-combined (aka uncached)
+    //         if( ( memProperties.memoryTypes[i].propertyFlags &
+    //               ( VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) ) ==
+    //             ( VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) )
+    //         {
+    //             uint32 newValue = i;
+    //             const uint32 oldValue = mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT];
+    //             if( oldValue < numMemoryTypes )
+    //             {
+    //                 if( !( memProperties.memoryTypes[oldValue].propertyFlags &
+    //                        VK_MEMORY_PROPERTY_HOST_CACHED_BIT ) )
+    //                 {
+    //                     // We already found our best match
+    //                     newValue = oldValue;
+    //                 }
+    //             }
+    //             mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT] = newValue;
+    //         }
+    //     }
+    //
+    //     // Set CPU_ACCESSIBLE_DEFAULT
+    //     if( mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT] >= numMemoryTypes )
+    //     {
+    //         mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_DEFAULT] =
+    //             mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT];
+    //     }
+    //     if( mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT_COHERENT] >= numMemoryTypes )
+    //     {
+    //         mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_DEFAULT] =
+    //             mBestVkMemoryTypeIndex[CPU_ACCESSIBLE_PERSISTENT];
+    //     }
+    // }
+    // //-----------------------------------------------------------------------------------
+    // void VulkanVaoManager::allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType,
+    //                                     size_t &outVboIdx, size_t &outBufferOffset )
+    // {
+    //     OGRE_ASSERT_LOW( alignment > 0 );
+    //
+    //     VboFlag vboFlag = bufferTypeToVboFlag( bufferType );
+    //
+    //     if( bufferType >= BT_DYNAMIC_DEFAULT )
+    //         sizeBytes *= mDynamicBufferMultiplier;
+    //
+    //     VboVec::const_iterator itor = mVbos[vboFlag].begin();
+    //     VboVec::const_iterator endt = mVbos[vboFlag].end();
+    //
+    //     // clang-format off
+    //     // Find a suitable VBO that can hold the requested size. We prefer those free
+    //     // blocks that have a matching stride (the current offset is a multiple of
+    //     // bytesPerElement) in order to minimize the amount of memory padding.
+    //     size_t bestVboIdx   = (size_t)-1;
+    //     size_t bestBlockIdx = (size_t)-1;
+    //     bool foundMatchingStride = false;
+    //     // clang-format on
+    //
+    //     while( itor != endt && !foundMatchingStride )
+    //     {
+    //         BlockVec::const_iterator blockIt = itor->freeBlocks.begin();
+    //         BlockVec::const_iterator blockEn = itor->freeBlocks.end();
+    //
+    //         while( blockIt != blockEn && !foundMatchingStride )
+    //         {
+    //             const Block &block = *blockIt;
+    //
+    //             // Round to next multiple of alignment
+    //             size_t newOffset = ( ( block.offset + alignment - 1 ) / alignment ) * alignment;
+    //             size_t padding = newOffset - block.offset;
+    //
+    //             if( sizeBytes + padding <= block.size )
+    //             {
+    //                 // clang-format off
+    //                 bestVboIdx      = static_cast<size_t>( itor - mVbos[vboFlag].begin());
+    //                 bestBlockIdx    = static_cast<size_t>( blockIt - itor->freeBlocks.begin() );
+    //                 // clang-format on
+    //
+    //                 if( newOffset == block.offset )
+    //                     foundMatchingStride = true;
+    //             }
+    //
+    //             ++blockIt;
+    //         }
+    //
+    //         ++itor;
+    //     }
+    //
+    //     if( bestBlockIdx == (size_t)-1 )
+    //     {
+    //         // clang-format off
+    //         bestVboIdx      = mVbos[vboFlag].size();
+    //         bestBlockIdx    = 0;
+    //         foundMatchingStride = true;
+    //         // clang-format on
+    //
+    //         Vbo newVbo;
+    //
+    //         size_t poolSize = std::max( mDefaultPoolSize[vboFlag], sizeBytes );
+    //
+    //         // No luck, allocate a new buffer.
+    //         OGRE_ASSERT_LOW( mBestVkMemoryTypeIndex[vboFlag] <
+    //                          mDevice->mMemoryProperties.memoryTypeCount );
+    //
+    //         VkMemoryAllocateInfo memAllocInfo;
+    //         makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
+    //         memAllocInfo.allocationSize = poolSize;
+    //         memAllocInfo.memoryTypeIndex = mBestVkMemoryTypeIndex[vboFlag];
+    //
+    //         VkResult result = vkAllocateMemory( mDevice->mDevice, &memAllocInfo, NULL, &newVbo.vboName );
+    //         checkVkResult( result, "vkAllocateMemory" );
+    //
+    //         newVbo.sizeBytes = poolSize;
+    //         newVbo.freeBlocks.push_back( Block( 0, poolSize ) );
+    //         newVbo.dynamicBuffer = 0;
+    //
+    //         if( vboFlag != CPU_INACCESSIBLE )
+    //         {
+    //             newVbo.dynamicBuffer = new VulkanDynamicBuffer( newVbo.vboName, newVbo.sizeBytes, this,
+    //                                                             bufferType, mDevice );
+    //         }
+    //
+    //         mVbos[vboFlag].push_back( newVbo );
+    //     }
+    //
+    //     // clang-format off
+    //     Vbo &bestVbo        = mVbos[vboFlag][bestVboIdx];
+    //     Block &bestBlock    = bestVbo.freeBlocks[bestBlockIdx];
+    //     // clang-format on
+    //
+    //     size_t newOffset = ( ( bestBlock.offset + alignment - 1 ) / alignment ) * alignment;
+    //     size_t padding = newOffset - bestBlock.offset;
+    //     // clang-format off
+    //     // Shrink our records about available data.
+    //     bestBlock.size   -= sizeBytes + padding;
+    //     bestBlock.offset = newOffset + sizeBytes;
+    //     // clang-format on
+    //
+    //     if( !foundMatchingStride )
+    //     {
+    //         // This is a stride changer, record as such.
+    //         StrideChangerVec::iterator itStride = std::lower_bound( bestVbo.strideChangers.begin(),
+    //                                                                 bestVbo.strideChangers.end(),  //
+    //                                                                 newOffset, StrideChanger() );
+    //         bestVbo.strideChangers.insert( itStride, StrideChanger( newOffset, padding ) );
+    //     }
+    //
+    //     if( bestBlock.size == 0u )
+    //         bestVbo.freeBlocks.erase( bestVbo.freeBlocks.begin() + bestBlockIdx );
+    //
+    //     // clang-format off
+    //     outVboIdx       = bestVboIdx;
+    //     outBufferOffset = newOffset;
+    //     // clang-format on
+    // }
+    // //-----------------------------------------------------------------------------------
+    // void VulkanVaoManager::deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes,
+    //                                       BufferType bufferType )
+    // {
+    //     VboFlag vboFlag = bufferTypeToVboFlag( bufferType );
+    //
+    //     if( bufferType >= BT_DYNAMIC_DEFAULT )
+    //         sizeBytes *= mDynamicBufferMultiplier;
+    //
+    //     Vbo &vbo = mVbos[vboFlag][vboIdx];
+    //     StrideChangerVec::iterator itStride =
+    //         std::lower_bound( vbo.strideChangers.begin(), vbo.strideChangers.end(),  //
+    //                           bufferOffset, StrideChanger() );
+    //
+    //     if( itStride != vbo.strideChangers.end() && itStride->offsetAfterPadding == bufferOffset )
+    //     {
+    //         // clang-format off
+    //         bufferOffset    -= itStride->paddedBytes;
+    //         sizeBytes       += itStride->paddedBytes;
+    //         // clang-format on
+    //
+    //         vbo.strideChangers.erase( itStride );
+    //     }
+    //
+    //     // See if we're contiguous to a free block and make that block grow.
+    //     vbo.freeBlocks.push_back( Block( bufferOffset, sizeBytes ) );
+    //     mergeContiguousBlocks( vbo.freeBlocks.end() - 1, vbo.freeBlocks );
+    // }
+    // //-----------------------------------------------------------------------------------
+    // void VulkanVaoManager::mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks )
+    // {
+    //     BlockVec::iterator itor = blocks.begin();
+    //     BlockVec::iterator endt = blocks.end();
+    //
+    //     while( itor != endt )
+    //     {
+    //         if( itor->offset + itor->size == blockToMerge->offset )
+    //         {
+    //             itor->size += blockToMerge->size;
+    //             size_t idx = itor - blocks.begin();
+    //
+    //             // When blockToMerge is the last one, its index won't be the same
+    //             // after removing the other iterator, they will swap.
+    //             if( idx == blocks.size() - 1u )
+    //                 idx = blockToMerge - blocks.begin();
+    //
+    //             efficientVectorRemove( blocks, blockToMerge );
+    //
+    //             blockToMerge = blocks.begin() + idx;
+    //             itor = blocks.begin();
+    //             endt = blocks.end();
+    //         }
+    //         else if( blockToMerge->offset + blockToMerge->size == itor->offset )
+    //         {
+    //             blockToMerge->size += itor->size;
+    //             size_t idx = blockToMerge - blocks.begin();
+    //
+    //             // When blockToMerge is the last one, its index won't be the same
+    //             // after removing the other iterator, they will swap.
+    //             if( idx == blocks.size() - 1u )
+    //                 idx = itor - blocks.begin();
+    //
+    //             efficientVectorRemove( blocks, itor );
+    //
+    //             blockToMerge = blocks.begin() + idx;
+    //             itor = blocks.begin();
+    //             endt = blocks.end();
+    //         }
+    //         else
+    //         {
+    //             ++itor;
+    //         }
+    //     }
+    // }
     //-----------------------------------------------------------------------------------
     VertexBufferPacked *VulkanVaoManager::createVertexBufferImpl( size_t numElements,
                                                                   uint32 bytesPerElement,
@@ -977,11 +995,12 @@ namespace Ogre
 
         const VboFlag vboFlag = CPU_ACCESSIBLE_PERSISTENT;
         Vbo &vbo = mVbos[vboFlag][vboIdx];
-        VulkanBufferInterface *bufferInterface =
-            new VulkanBufferInterface( vboIdx, vbo.vkBuffer, vbo.dynamicBuffer );
+        // VulkanBufferInterface *bufferInterface =
+        //     new VulkanBufferInterface( vboIdx, vbo.vkBuffer, vbo.dynamicBuffer );
 
-        VulkanStagingBuffer *stagingBuffer =
-            OGRE_NEW VulkanStagingBuffer( bufferOffset, sizeBytes, this, forUpload, bufferInterface );
+        VulkanStagingBuffer *stagingBuffer = 
+             OGRE_NEW VulkanStagingBuffer(
+            bufferOffset, sizeBytes, this, forUpload, vbo.vboName, vbo.vkBuffer, vbo.dynamicBuffer );
         mRefedStagingBuffers[forUpload].push_back( stagingBuffer );
 
         if( mNextStagingBufferTimestampCheckpoint == (unsigned long)( ~0 ) )

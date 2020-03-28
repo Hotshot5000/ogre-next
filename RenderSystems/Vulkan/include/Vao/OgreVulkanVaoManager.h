@@ -255,6 +255,8 @@ namespace Ogre
         VulkanVaoManager( uint8 dynBufferMultiplier, VulkanDevice *device );
         virtual ~VulkanVaoManager();
 
+        void initDrawIdVertexBuffer();
+
         virtual void getMemoryStats( MemoryStatsEntryVec &outStats, size_t &outCapacityBytes,
                                      size_t &outFreeBytes, Log *log ) const;
 

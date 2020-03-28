@@ -174,6 +174,11 @@ namespace Ogre
 
         newCommandBuffer();
     }
+
+    void VulkanQueue::destroy()
+    {
+    }
+
     //-------------------------------------------------------------------------
     void VulkanQueue::newCommandBuffer( void )
     {

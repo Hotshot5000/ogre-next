@@ -44,7 +44,9 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 #include "OgreDefaultHardwareBufferManager.h"
 
-#include "Windowing/X11/OgreVulkanXcbWindow.h"
+//#include "Windowing/X11/OgreVulkanXcbWindow.h"
+
+#include "Windowing/win32/OgreVulkanWin32Window.h"
 
 #define TODO_check_layers_exist
 
@@ -366,7 +368,7 @@ namespace Ogre
     {
         FastArray<const char *> reqInstanceExtensions;
         VulkanWindow *win =
-            OGRE_NEW VulkanXcbWindow( reqInstanceExtensions, name, width, height, fullScreen );
+            OGRE_NEW OgreVulkanWin32Window( reqInstanceExtensions, name, width, height, fullScreen );
         mWindows.insert( win );
 
         if( !mInitialized )
@@ -409,7 +411,7 @@ namespace Ogre
 
             mActiveDevice->mVaoManager = vaoManager;
             mActiveDevice->initQueues();
-
+            vaoManager->initDrawIdVertexBuffer();
             mInitialized = true;
         }
 
@@ -531,6 +533,11 @@ namespace Ogre
     void VulkanRenderSystem::_render( const v1::CbDrawCallIndexed *cmd ) {}
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const v1::CbDrawCallStrip *cmd ) {}
+
+    void VulkanRenderSystem::_render( const v1::RenderOperation &op )
+    {
+    }
+
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::bindGpuProgramParameters( GpuProgramType gptype,
                                                        GpuProgramParametersSharedPtr params,

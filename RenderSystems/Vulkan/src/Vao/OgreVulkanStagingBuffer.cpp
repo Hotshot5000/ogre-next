@@ -33,22 +33,30 @@ THE SOFTWARE.
 
 #include "OgreStringConverter.h"
 
+#include "OgreVulkanDevice.h"
+#include "OgreVulkanQueue.h"
+
 namespace Ogre
 {
     VulkanStagingBuffer::VulkanStagingBuffer( size_t internalBufferStart, size_t sizeBytes,
-                                              VaoManager *vaoManager, bool uploadOnly ) :
+                                              VaoManager *vaoManager, bool uploadOnly,
+                                              VkDeviceMemory deviceMemory, VkBuffer vboName,
+                                              VulkanDynamicBuffer *dynamicBuffer ) :
         StagingBuffer( internalBufferStart, sizeBytes, vaoManager, uploadOnly ),
         mMappedPtr( 0 ),
-        mVulkanDataPtr( 0 )
+        mVulkanDataPtr( 0 ),
+        mDeviceMemory( deviceMemory ),
+        mVboName( vboName )
+        // mBufferInterface(buffer_interface)
     {
-        mVulkanDataPtr =
-            reinterpret_cast<uint8 *>( OGRE_MALLOC_SIMD( sizeBytes, MEMCATEGORY_RENDERSYS ) );
+        // mVulkanDataPtr =
+        //     reinterpret_cast<uint8 *>( OGRE_MALLOC_SIMD( sizeBytes, MEMCATEGORY_RENDERSYS ) );
     }
     //-----------------------------------------------------------------------------------
     VulkanStagingBuffer::~VulkanStagingBuffer()
     {
-        OGRE_FREE_SIMD( mVulkanDataPtr, MEMCATEGORY_RENDERSYS );
-        mVulkanDataPtr = 0;
+        // OGRE_FREE_SIMD( mVulkanDataPtr, MEMCATEGORY_RENDERSYS );
+        // mVulkanDataPtr = 0;
     }
     //-----------------------------------------------------------------------------------
     void *VulkanStagingBuffer::mapImpl( size_t sizeBytes )
@@ -58,13 +66,26 @@ namespace Ogre
         mMappingStart = 0;
         mMappingCount = sizeBytes;
 
-        mMappedPtr = mVulkanDataPtr + mInternalBufferStart + mMappingStart;
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+        VulkanDevice *device = vaoManager->getDevice();
+
+        vkMapMemory( device->mDevice, mDeviceMemory, 0, sizeBytes, 0, &mMappedPtr );
+
+        // mMappedPtr =
+        //     mBufferInterface->map( mInternalBufferStart + mMappingStart, sizeBytes, MappingState::MS_UNMAPPED );
+
+        //mMappedPtr = mVulkanDataPtr + mInternalBufferStart + mMappingStart;
 
         return mMappedPtr;
     }
     //-----------------------------------------------------------------------------------
     void VulkanStagingBuffer::unmapImpl( const Destination *destinations, size_t numDestinations )
     {
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager*>(mVaoManager);
+        VulkanDevice *device = vaoManager->getDevice();
+
+        VkCommandBuffer cmdBuffer = device->mGraphicsQueue.mCurrentCmdBuffer;
+
         mMappedPtr = 0;
 
         for( size_t i = 0; i < numDestinations; ++i )
@@ -79,10 +100,21 @@ namespace Ogre
             size_t dstOffset = dst.dstOffset + dst.destination->_getInternalBufferStart() *
                                                    dst.destination->getBytesPerElement();
 
-            uint8 *dstPtr = bufferInterface->getVulkanDataPtr();
+            VkBufferCopy region;
+            region.srcOffset = mInternalBufferStart + mMappingStart + dst.srcOffset;
+            region.dstOffset = dstOffset;
+            region.size = dst.length;
+            vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer,
+                             bufferInterface->getVboName(),
+                             mVboName, 1u, &region );
 
-            memcpy( dstPtr + dstOffset,
-                    mVulkanDataPtr + mInternalBufferStart + mMappingStart + dst.srcOffset, dst.length );
+            // uint8 *dstPtr = bufferInterface->getVulkanDataPtr();
+
+            // mBufferInterface->copyTo( bufferInterface, dstOffset,
+            //                           mInternalBufferStart + mMappingStart + dst.srcOffset, dst.length );
+
+            // memcpy( dstPtr + dstOffset,
+            //         mVulkanDataPtr + mInternalBufferStart + mMappingStart + dst.srcOffset, dst.length );
         }
     }
     //-----------------------------------------------------------------------------------
@@ -119,11 +151,26 @@ namespace Ogre
         VulkanBufferInterface *bufferInterface =
             static_cast<VulkanBufferInterface *>( source->getBufferInterface() );
 
-        uint8 *srcPtr = bufferInterface->getVulkanDataPtr();
+        // uint8 *srcPtr = bufferInterface->getVulkanDataPtr();
 
-        memcpy( mVulkanDataPtr + mInternalBufferStart + freeRegionOffset,
-                srcPtr + source->_getFinalBufferStart() * source->getBytesPerElement() + srcOffset,
-                srcLength );
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+        VulkanDevice *device = vaoManager->getDevice();
+
+        VkBufferCopy region;
+        region.srcOffset = source->_getFinalBufferStart() * source->getBytesPerElement() + srcOffset;
+        region.dstOffset = mInternalBufferStart + freeRegionOffset;
+        region.size = srcLength;
+        vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer, mVboName,
+                         bufferInterface->getVboName(), 1u, &region );
+
+        // bufferInterface->copyTo( mBufferInterface, mInternalBufferStart + freeRegionOffset,
+        //     source->_getFinalBufferStart() * source->getBytesPerElement() + srcOffset,
+        //     srcLength );
+
+
+        // memcpy( mVulkanDataPtr + mInternalBufferStart + freeRegionOffset,
+        //         srcPtr + source->_getFinalBufferStart() * source->getBytesPerElement() + srcOffset,
+        //         srcLength );
 
         return freeRegionOffset;
     }
