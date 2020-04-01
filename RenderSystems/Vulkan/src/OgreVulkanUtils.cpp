@@ -32,6 +32,12 @@ THE SOFTWARE.
 
 namespace Ogre
 {
+    PFN_vkDebugMarkerSetObjectTagEXT pfnDebugMarkerSetObjectTag;
+    PFN_vkDebugMarkerSetObjectNameEXT pfnDebugMarkerSetObjectName;
+    PFN_vkCmdDebugMarkerBeginEXT pfnCmdDebugMarkerBegin;
+    PFN_vkCmdDebugMarkerEndEXT pfnCmdDebugMarkerEnd;
+    PFN_vkCmdDebugMarkerInsertEXT pfnCmdDebugMarkerInsert;
+
     String vkResultToString( VkResult result )
     {
         // clang-format off
@@ -69,5 +75,69 @@ namespace Ogre
             return StringConverter::toString( result );
         }
         // clang-format on
+    }
+
+    void initUtils( VkDevice device )
+    {
+        pfnDebugMarkerSetObjectTag = (PFN_vkDebugMarkerSetObjectTagEXT)vkGetDeviceProcAddr(
+            device, "vkDebugMarkerSetObjectTagEXT" );
+        pfnDebugMarkerSetObjectName = (PFN_vkDebugMarkerSetObjectNameEXT)vkGetDeviceProcAddr(
+            device, "vkDebugMarkerSetObjectNameEXT" );
+        pfnCmdDebugMarkerBegin =
+            (PFN_vkCmdDebugMarkerBeginEXT)vkGetDeviceProcAddr( device, "vkCmdDebugMarkerBeginEXT" );
+        pfnCmdDebugMarkerEnd =
+            (PFN_vkCmdDebugMarkerEndEXT)vkGetDeviceProcAddr( device, "vkCmdDebugMarkerEndEXT" );
+        pfnCmdDebugMarkerInsert =
+            (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr( device, "vkCmdDebugMarkerInsertEXT" );
+    }
+
+    void setObjectName( VkDevice device, uint64_t object,
+                                     VkDebugReportObjectTypeEXT objectType, const char *name )
+    {
+        // Check for a valid function pointer
+        if( pfnDebugMarkerSetObjectName )
+        {
+            VkDebugMarkerObjectNameInfoEXT nameInfo = {};
+            nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
+            nameInfo.objectType = objectType;
+            nameInfo.object = object;
+            nameInfo.pObjectName = name;
+            pfnDebugMarkerSetObjectName( device, &nameInfo );
+        }
+    }
+
+    VkFormat findSupportedFormat( VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates, VkImageTiling tiling,
+                                  VkFormatFeatureFlags features )
+    {
+        for( VkFormat format : candidates )
+        {
+            VkFormatProperties props;
+            vkGetPhysicalDeviceFormatProperties( physicalDevice, format, &props );
+
+            if( tiling == VK_IMAGE_TILING_LINEAR &&
+                ( props.linearTilingFeatures & features ) == features )
+            {
+                return format;
+            }
+            else if( tiling == VK_IMAGE_TILING_OPTIMAL &&
+                     ( props.optimalTilingFeatures & features ) == features )
+            {
+                return format;
+            }
+        }
+
+        throw std::runtime_error( "failed to find supported format!" );
+    }
+
+    VkFormat findDepthFormat( VkPhysicalDevice physicalDevice )
+    {
+        return findSupportedFormat(
+            physicalDevice,
+            {
+                VK_FORMAT_D24_UNORM_S8_UINT,
+                VK_FORMAT_D32_SFLOAT_S8_UINT,
+                VK_FORMAT_D32_SFLOAT
+            },
+            VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT );
     }
 }  // namespace Ogre

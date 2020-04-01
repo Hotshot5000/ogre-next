@@ -60,6 +60,16 @@ namespace Ogre
                                                 TextureTypes::Type2D, this, window );
     }
     //-----------------------------------------------------------------------------------
+    TextureGpu *VulkanTextureGpuManager::createWindowDepthBuffer( void )
+    {
+        return OGRE_NEW VulkanTextureGpuRenderTarget( GpuPageOutStrategy::Discard, mVaoManager,
+                                                "RenderWindow DepthBuffer",                      //
+                                                TextureFlags::NotTexture |           //
+                                                    TextureFlags::RenderToTexture |  //
+                                                    TextureFlags::RenderWindowSpecific,
+                                                TextureTypes::Type2D, this );
+    }
+    //-----------------------------------------------------------------------------------
     TextureGpu *VulkanTextureGpuManager::createTextureImpl(
         GpuPageOutStrategy::GpuPageOutStrategy pageOutStrategy, IdString name, uint32 textureFlags,
         TextureTypes::TextureTypes initialType )

@@ -54,6 +54,7 @@ namespace Ogre
 
         static VkImageViewType get( TextureTypes::TextureTypes textureType );
         static VkFormat get( PixelFormatGpu pf );
+        static PixelFormatGpu VulkanMappings::get( VkFormat pf );
     };
 }  // namespace Ogre
 

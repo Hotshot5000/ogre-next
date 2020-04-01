@@ -283,6 +283,7 @@ namespace Ogre
         }
 
         extensions.push_back( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
+        extensions.push_back( VK_EXT_DEBUG_MARKER_EXTENSION_NAME );
 
         VkDeviceCreateInfo createInfo;
         makeVkStruct( createInfo, VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO );
@@ -295,6 +296,8 @@ namespace Ogre
 
         VkResult result = vkCreateDevice( mPhysicalDevice, &createInfo, NULL, &mDevice );
         checkVkResult( result, "vkCreateDevice" );
+
+        initUtils( mDevice );
     }
     //-------------------------------------------------------------------------
     void VulkanDevice::initQueues( void )

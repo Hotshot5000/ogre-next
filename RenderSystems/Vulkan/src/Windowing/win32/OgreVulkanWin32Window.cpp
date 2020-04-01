@@ -10,6 +10,8 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "OgrePixelFormatGpuUtils.h"
 #include "OgreDepthBuffer.h"
+#include "OgreVulkanUtils.h"
+#include "OgreVulkanMappings.h"
 #include "vulkan/vulkan.h"
 
 namespace Ogre
@@ -386,7 +388,7 @@ namespace Ogre
             static_cast<VulkanTextureGpuManager *>( textureGpuManager );
 
         mTexture = textureManager->createTextureGpuWindow( this );
-        mDepthBuffer = textureManager->createTextureGpuWindow( this );
+        mDepthBuffer = textureManager->createWindowDepthBuffer();
 
         setFinalResolution( mRequestedWidth, mRequestedHeight );
 
@@ -396,7 +398,7 @@ namespace Ogre
         //     mTexture->setPixelFormat( PFG_B5G5R5A1_UNORM );
         // else
             mTexture->setPixelFormat( chooseSurfaceFormat( mHwGamma ) );
-        mDepthBuffer->setPixelFormat( DepthBuffer::DefaultDepthBufferFormat );
+        mDepthBuffer->setPixelFormat( VulkanMappings::get( findDepthFormat( mDevice->mPhysicalDevice ) ) );
         if( PixelFormatGpuUtils::isStencil( mDepthBuffer->getPixelFormat() ) )
             mStencilBuffer = mDepthBuffer;
 

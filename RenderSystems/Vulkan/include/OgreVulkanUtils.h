@@ -34,6 +34,8 @@ THE SOFTWARE.
 
 namespace Ogre
 {
+    void initUtils( VkDevice device );
+
     template <typename T>
     void makeVkStruct( T &inOutStruct, VkStructureType structType )
     {
@@ -42,6 +44,15 @@ namespace Ogre
     }
 
     String vkResultToString( VkResult result );
+
+    void setObjectName( VkDevice device, uint64_t object,
+                                     VkDebugReportObjectTypeEXT objectType, const char *name );
+
+    VkFormat findSupportedFormat( VkPhysicalDevice physicalDevice,
+                                  const std::vector<VkFormat> &candidates, VkImageTiling tiling,
+                                  VkFormatFeatureFlags features );
+
+    VkFormat findDepthFormat( VkPhysicalDevice physicalDevice );
 }  // namespace Ogre
 
 #endif  //#ifndef _OgreVulkanPrerequisites_H_

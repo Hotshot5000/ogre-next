@@ -48,7 +48,10 @@ namespace Ogre
     {
     }
     //-----------------------------------------------------------------------------------
-    VulkanTextureGpu::~VulkanTextureGpu() {}
+    VulkanTextureGpu::~VulkanTextureGpu()
+    {
+        destroyInternalResourcesImpl();
+    }
     //-----------------------------------------------------------------------------------
     void VulkanTextureGpu::createInternalResourcesImpl( void )
     {
@@ -56,6 +59,7 @@ namespace Ogre
             return;  // Nothing to do
 
         VkImageCreateInfo imageInfo;
+        makeVkStruct( imageInfo, VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO );
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = getVulkanTextureType();
         imageInfo.extent.width = mWidth;
@@ -76,7 +80,10 @@ namespace Ogre
 
         if( isRenderToTexture() )
         {
-            imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            imageInfo.usage |=
+                PixelFormatGpuUtils::isDepth( mPixelFormat )  ? 
+                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT :
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         }
         if( isUav() )
         {
@@ -91,9 +98,28 @@ namespace Ogre
 
         VkResult imageResult = vkCreateImage( device->mDevice, &imageInfo, 0, &mFinalTextureName );
         checkVkResult( imageResult, "createInternalResourcesImpl" );
+
+        setObjectName( device->mDevice, (uint64_t)mFinalTextureName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
+                       textureName.c_str() );
+
+        if( mMsaa > 1u && !hasMsaaExplicitResolves() )
+        {
+            
+        }
     }
     //-----------------------------------------------------------------------------------
-    void VulkanTextureGpu::destroyInternalResourcesImpl( void ) {}
+    void VulkanTextureGpu::destroyInternalResourcesImpl( void )
+    {
+        VulkanTextureGpuManager *textureManager =
+            static_cast<VulkanTextureGpuManager *>( mTextureManager );
+        VulkanDevice *device = textureManager->getDevice();
+        if( mFinalTextureName )
+        {
+            vkDestroyImage( device->mDevice, mFinalTextureName, 0 );
+        }
+
+        _setToDisplayDummyTexture();
+    }
     //-----------------------------------------------------------------------------------
     VkImageSubresourceRange VulkanTextureGpu::getFullSubresourceRange( void ) const
     {

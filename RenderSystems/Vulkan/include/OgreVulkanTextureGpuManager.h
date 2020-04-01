@@ -68,6 +68,7 @@ namespace Ogre
         virtual ~VulkanTextureGpuManager();
 
         TextureGpu *createTextureGpuWindow( VulkanWindow *window );
+        TextureGpu *createWindowDepthBuffer( void );
 
         VulkanDevice *getDevice()
         {
