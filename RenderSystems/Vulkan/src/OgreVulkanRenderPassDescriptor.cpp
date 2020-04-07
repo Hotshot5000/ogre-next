@@ -44,8 +44,6 @@ THE SOFTWARE.
 
 namespace Ogre
 {
-    
-
     VulkanRenderPassDescriptor::VulkanRenderPassDescriptor( VulkanQueue *graphicsQueue,
                                                             VulkanRenderSystem *renderSystem ) :
         mRenderPass( 0 ),
@@ -474,7 +472,7 @@ namespace Ogre
             mClearValues[attachmentIdx].depthStencil.depth = static_cast<float>( mDepth.clearDepth );
             mClearValues[attachmentIdx].depthStencil.stencil = mStencil.clearStencil;
 
-            setupDepthAttachment( attachments[attachmentIdx] );
+            mImageViews[attachmentIdx] = setupDepthAttachment( attachments[attachmentIdx] );
             depthAttachRef.attachment = attachmentIdx;
             depthAttachRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             ++attachmentIdx;
@@ -659,7 +657,7 @@ namespace Ogre
     }
 
     uint32 VulkanRenderPassDescriptor::willSwitchTo( VulkanRenderPassDescriptor *newDesc,
-        bool warnIfRtvWasFlushed ) const
+                                                     bool warnIfRtvWasFlushed ) const
     {
         return 0;
     }
@@ -760,23 +758,46 @@ namespace Ogre
             if( semaphore )
             {
                 // We cannot start executing color attachment commands until the semaphore says so
-                VkImageMemoryBarrier imageBarrier;
-                makeVkStruct( imageBarrier, VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER );
-                imageBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                imageBarrier.dstAccessMask =
+                VkImageMemoryBarrier imageBarrier[2];
+                makeVkStruct( imageBarrier[0], VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER );
+                imageBarrier[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                imageBarrier[0].dstAccessMask =
                     VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-                imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                imageBarrier.image = textureVulkan->getFinalTextureName();
+                imageBarrier[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                imageBarrier[0].image = textureVulkan->getFinalTextureName();
 
                 // Undefined means we don't care, which means existing contents may not be preserved
                 // Backbuffers always start with undefined layout
-                imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                imageBarrier[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-                imageBarrier.subresourceRange = textureVulkan->getFullSubresourceRange();
+                imageBarrier[0].subresourceRange = textureVulkan->getFullSubresourceRange();
 
-                vkCmdPipelineBarrier(
-                    mQueue->mCurrentCmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0u, 0u, 0, 0u, 0, 1u, &imageBarrier );
+                if( mDepth.texture )
+                {
+                    VulkanTextureGpuWindow *depthTextureVulkan =
+                        static_cast<VulkanTextureGpuWindow *>( mDepth.texture );
+                    makeVkStruct( imageBarrier[1], VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER );
+                    imageBarrier[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                    imageBarrier[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+                                                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                    imageBarrier[1].newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                    imageBarrier[1].image = depthTextureVulkan->getFinalTextureName();
+
+                    // Undefined means we don't care, which means existing contents may not be preserved
+                    // Backbuffers always start with undefined layout
+                    imageBarrier[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+                    imageBarrier[1].subresourceRange = depthTextureVulkan->getFullSubresourceRange();
+                }
+
+                vkCmdPipelineBarrier( mQueue->mCurrentCmdBuffer,
+                                      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                      0u, 0u, 0, 0u, 0, 2u, imageBarrier );
                 mQueue->addWindowToWaitFor( semaphore );
             }
         }

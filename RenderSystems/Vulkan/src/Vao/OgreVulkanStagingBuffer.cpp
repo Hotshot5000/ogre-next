@@ -35,6 +35,7 @@ THE SOFTWARE.
 
 #include "OgreVulkanDevice.h"
 #include "OgreVulkanQueue.h"
+#include "OgreVulkanUtils.h"
 
 namespace Ogre
 {
@@ -69,7 +70,11 @@ namespace Ogre
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
         VulkanDevice *device = vaoManager->getDevice();
 
-        vkMapMemory( device->mDevice, mDeviceMemory, 0, sizeBytes, 0, &mMappedPtr );
+        
+
+        VkResult result = vkMapMemory( device->mDevice, mDeviceMemory, mInternalBufferStart + mMappingStart,
+                         mMappingCount, 0, &mMappedPtr );
+        checkVkResult( result, "vkMapMemory" );
 
         // mMappedPtr =
         //     mBufferInterface->map( mInternalBufferStart + mMappingStart, sizeBytes, MappingState::MS_UNMAPPED );
@@ -85,6 +90,10 @@ namespace Ogre
         VulkanDevice *device = vaoManager->getDevice();
 
         VkCommandBuffer cmdBuffer = device->mGraphicsQueue.mCurrentCmdBuffer;
+
+        //vkBindBufferMemory( device->mDevice, mVboName, mDeviceMemory, 0 );
+
+        vkUnmapMemory( device->mDevice, mDeviceMemory );
 
         mMappedPtr = 0;
 

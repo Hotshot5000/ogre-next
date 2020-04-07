@@ -308,6 +308,9 @@ namespace Ogre
             result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
             checkVkResult( result, "vkCreateBuffer" );
 
+            result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, 0 );
+            checkVkResult( result, "vkBindBufferMemory" );
+
             newVbo.sizeBytes = poolSize;
             newVbo.freeBlocks.push_back( Block( 0, poolSize ) );
             newVbo.dynamicBuffer = 0;
@@ -990,17 +993,42 @@ namespace Ogre
         sizeBytes = std::max<size_t>( sizeBytes, 4u * 1024u * 1024u );
 
         size_t vboIdx;
-        size_t bufferOffset;
-        allocateVbo( sizeBytes, 4u, BT_DYNAMIC_PERSISTENT, vboIdx, bufferOffset );
+        size_t bufferOffset = 0;
+        //allocateVbo( sizeBytes, 4u, BT_DYNAMIC_PERSISTENT, vboIdx, bufferOffset );
 
-        const VboFlag vboFlag = CPU_ACCESSIBLE_PERSISTENT;
-        Vbo &vbo = mVbos[vboFlag][vboIdx];
+        Vbo newVbo;
+        VboFlag vboFlag = CPU_ACCESSIBLE_PERSISTENT;
+
+        VkMemoryAllocateInfo memAllocInfo;
+        makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
+        memAllocInfo.allocationSize = sizeBytes;
+        memAllocInfo.memoryTypeIndex = mBestVkMemoryTypeIndex[vboFlag];
+
+        VkResult result = vkAllocateMemory( mDevice->mDevice, &memAllocInfo, NULL, &newVbo.vboName );
+        checkVkResult( result, "vkAllocateMemory" );
+
+        VkBufferCreateInfo bufferCi;
+        makeVkStruct( bufferCi, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO );
+        bufferCi.size = sizeBytes;
+        bufferCi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                         VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+                         VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
+        checkVkResult( result, "vkCreateBuffer" );
+
+        result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, 0 );
+        checkVkResult( result, "vkBindBufferMemory" );
+
+        //const VboFlag vboFlag = CPU_ACCESSIBLE_PERSISTENT;
+        //Vbo &vbo = mVbos[vboFlag][vboIdx];
         // VulkanBufferInterface *bufferInterface =
         //     new VulkanBufferInterface( vboIdx, vbo.vkBuffer, vbo.dynamicBuffer );
 
         VulkanStagingBuffer *stagingBuffer = 
-             OGRE_NEW VulkanStagingBuffer(
-            bufferOffset, sizeBytes, this, forUpload, vbo.vboName, vbo.vkBuffer, vbo.dynamicBuffer );
+             OGRE_NEW VulkanStagingBuffer( bufferOffset, sizeBytes, this, forUpload, newVbo.vboName,
+                                          newVbo.vkBuffer, newVbo.dynamicBuffer );
         mRefedStagingBuffers[forUpload].push_back( stagingBuffer );
 
         if( mNextStagingBufferTimestampCheckpoint == (unsigned long)( ~0 ) )

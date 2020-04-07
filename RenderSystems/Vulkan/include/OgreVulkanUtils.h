@@ -53,6 +53,9 @@ namespace Ogre
                                   VkFormatFeatureFlags features );
 
     VkFormat findDepthFormat( VkPhysicalDevice physicalDevice );
+
+    uint32_t findMemoryType( VkPhysicalDevice physicalDevice, uint32_t typeFilter,
+                             VkMemoryPropertyFlags properties );
 }  // namespace Ogre
 
 #endif  //#ifndef _OgreVulkanPrerequisites_H_

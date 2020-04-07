@@ -65,6 +65,8 @@ namespace Ogre
         /// Only used when hasMsaaExplicitResolves() == false
         VkImage mMsaaFramebufferName;
 
+        VkDeviceMemory mTextureImageMemory;
+
         virtual void createInternalResourcesImpl( void );
         virtual void destroyInternalResourcesImpl( void );
 

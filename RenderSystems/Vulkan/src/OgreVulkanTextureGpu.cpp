@@ -102,6 +102,24 @@ namespace Ogre
         setObjectName( device->mDevice, (uint64_t)mFinalTextureName, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
                        textureName.c_str() );
 
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements( device->mDevice, mFinalTextureName, &memRequirements );
+
+        VkMemoryAllocateInfo allocInfo;
+        makeVkStruct( allocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex =
+            findMemoryType( device->mPhysicalDevice, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+
+        if( vkAllocateMemory( device->mDevice, &allocInfo, nullptr, &mTextureImageMemory ) !=
+            VK_SUCCESS )
+        {
+            throw std::runtime_error( "failed to allocate image memory!" );
+        }
+
+        vkBindImageMemory( device->mDevice, mFinalTextureName, mTextureImageMemory, 0 );
+
         if( mMsaa > 1u && !hasMsaaExplicitResolves() )
         {
             
