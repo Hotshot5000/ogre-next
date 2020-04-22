@@ -401,6 +401,8 @@ namespace Ogre
 
             initialiseFromRenderSystemCapabilities( mCurrentCapabilities, 0 );
 
+            mNativeShadingLanguageVersion = 450;
+
             FastArray<const char *> deviceExtensions;
             mDevice->createDevice( deviceExtensions, 0u, 0u );
 

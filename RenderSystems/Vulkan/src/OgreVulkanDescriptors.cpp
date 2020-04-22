@@ -89,7 +89,10 @@ namespace Ogre
     bool VulkanDescriptors::areBindingsCompatible( const VkDescriptorSetLayoutBinding &a,
                                                    const VkDescriptorSetLayoutBinding &b )
     {
-        OGRE_ASSERT_HIGH( a.binding == b.binding && "Comparding bindings from different slots!" );
+        // OGRE_ASSERT_HIGH( a.binding == b.binding && "Comparing bindings from different slots!" );
+        // if( a.binding != b.binding )
+        //     return false;
+
         return a.descriptorCount == 0u || b.descriptorCount == 0 ||
                ( a.descriptorType == b.descriptorType &&  //
                  a.descriptorCount == b.descriptorCount &&
@@ -100,6 +103,8 @@ namespace Ogre
                                                     const DescriptorSetLayoutArray &b )
     {
         const size_t minSize = std::min( a.size(), b.size() );
+
+        bool retVal = true;
 
         for( size_t i = 0u; i < minSize; ++i )
         {
@@ -117,17 +122,18 @@ namespace Ogre
                               " of two shader stages (e.g. vertex and pixel shader?) are not "
                               "compatible. These shaders cannot be used together" );
                     LogManager::getSingleton().logMessage( logMsg.c_str() );
+                    retVal = false;
                 }
             }
         }
 
-        return true;
+        return retVal;
     }
     //-------------------------------------------------------------------------
     void VulkanDescriptors::mergeDescriptorSets( DescriptorSetLayoutArray &a, const String &shaderB,
                                                  const DescriptorSetLayoutArray &b )
     {
-        if( canMergeDescriptorSets( a, b ) )
+        if( !canMergeDescriptorSets( a, b ) )
         {
             OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
                          "Descriptor Sets from shader '" + shaderB +
@@ -150,9 +156,10 @@ namespace Ogre
                 const size_t minBindings = std::min( a[i].size(), b[i].size() );
                 for( size_t j = 0u; j < minBindings; ++j )
                 {
-                    OGRE_ASSERT_HIGH( a[i][j].binding == j );
-                    OGRE_ASSERT_HIGH( b[i][j].binding == j );
-                    a[i][j].stageFlags |= b[i][j].stageFlags;
+                    // OGRE_ASSERT_HIGH( a[i][j].binding == j );
+                    // OGRE_ASSERT_HIGH( b[i][j].binding == j );
+                    if( a[i][j].binding == j && b[i][j].binding == j )
+                        a[i][j].stageFlags |= b[i][j].stageFlags;
                 }
 
                 a[i].appendPOD( b[i].begin() + minBindings, b[i].end() );
@@ -238,8 +245,8 @@ namespace Ogre
             for( size_t i = 0; i < numUsedBindings; ++i )
             {
                 const SpvReflectDescriptorBinding &reflBinding = *( reflSet.bindings[i] );
-                VkDescriptorSetLayoutBinding descSetLayoutBinding;
-                memset( &descSetLayoutBinding, 0, sizeof( descSetLayoutBinding ) );
+                // VkDescriptorSetLayoutBinding descSetLayoutBinding;
+                // memset( &descSetLayoutBinding, 0, sizeof( descSetLayoutBinding ) );
 
                 const size_t bindingIdx = reflBinding.binding;
 
@@ -251,7 +258,6 @@ namespace Ogre
                     bindings[bindingIdx].descriptorCount *= reflBinding.array.dims[i_dim];
                 bindings[bindingIdx].stageFlags =
                     static_cast<VkShaderStageFlagBits>( module.shader_stage );
-                bindings.push_back( descSetLayoutBinding );
             }
 
             ++itor;
@@ -262,7 +268,7 @@ namespace Ogre
                                                             DescriptorSetLayoutArray &outputSets )
     {
         DescriptorSetLayoutArray sets;
-        generateDescriptorSets( shader->getName(), shader->getSpirv(), outputSets );
+        generateDescriptorSets( shader->getName(), shader->getSpirv(), sets );
         if( outputSets.empty() )
             outputSets.swap( sets );
         else

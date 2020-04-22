@@ -1014,12 +1014,18 @@ namespace Ogre
             shaderSyntax = "HLSL";
         else if( renderSystem->getName() == "Metal Rendering Subsystem" )
             shaderSyntax = "Metal";
+        else if( renderSystem->getName() == "Vulkan Rendering Subsystem" )
+            shaderSyntax = "Vulkan";
+
 
         //Fill the library folder paths with the relevant folders
         outLibraryFoldersPaths.clear();
         outLibraryFoldersPaths.push_back( "Hlms/Common/" + shaderSyntax );
-        outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
-        outLibraryFoldersPaths.push_back( "Hlms/Unlit/Any" );
+        if( renderSystem->getName() != "Vulkan Rendering Subsystem" )
+        {
+            outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
+            outLibraryFoldersPaths.push_back( "Hlms/Unlit/Any" );
+        }
 
         //Fill the data folder path
         outDataFolderPath = "Hlms/Unlit/" + shaderSyntax;

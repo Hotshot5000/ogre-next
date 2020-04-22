@@ -2953,23 +2953,32 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void HlmsPbs::getDefaultPaths( String &outDataFolderPath, StringVector &outLibraryFoldersPaths )
     {
-        //We need to know what RenderSystem is currently in use, as the
-        //name of the compatible shading language is part of the path
+        // We need to know what RenderSystem is currently in use, as the
+        // name of the compatible shading language is part of the path
         Ogre::RenderSystem *renderSystem = Ogre::Root::getSingleton().getRenderSystem();
         Ogre::String shaderSyntax = "GLSL";
-        if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
+        if( renderSystem->getName() == "Direct3D11 Rendering Subsystem" )
             shaderSyntax = "HLSL";
-        else if (renderSystem->getName() == "Metal Rendering Subsystem")
+        else if( renderSystem->getName() == "Metal Rendering Subsystem" )
             shaderSyntax = "Metal";
+        else if( renderSystem->getName() == "Vulkan Rendering Subsystem" )
+            shaderSyntax = "Vulkan";
 
-        //Fill the library folder paths with the relevant folders
+        // Fill the library folder paths with the relevant folders
         outLibraryFoldersPaths.clear();
         outLibraryFoldersPaths.push_back( "Hlms/Common/" + shaderSyntax );
-        outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
-        outLibraryFoldersPaths.push_back( "Hlms/Pbs/Any" );
-        outLibraryFoldersPaths.push_back( "Hlms/Pbs/Any/Main" );
+        if( renderSystem->getName() == "Vulkan Rendering Subsystem" )
+        {
+            outLibraryFoldersPaths.push_back( "Hlms/Pbs/" + shaderSyntax + "/Main" );
+        }
+        else
+        {
+            outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
+            outLibraryFoldersPaths.push_back( "Hlms/Pbs/Any" );
+            outLibraryFoldersPaths.push_back( "Hlms/Pbs/Any/Main" );
+        }
 
-        //Fill the data folder path
+        // Fill the data folder path
         outDataFolderPath = "Hlms/Pbs/" + shaderSyntax;
     }
     //-----------------------------------------------------------------------------------
