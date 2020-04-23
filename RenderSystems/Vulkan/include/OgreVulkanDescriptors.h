@@ -64,6 +64,9 @@ namespace Ogre
         static void optimizeDescriptorSets( DescriptorSetLayoutArray &sets );
 
         static VkPipelineLayout generateVkDescriptorSets( const DescriptorSetLayoutArray &sets );
+
+        static void generateVertexInputBindings( VulkanProgram *shader, HlmsPso *newPso,
+                                                 VkPipelineVertexInputStateCreateInfo &vertexFormatCi );
     };
 }  // namespace Ogre
 

@@ -913,6 +913,13 @@ namespace Ogre
         VkPipelineVertexInputStateCreateInfo vertexFormatCi;
         makeVkStruct( vertexFormatCi, VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO );
         TODO_vertex_format;
+        if( !newPso->vertexShader.isNull() )
+        {
+            VulkanProgram *shader =
+                static_cast<VulkanProgram *>( newPso->vertexShader->_getBindingDelegate() );
+            VulkanDescriptors::generateVertexInputBindings( shader, newPso, vertexFormatCi );
+        }
+        
 
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyCi;
         makeVkStruct( inputAssemblyCi, VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO );

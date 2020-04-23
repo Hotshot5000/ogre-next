@@ -33,6 +33,7 @@ THE SOFTWARE.
 
 #include "OgreException.h"
 #include "OgreLwString.h"
+#include "OgreVulkanMappings.h"
 
 #include "SPIRV-Reflect/spirv_reflect.h"
 
@@ -262,6 +263,8 @@ namespace Ogre
 
             ++itor;
         }
+
+        spvReflectDestroyShaderModule( &module );
     }
     //-------------------------------------------------------------------------
     void VulkanDescriptors::generateAndMergeDescriptorSets( VulkanProgram *shader,
@@ -310,5 +313,87 @@ namespace Ogre
         VkPipelineLayout retVal = vulkanProgramManager->getCachedSets( vkSets );
         return retVal;
     }
+
+    void VulkanDescriptors::generateVertexInputBindings( VulkanProgram *shader, HlmsPso *newPso,
+                                                         VkPipelineVertexInputStateCreateInfo &vertexFormatCi )
+    {
+        const std::vector<uint32> &spirv = shader->getSpirv();
+        if( spirv.empty() )
+            return;
+
+        const String &shaderName = shader->getName();
+
+        SpvReflectShaderModule module;
+        memset( &module, 0, sizeof( module ) );
+        SpvReflectResult result =
+            spvReflectCreateShaderModule( spirv.size() * sizeof( uint32 ), &spirv[0], &module );
+        if( result != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                         "spvReflectCreateShaderModule failed on shader " + shaderName +
+                             " error code: " + getSpirvReflectError( result ),
+                         "VulkanDescriptors::generateVertexInputBindings" );
+        }
+
+        uint32_t count = 0;
+        result = spvReflectEnumerateInputVariables( &module, &count, NULL );
+        if( result != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                         "spvReflectCreateShaderModule failed on shader " + shaderName +
+                             " error code: " + getSpirvReflectError( result ),
+                         "VulkanDescriptors::generateVertexInputBindings" );
+        }
+
+        std::vector<SpvReflectInterfaceVariable *> inputVars( count );
+        result = spvReflectEnumerateInputVariables( &module, &count, inputVars.data() );
+        if( result != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                         "spvReflectCreateShaderModule failed on shader " + shaderName +
+                             " error code: " + getSpirvReflectError( result ),
+                         "VulkanDescriptors::generateVertexInputBindings" );
+        }
+
+        VkVertexInputBindingDescription binding_description = {};
+        binding_description.binding = 0;
+        binding_description.stride = 0;  // computed below
+        binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info = {
+            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
+        };
+        std::vector<VkVertexInputAttributeDescription> attribute_descriptions(
+            inputVars.size(), VkVertexInputAttributeDescription{} );
+        for( size_t i_var = 0; i_var < inputVars.size(); ++i_var )
+        {
+            const SpvReflectInterfaceVariable &refl_var = *( inputVars[i_var] );
+            VkVertexInputAttributeDescription &attr_desc = attribute_descriptions[i_var];
+            attr_desc.location = refl_var.location;
+            attr_desc.binding = binding_description.binding;
+            attr_desc.format = static_cast<VkFormat>( refl_var.format );
+            attr_desc.offset = 0;  // final offset computed below after sorting.
+        }
+        // Sort attributes by location
+        std::sort(
+            std::begin( attribute_descriptions ), std::end( attribute_descriptions ),
+            []( const VkVertexInputAttributeDescription &a,
+                const VkVertexInputAttributeDescription &b ) { return a.location < b.location; } );
+        // Compute final offsets of each attribute, and total vertex stride.
+        for( auto &attribute : attribute_descriptions )
+        {
+            uint32_t format_size = VulkanMappings::getFormatSize( attribute.format );
+            attribute.offset = binding_description.stride;
+            binding_description.stride += format_size;
+        }
+
+        vertexFormatCi.vertexBindingDescriptionCount = 1;
+        vertexFormatCi.vertexAttributeDescriptionCount =
+            static_cast<uint32_t>( attribute_descriptions.size() );
+        vertexFormatCi.pVertexBindingDescriptions = &binding_description;
+        vertexFormatCi.pVertexAttributeDescriptions = attribute_descriptions.data();
+
+        spvReflectDestroyShaderModule( &module );
+    }
+
     //-------------------------------------------------------------------------
 }  // namespace Ogre
