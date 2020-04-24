@@ -314,8 +314,9 @@ namespace Ogre
         return retVal;
     }
 
-    void VulkanDescriptors::generateVertexInputBindings( VulkanProgram *shader, HlmsPso *newPso,
-                                                         VkPipelineVertexInputStateCreateInfo &vertexFormatCi )
+    void VulkanDescriptors::generateVertexInputBindings(
+        VulkanProgram *shader, HlmsPso *newPso, VkVertexInputBindingDescription &binding_description,
+        std::vector<VkVertexInputAttributeDescription> &attribute_descriptions )
     {
         const std::vector<uint32> &spirv = shader->getSpirv();
         if( spirv.empty() )
@@ -355,15 +356,14 @@ namespace Ogre
                          "VulkanDescriptors::generateVertexInputBindings" );
         }
 
-        VkVertexInputBindingDescription binding_description = {};
+        
         binding_description.binding = 0;
         binding_description.stride = 0;  // computed below
         binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        VkPipelineVertexInputStateCreateInfo vertex_input_state_create_info = {
-            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-        };
-        std::vector<VkVertexInputAttributeDescription> attribute_descriptions(
+        
+        attribute_descriptions.resize(
             inputVars.size(), VkVertexInputAttributeDescription{} );
+
         for( size_t i_var = 0; i_var < inputVars.size(); ++i_var )
         {
             const SpvReflectInterfaceVariable &refl_var = *( inputVars[i_var] );
@@ -385,12 +385,6 @@ namespace Ogre
             attribute.offset = binding_description.stride;
             binding_description.stride += format_size;
         }
-
-        vertexFormatCi.vertexBindingDescriptionCount = 1;
-        vertexFormatCi.vertexAttributeDescriptionCount =
-            static_cast<uint32_t>( attribute_descriptions.size() );
-        vertexFormatCi.pVertexBindingDescriptions = &binding_description;
-        vertexFormatCi.pVertexAttributeDescriptions = attribute_descriptions.data();
 
         spvReflectDestroyShaderModule( &module );
     }

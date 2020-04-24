@@ -65,8 +65,9 @@ namespace Ogre
 
         static VkPipelineLayout generateVkDescriptorSets( const DescriptorSetLayoutArray &sets );
 
-        static void generateVertexInputBindings( VulkanProgram *shader, HlmsPso *newPso,
-                                                 VkPipelineVertexInputStateCreateInfo &vertexFormatCi );
+        static void generateVertexInputBindings(
+            VulkanProgram *shader, HlmsPso *newPso, VkVertexInputBindingDescription &binding_description,
+            std::vector<VkVertexInputAttributeDescription> &attribute_descriptions );
     };
 }  // namespace Ogre
 

@@ -912,12 +912,20 @@ namespace Ogre
 
         VkPipelineVertexInputStateCreateInfo vertexFormatCi;
         makeVkStruct( vertexFormatCi, VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO );
+        VkVertexInputBindingDescription binding_description;
+        std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
         TODO_vertex_format;
         if( !newPso->vertexShader.isNull() )
         {
             VulkanProgram *shader =
                 static_cast<VulkanProgram *>( newPso->vertexShader->_getBindingDelegate() );
-            VulkanDescriptors::generateVertexInputBindings( shader, newPso, vertexFormatCi );
+            VulkanDescriptors::generateVertexInputBindings( shader, newPso, binding_description,
+                                                            attribute_descriptions );
+            vertexFormatCi.vertexBindingDescriptionCount = 1;
+            vertexFormatCi.vertexAttributeDescriptionCount =
+                static_cast<uint32_t>( attribute_descriptions.size() );
+            vertexFormatCi.pVertexBindingDescriptions = &binding_description;
+            vertexFormatCi.pVertexAttributeDescriptions = attribute_descriptions.data();
         }
         
 
