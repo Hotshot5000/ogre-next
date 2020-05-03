@@ -42,7 +42,10 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanWindow.h"
 #include "Vao/OgreVulkanVaoManager.h"
 
+#include "Vao/OgreVulkanVertexArrayObject.h"
 #include "OgreDefaultHardwareBufferManager.h"
+
+#include "CommandBuffer/OgreCbDrawCall.h"
 
 //#include "Windowing/X11/OgreVulkanXcbWindow.h"
 
@@ -518,26 +521,100 @@ namespace Ogre
         return VET_COLOUR_ARGB;
     }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_dispatch( const HlmsComputePso &pso ) {}
+    void VulkanRenderSystem::_dispatch( const HlmsComputePso &pso )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( " * _dispatch: pso " );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_setVertexArrayObject( const VertexArrayObject *vao ) {}
+    void VulkanRenderSystem::_setVertexArrayObject( const VertexArrayObject *vao )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _setVertexArrayObject: vaoName " ) +
+                                    std::to_string( vao->getVaoName() ) );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_render( const CbDrawCallIndexed *cmd ) {}
+    void VulkanRenderSystem::_render( const CbDrawCallIndexed *cmd )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _render: CbDrawCallIndexed " ) +
+                                    std::to_string( cmd->vao->getVaoName() ) );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_render( const CbDrawCallStrip *cmd ) {}
+    void VulkanRenderSystem::_render( const CbDrawCallStrip *cmd )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _render: CbDrawCallStrip " ) +
+                                    std::to_string( cmd->vao->getVaoName() ) );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_renderEmulated( const CbDrawCallIndexed *cmd ) {}
+    void VulkanRenderSystem::_renderEmulated( const CbDrawCallIndexed *cmd )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _render: CbDrawCallIndexed " ) +
+                                    std::to_string( cmd->vao->getVaoName() ) );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_renderEmulated( const CbDrawCallStrip *cmd ) {}
+    void VulkanRenderSystem::_renderEmulated( const CbDrawCallStrip *cmd )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _render: CbDrawCallStrip " ) +
+                                    std::to_string( cmd->vao->getVaoName() ) );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_setRenderOperation( const v1::CbRenderOp *cmd ) {}
+    void VulkanRenderSystem::_setRenderOperation( const v1::CbRenderOp *cmd )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String(" * _render: CbRenderOp " ) );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_render( const v1::CbDrawCallIndexed *cmd ) {}
+    void VulkanRenderSystem::_render( const v1::CbDrawCallIndexed *cmd )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _render: CbDrawCallIndexed " ) );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_render( const v1::CbDrawCallStrip *cmd ) {}
+    void VulkanRenderSystem::_render( const v1::CbDrawCallStrip *cmd )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String(" * _render: CbDrawCallStrip " ) );
+        }
+    }
 
     void VulkanRenderSystem::_render( const v1::RenderOperation &op )
     {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _render: RenderOperation " ) +
+                                    std::to_string( op.operationType ) );
+        }
     }
 
     //-------------------------------------------------------------------------
@@ -545,6 +622,11 @@ namespace Ogre
                                                        GpuProgramParametersSharedPtr params,
                                                        uint16 variabilityMask )
     {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * bindGpuProgramParameters:  " ) );
+        }
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::bindGpuProgramPassIterationParameters( GpuProgramType gptype ) {}
@@ -927,7 +1009,6 @@ namespace Ogre
             vertexFormatCi.pVertexBindingDescriptions = &binding_description;
             vertexFormatCi.pVertexAttributeDescriptions = attribute_descriptions.data();
         }
-        
 
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyCi;
         makeVkStruct( inputAssemblyCi, VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO );

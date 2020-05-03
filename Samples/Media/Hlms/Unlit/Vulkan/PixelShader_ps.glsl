@@ -32,8 +32,8 @@ layout(location = 0)in block
 @end
 
 @property( !hlms_shadowcaster )
-@property( num_array_textures )layout(binding = 1)uniform sampler2DArray	textureMapsArray[@value( num_array_textures )];@end
-@property( num_textures )layout(binding = 1)uniform sampler2D	textureMaps[@value( num_textures )];@end
+@property( num_array_textures )layout(binding = 4)uniform sampler2DArray	textureMapsArray[@value( num_array_textures )];@end
+@property( num_textures )layout(binding = 4)uniform sampler2D	textureMaps[@value( num_textures )];@end
 
 @property( diffuse )@piece( MultiplyDiffuseConst )* material.diffuse@end @end
 

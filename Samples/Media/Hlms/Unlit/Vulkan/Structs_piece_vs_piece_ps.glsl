@@ -18,7 +18,7 @@ struct Material
 	@insertpiece( custom_materialBuffer )
 };
 
-layout_constbuffer(binding = 1) uniform MaterialBuf
+layout_constbuffer(binding = 3) uniform MaterialBuf
 {
 	Material m[@value( materials_per_buffer )];
 } materialArray;

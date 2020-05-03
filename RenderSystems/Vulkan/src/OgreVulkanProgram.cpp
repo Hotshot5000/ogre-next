@@ -28,12 +28,14 @@ THE SOFTWARE.
 #include "OgreVulkanProgram.h"
 
 #include "OgreLogManager.h"
+#include "OgreProfiler.h"
 #include "OgreVulkanDevice.h"
 #include "OgreVulkanGpuProgramManager.h"
 #include "OgreVulkanMappings.h"
 #include "Vao/OgreVulkanVaoManager.h"
 
 #include "OgreVulkanUtils.h"
+#include "SPIRV-Reflect/spirv_reflect.h"
 
 #include "SPIRV/Logger.h"
 
@@ -380,14 +382,123 @@ namespace Ogre
     //-----------------------------------------------------------------------
     void VulkanProgram::buildConstantDefinitions( void ) const
     {
-        if( !mBuildParametersFromReflection )
-            return;
+        OgreProfileExhaustive( "VulkanProgram::buildConstantDefinitions" );
+
+        // if( !mBuildParametersFromReflection )
+        //     return;
 
         if( mCompileError )
             return;
 
         if( mSpirv.empty() )
             return;
+
+        SpvReflectShaderModule module;
+        memset( &module, 0, sizeof( module ) );
+        SpvReflectResult result =
+            spvReflectCreateShaderModule( mSpirv.size() * sizeof( uint32 ), &mSpirv[0], &module );
+        if( result != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                         "spvReflectCreateShaderModule failed on shader " + mName +
+                             " error code: " + getSpirvReflectError( result ),
+                         "VulkanDescriptors::generateDescriptorSet" );
+        }
+
+        uint32 numDescSets = 0;
+        result = spvReflectEnumerateDescriptorSets( &module, &numDescSets, 0 );
+        if( result != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                         "spvReflectEnumerateDescriptorSets failed on shader " + mName +
+                             " error code: " + getSpirvReflectError( result ),
+                         "VulkanDescriptors::generateDescriptorSet" );
+        }
+
+        FastArray<SpvReflectDescriptorSet *> sets;
+        sets.resize( numDescSets );
+        result = spvReflectEnumerateDescriptorSets( &module, &numDescSets, sets.begin() );
+        if( result != SPV_REFLECT_RESULT_SUCCESS )
+        {
+            OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                         "spvReflectEnumerateDescriptorSets failed on shader " + mName +
+                             " error code: " + getSpirvReflectError( result ),
+                         "VulkanDescriptors::generateDescriptorSet" );
+        }
+
+        size_t numSets = 0u;
+        FastArray<SpvReflectDescriptorSet *>::const_iterator itor = sets.begin();
+        FastArray<SpvReflectDescriptorSet *>::const_iterator endt = sets.end();
+
+        while( itor != endt )
+        {
+            const SpvReflectDescriptorSet &reflSet = **itor;
+            const size_t numUsedBindings = reflSet.binding_count;
+
+            size_t numBindings = 0;
+            for( size_t i = 0; i < numUsedBindings; ++i )
+                numBindings = std::max<size_t>( reflSet.bindings[i]->binding + 1u, numBindings );
+
+            for( size_t i = 0; i < numUsedBindings; ++i )
+            {
+                const SpvReflectDescriptorBinding &reflBinding = *( reflSet.bindings[i] );
+                GpuConstantDefinition def;
+                const VkDescriptorType type =
+                    static_cast<VkDescriptorType>( reflBinding.descriptor_type );
+                if( type == VK_DESCRIPTOR_TYPE_SAMPLER )
+                {
+                    def.constType = GCT_SAMPLER2D;
+                }
+                else if( type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER )
+                {
+                    def.constType = GCT_SAMPLER1D;
+                }
+                else if( type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER )
+                {
+                    def.constType = GCT_SAMPLER2D;
+                }
+                else if( type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER )
+                {
+                    def.constType = GCT_SAMPLER2D;
+                }
+                def.arraySize = 1;
+                def.logicalIndex = 0;
+                // def.physicalIndex = 0;
+                def.elementSize = 1;
+                def.logicalIndex = 0;  // not valid in GLSL
+                GpuNamedConstants &defs = *mConstantDefs.get();
+                if( def.isFloat() )
+                {
+                    def.physicalIndex = defs.floatBufferSize;
+                    defs.floatBufferSize += def.arraySize * def.elementSize;
+                }
+                else if( def.isDouble() )
+                {
+                    def.physicalIndex = defs.doubleBufferSize;
+                    defs.doubleBufferSize += def.arraySize * def.elementSize;
+                }
+                else if( def.isInt() || def.isSampler() )
+                {
+                    def.physicalIndex = defs.intBufferSize;
+                    defs.intBufferSize += def.arraySize * def.elementSize;
+                }
+                else if( def.isUnsignedInt() || def.isBool() )
+                {
+                    def.physicalIndex = defs.uintBufferSize;
+                    defs.uintBufferSize += def.arraySize * def.elementSize;
+                }
+                String paramName( reflBinding.name );
+                if( paramName.empty() )
+                    paramName = reflBinding.type_description->type_name;
+                if( reflBinding.array.dims_count > 0 )
+                    paramName += "[0]";
+                mConstantDefs->map.insert( GpuConstantDefinitionMap::value_type( paramName, def ) );
+            }
+
+            ++itor;
+        }
+
+        spvReflectDestroyShaderModule( &module );
     }
     //-----------------------------------------------------------------------
     static VkShaderStageFlagBits get( GpuProgramType programType )

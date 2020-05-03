@@ -29,6 +29,7 @@ THE SOFTWARE.
 #define _OgreVulkanUtils_H_
 
 #include "OgreString.h"
+#include "SPIRV-Reflect/spirv_reflect.h"
 
 #include "vulkan/vulkan_core.h"
 
@@ -56,6 +57,8 @@ namespace Ogre
 
     uint32_t findMemoryType( VkPhysicalDevice physicalDevice, uint32_t typeFilter,
                              VkMemoryPropertyFlags properties );
+
+    String getSpirvReflectError( SpvReflectResult spirvReflectResult );
 }  // namespace Ogre
 
 #endif  //#ifndef _OgreVulkanPrerequisites_H_
