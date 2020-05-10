@@ -47,6 +47,11 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 #include "CommandBuffer/OgreCbDrawCall.h"
 
+#include "OgreVulkanHlmsPso.h"
+#include "Vao/OgreVulkanConstBufferPacked.h"
+#include "Vao/OgreIndirectBufferPacked.h"
+#include "Vao/OgreVulkanBufferInterface.h"
+
 //#include "Windowing/X11/OgreVulkanXcbWindow.h"
 
 #include "Windowing/win32/OgreVulkanWin32Window.h"
@@ -129,9 +134,13 @@ namespace Ogre
         mShaderManager( 0 ),
         mVulkanProgramFactory( 0 ),
         mVkInstance( 0 ),
+        mAutoParamsBufferIdx( 0 ),
+        mCurrentAutoParamsBufferPtr( 0 ),
+        mCurrentAutoParamsBufferSpaceLeft( 0 ),
         mActiveDevice( 0 ),
         mDevice( 0 ),
         mCache( 0 ),
+        mPso( 0 ),
         mEntriesToFlush( 0u ),
         mVpChanged( false ),
         CreateDebugReportCallback( 0 ),
@@ -482,7 +491,35 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setTextureMatrix( size_t unit, const Matrix4 &xform ) {}
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_setIndirectBuffer( IndirectBufferPacked *indirectBuffer ) {}
+    void VulkanRenderSystem::_setIndirectBuffer( IndirectBufferPacked *indirectBuffer )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _setIndirectBuffer: " ) +
+                                    std::to_string( indirectBuffer->getBufferPackedType() ) );
+        }
+        if( mVaoManager->supportsIndirectBuffers() )
+        {
+            if( indirectBuffer )
+            {
+                VulkanBufferInterface *bufferInterface =
+                    static_cast<VulkanBufferInterface *>( indirectBuffer->getBufferInterface() );
+                mIndirectBuffer = bufferInterface->getVboName();
+            }
+            else
+            {
+                mIndirectBuffer = 0;
+            }
+        }
+        else
+        {
+            if( indirectBuffer )
+                mSwIndirectBufferPtr = indirectBuffer->getSwBufferPtr();
+            else
+                mSwIndirectBufferPtr = 0;
+        }
+    }
     //-------------------------------------------------------------------------
     RenderPassDescriptor *VulkanRenderSystem::createRenderPassDescriptor( void )
     {
@@ -509,9 +546,18 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setPipelineStateObject( const HlmsPso *pso )
     {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( " * _setPipelineStateObject: pso " );
+        }
+
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+        assert( pso->rsData );
+        VulkanHlmsPso *vulkanPso = reinterpret_cast<VulkanHlmsPso *>( pso->rsData );
         vkCmdBindPipeline( cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                           reinterpret_cast<VkPipeline>( pso->rsData ) );
+                           vulkanPso->pso );
+        mPso = vulkanPso;
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setComputePso( const HlmsComputePso *pso ) {}
@@ -565,9 +611,27 @@ namespace Ogre
         Log *defaultLog = LogManager::getSingleton().getDefaultLog();
         if( defaultLog )
         {
-            defaultLog->logMessage( String( " * _render: CbDrawCallIndexed " ) +
+            defaultLog->logMessage( String( " * _renderEmulated: CbDrawCallIndexed " ) +
                                     std::to_string( cmd->vao->getVaoName() ) );
         }
+        const VulkanVertexArrayObject *vao = static_cast<const VulkanVertexArrayObject *>( cmd->vao );
+        const VulkanBufferInterface *bufferInterface =
+            static_cast<const VulkanBufferInterface *>( vao->getIndexBuffer()->getBufferInterface() );
+        CbDrawIndexed *drawCmd = reinterpret_cast<CbDrawIndexed *>( mSwIndirectBufferPtr +
+                                                                    (size_t)cmd->indirectBufferOffset );
+        const size_t bytesPerIndexElement = vao->getIndexBuffer()->getBytesPerElement();
+        
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+
+        vkCmdBindIndexBuffer( cmdBuffer, bufferInterface->getVboName(), 0, VK_INDEX_TYPE_UINT16 );
+
+        for( uint32 i = cmd->numDraws; i--; )
+        {
+            vkCmdDrawIndexed( cmdBuffer, drawCmd->primCount, drawCmd->instanceCount,
+                              drawCmd->firstVertexIndex, drawCmd->baseVertex, drawCmd->baseInstance );
+            ++drawCmd;
+        }
+        
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_renderEmulated( const CbDrawCallStrip *cmd )
@@ -575,7 +639,7 @@ namespace Ogre
         Log *defaultLog = LogManager::getSingleton().getDefaultLog();
         if( defaultLog )
         {
-            defaultLog->logMessage( String( " * _render: CbDrawCallStrip " ) +
+            defaultLog->logMessage( String( " * _renderEmulated: CbDrawCallStrip " ) +
                                     std::to_string( cmd->vao->getVaoName() ) );
         }
     }
@@ -585,7 +649,7 @@ namespace Ogre
         Log *defaultLog = LogManager::getSingleton().getDefaultLog();
         if( defaultLog )
         {
-            defaultLog->logMessage( String(" * _render: CbRenderOp " ) );
+            defaultLog->logMessage( String(" v1 * _render: CbRenderOp " ) );
         }
     }
     //-------------------------------------------------------------------------
@@ -594,7 +658,7 @@ namespace Ogre
         Log *defaultLog = LogManager::getSingleton().getDefaultLog();
         if( defaultLog )
         {
-            defaultLog->logMessage( String( " * _render: CbDrawCallIndexed " ) );
+            defaultLog->logMessage( String( " v1 * _render: CbDrawCallIndexed " ) );
         }
     }
     //-------------------------------------------------------------------------
@@ -603,7 +667,7 @@ namespace Ogre
         Log *defaultLog = LogManager::getSingleton().getDefaultLog();
         if( defaultLog )
         {
-            defaultLog->logMessage( String(" * _render: CbDrawCallStrip " ) );
+            defaultLog->logMessage( String(" v1 * _render: CbDrawCallStrip " ) );
         }
     }
 
@@ -626,6 +690,104 @@ namespace Ogre
         if( defaultLog )
         {
             defaultLog->logMessage( String( " * bindGpuProgramParameters:  " ) );
+        }
+        VulkanProgram *shader = 0;
+        switch( gptype )
+        {
+        case GPT_VERTEX_PROGRAM:
+            mActiveVertexGpuProgramParameters = params;
+            shader = mPso->vertexShader;
+            break;
+        case GPT_FRAGMENT_PROGRAM:
+            mActiveFragmentGpuProgramParameters = params;
+            shader = mPso->pixelShader;
+            break;
+        case GPT_GEOMETRY_PROGRAM:
+            mActiveGeometryGpuProgramParameters = params;
+            OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Geometry Shaders are not supported in Vulkan.",
+                         "VulkanRenderSystem::bindGpuProgramParameters" );
+            break;
+        case GPT_HULL_PROGRAM:
+            mActiveTessellationHullGpuProgramParameters = params;
+            OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Tesselation is different in Vulkan.",
+                         "VulkanRenderSystem::bindGpuProgramParameters" );
+            break;
+        case GPT_DOMAIN_PROGRAM:
+            mActiveTessellationDomainGpuProgramParameters = params;
+            OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "Tesselation is different in Vulkan.",
+                         "VulkanRenderSystem::bindGpuProgramParameters" );
+            break;
+        case GPT_COMPUTE_PROGRAM:
+            // mActiveComputeGpuProgramParameters = params;
+            // shader = static_cast<VulkanProgram *>( mComputePso->computeShader->_getBindingDelegate() );
+            break;
+        }
+
+        size_t bytesToWrite = shader->getBufferRequiredSize();
+        if( shader && bytesToWrite > 0 )
+        {
+            if( mCurrentAutoParamsBufferSpaceLeft < bytesToWrite )
+            {
+                if( mAutoParamsBufferIdx >= mAutoParamsBuffer.size() )
+                {
+                    ConstBufferPacked *constBuffer =
+                        mVaoManager->createConstBuffer( std::max<size_t>( 512u * 1024u, bytesToWrite ),
+                                                        BT_DYNAMIC_PERSISTENT, 0, false );
+                    mAutoParamsBuffer.push_back( constBuffer );
+                }
+
+                ConstBufferPacked *constBuffer = mAutoParamsBuffer[mAutoParamsBufferIdx];
+                mCurrentAutoParamsBufferPtr =
+                    reinterpret_cast<uint8 *>( constBuffer->map( 0, constBuffer->getNumElements() ) );
+                mCurrentAutoParamsBufferSpaceLeft = constBuffer->getTotalSizeBytes();
+
+                ++mAutoParamsBufferIdx;
+            }
+
+            shader->updateBuffers( params, mCurrentAutoParamsBufferPtr );
+
+            assert(
+                dynamic_cast<VulkanConstBufferPacked *>( mAutoParamsBuffer[mAutoParamsBufferIdx - 1u] ) );
+
+            VulkanConstBufferPacked *constBuffer =
+                static_cast<VulkanConstBufferPacked *>( mAutoParamsBuffer[mAutoParamsBufferIdx - 1u] );
+            const size_t bindOffset =
+                constBuffer->getTotalSizeBytes() - mCurrentAutoParamsBufferSpaceLeft;
+            VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+            switch( gptype )
+            {
+            case GPT_VERTEX_PROGRAM:
+                constBuffer->bindBufferVS( cmdBuffer, OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
+                                           bindOffset );
+                break;
+            case GPT_FRAGMENT_PROGRAM:
+                constBuffer->bindBufferPS(
+                    cmdBuffer, OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
+                                           bindOffset );
+                break;
+            case GPT_COMPUTE_PROGRAM:
+                constBuffer->bindBufferCS(
+                    cmdBuffer, OGRE_VULKAN_CS_PARAMETER_SLOT - OGRE_VULKAN_CS_CONST_SLOT_START,
+                                           bindOffset );
+                break;
+            case GPT_GEOMETRY_PROGRAM:
+            case GPT_HULL_PROGRAM:
+            case GPT_DOMAIN_PROGRAM:
+                break;
+            }
+
+            mCurrentAutoParamsBufferPtr += bytesToWrite;
+
+            const uint8 *oldBufferPos = mCurrentAutoParamsBufferPtr;
+            mCurrentAutoParamsBufferPtr = reinterpret_cast<uint8 *>(
+                alignToNextMultiple( reinterpret_cast<uintptr_t>( mCurrentAutoParamsBufferPtr ),
+                                     mVaoManager->getConstBufferAlignment() ) );
+            bytesToWrite += mCurrentAutoParamsBufferPtr - oldBufferPos;
+
+            // We know that bytesToWrite <= mCurrentAutoParamsBufferSpaceLeft, but that was
+            // before padding. After padding this may no longer hold true.
+            mCurrentAutoParamsBufferSpaceLeft -=
+                std::min( mCurrentAutoParamsBufferSpaceLeft, bytesToWrite );
         }
     }
     //-------------------------------------------------------------------------
@@ -949,12 +1111,15 @@ namespace Ogre
 
         DescriptorSetLayoutArray descriptorSets;
 
+        VulkanProgram *vertexShader = 0;
+        VulkanProgram *pixelShader = 0;
+
         if( !newPso->vertexShader.isNull() )
         {
-            VulkanProgram *shader =
+            vertexShader =
                 static_cast<VulkanProgram *>( newPso->vertexShader->_getBindingDelegate() );
-            shader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
-            VulkanDescriptors::generateAndMergeDescriptorSets( shader, descriptorSets );
+            vertexShader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
+            VulkanDescriptors::generateAndMergeDescriptorSets( vertexShader, descriptorSets );
         }
 
         if( !newPso->geometryShader.isNull() )
@@ -983,10 +1148,10 @@ namespace Ogre
 
         if( !newPso->pixelShader.isNull() )
         {
-            VulkanProgram *shader =
+            pixelShader =
                 static_cast<VulkanProgram *>( newPso->pixelShader->_getBindingDelegate() );
-            shader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
-            VulkanDescriptors::generateAndMergeDescriptorSets( shader, descriptorSets );
+            pixelShader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
+            VulkanDescriptors::generateAndMergeDescriptorSets( pixelShader, descriptorSets );
         }
 
         VulkanDescriptors::optimizeDescriptorSets( descriptorSets );
@@ -1169,19 +1334,25 @@ namespace Ogre
                                                      &pipeline, 0, &vulkanPso );
         checkVkResult( result, "vkCreateGraphicsPipelines" );
 
-        newPso->rsData = vulkanPso;
+        VulkanHlmsPso *pso = new VulkanHlmsPso();
+        pso->pso = vulkanPso;
+        pso->vertexShader = vertexShader;
+        pso->pixelShader = pixelShader;
+
+        newPso->rsData = pso;
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_hlmsPipelineStateObjectDestroyed( HlmsPso *pso )
     {
         assert( pso->rsData );
 
+        VulkanHlmsPso *vulkanPso = reinterpret_cast<VulkanHlmsPso *>( pso->rsData );
+
         //        removeDepthStencilState( pso );
 
-        //        MetalHlmsPso *metalPso = reinterpret_cast<MetalHlmsPso *>( pso->rsData );
-        //        delete metalPso;
+        vkDestroyPipeline( mActiveDevice->mDevice, reinterpret_cast<VkPipeline>( vulkanPso->pso ), 0 );
 
-        vkDestroyPipeline( mActiveDevice->mDevice, reinterpret_cast<VkPipeline>( pso->rsData ), 0 );
+        delete vulkanPso;
         pso->rsData = 0;
     }
 }  // namespace Ogre

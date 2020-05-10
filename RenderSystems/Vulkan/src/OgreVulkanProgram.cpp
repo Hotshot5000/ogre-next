@@ -493,6 +493,14 @@ namespace Ogre
                 if( reflBinding.array.dims_count > 0 )
                     paramName += "[0]";
                 mConstantDefs->map.insert( GpuConstantDefinitionMap::value_type( paramName, def ) );
+
+                // const_cast to get around the fact that buildConstantDefinitions() is const.
+                const_cast<VulkanProgram *>( this )->mConstantDefsSorted.push_back( def );
+
+                // const_cast to get around the fact that buildConstantDefinitions() is const.
+                const_cast<VulkanProgram*>(this)->mConstantsBytesToWrite = std::max<uint32>(
+                    mConstantsBytesToWrite,
+                    def.logicalIndex + def.arraySize * def.elementSize * sizeof( float ) );
             }
 
             ++itor;

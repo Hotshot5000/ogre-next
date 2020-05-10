@@ -962,7 +962,9 @@ namespace Ogre
         const VertexBufferPackedVec &vertexBuffers, IndexBufferPacked *indexBuffer,
         OperationType opType )
     {
-        size_t idx = mVertexArrayObjects.size();
+        // To make the comparison with lastVao in RenderQueue::render() valid when lastVao is 0
+        // we just start the index from 1 here.
+        size_t idx = mVertexArrayObjects.size() + 1;
 
         const int bitsOpType = 3;
         const int bitsVaoGl = 2;

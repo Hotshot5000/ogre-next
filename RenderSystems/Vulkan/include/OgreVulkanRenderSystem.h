@@ -42,6 +42,8 @@ namespace Ogre
         class HardwareBufferManager;
     }
 
+    struct VulkanHlmsPso;
+
     class _OgreVulkanExport VulkanPixelFormatToShaderType : public PixelFormatToShaderType
     {
     public:
@@ -65,16 +67,29 @@ namespace Ogre
 
         VulkanPixelFormatToShaderType mPixelFormatToShaderType;
 
+        VkBuffer mIndirectBuffer;
+        unsigned char *mSwIndirectBufferPtr;
+
         VulkanGpuProgramManager *mShaderManager;
         VulkanProgramFactory *mVulkanProgramFactory;
 
         VkInstance mVkInstance;
+
+        // TODO: AutoParamsBuffer probably belongs to MetalDevice (because it's per device?)
+        typedef vector<ConstBufferPacked *>::type ConstBufferPackedVec;
+        ConstBufferPackedVec mAutoParamsBuffer;
+        size_t mAutoParamsBufferIdx;
+        uint8 *mCurrentAutoParamsBufferPtr;
+        size_t mCurrentAutoParamsBufferSpaceLeft;
+        size_t mHistoricalAutoParamsSize[60];
 
         VulkanDevice *mActiveDevice;
 
         VulkanDevice *mDevice;
 
         VulkanCache *mCache;
+
+        VulkanHlmsPso *mPso;
 
         // clang-format off
         VulkanFrameBufferDescMap    mFrameBufferDescMap;

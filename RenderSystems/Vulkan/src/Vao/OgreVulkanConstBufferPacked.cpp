@@ -44,5 +44,46 @@ namespace Ogre
     }
     //-----------------------------------------------------------------------------------
     VulkanConstBufferPacked::~VulkanConstBufferPacked() {}
+
+    void VulkanConstBufferPacked::bindBufferVS( uint16 slot )
+    {
+    }
+
+    void VulkanConstBufferPacked::bindBufferPS( uint16 slot )
+    {
+    }
+
+    void VulkanConstBufferPacked::bindBufferCS( uint16 slot )
+    {
+    }
+
+    void VulkanConstBufferPacked::bindBufferVS( VkCommandBuffer cmdBuffer, uint16 slot,
+        uint32 offsetBytes )
+    {
+        assert( dynamic_cast<VulkanBufferInterface *>( mBufferInterface ) );
+        VulkanBufferInterface *bufferInterface =
+            static_cast<VulkanBufferInterface *>( mBufferInterface );
+        VkBuffer vertexBuffers[] = { bufferInterface->getVboName() };
+        VkDeviceSize offsets[] = { mFinalBufferStart * mBytesPerElement + offsetBytes };
+        vkCmdBindVertexBuffers( cmdBuffer, slot + OGRE_VULKAN_CONST_SLOT_START, 1, vertexBuffers, offsets );
+    }
+
+    void VulkanConstBufferPacked::bindBufferPS( VkCommandBuffer cmdBuffer, uint16 slot,
+        uint32 offsetBytes )
+    {
+        assert( dynamic_cast<VulkanBufferInterface *>( mBufferInterface ) );
+        VulkanBufferInterface *bufferInterface =
+            static_cast<VulkanBufferInterface *>( mBufferInterface );
+        VkBuffer vertexBuffers[] = { bufferInterface->getVboName() };
+        VkDeviceSize offsets[] = { mFinalBufferStart * mBytesPerElement + offsetBytes };
+        vkCmdBindVertexBuffers( cmdBuffer, slot + OGRE_VULKAN_CONST_SLOT_START, 1, vertexBuffers,
+                                offsets );
+    }
+
+    void VulkanConstBufferPacked::bindBufferCS( VkCommandBuffer cmdBuffer, uint16 slot,
+        uint32 offsetBytes )
+    {
+    }
+
     //-----------------------------------------------------------------------------------
 }  // namespace Ogre

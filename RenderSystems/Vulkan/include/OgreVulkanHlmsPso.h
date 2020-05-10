@@ -1,10 +1,10 @@
 /*
 -----------------------------------------------------------------------------
 This source file is part of OGRE
-(Object-oriented Graphics Rendering Engine)
-For the latest info, see http://www.ogre3d.org
+    (Object-oriented Graphics Rendering Engine)
+For the latest info, see http://www.ogre3d.org/
 
-Copyright (c) 2000-2014 Torus Knot Software Ltd
+Copyright (c) 2000-2016 Torus Knot Software Ltd
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,38 +25,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
-
-#ifndef _Ogre_VulkanConstBufferPacked_H_
-#define _Ogre_VulkanConstBufferPacked_H_
+#ifndef _OgreVulkanHlmsPso_H_
+#define _OgreVulkanHlmsPso_H_
 
 #include <vulkan/vulkan.h>
 
+#include "OgreHeaderPrefix.h"
 #include "OgreVulkanPrerequisites.h"
-
-#include "Vao/OgreConstBufferPacked.h"
 
 namespace Ogre
 {
-    class _OgreVulkanExport VulkanConstBufferPacked : public ConstBufferPacked
+    /** \addtogroup Core
+     *  @{
+     */
+    /** \addtogroup Resources
+     *  @{
+     */
+
+    /// @See HlmsPso
+    struct _OgreVulkanExport VulkanHlmsPso
     {
-    public:
-        VulkanConstBufferPacked( size_t internalBufferStartBytes, size_t numElements,
-                                 uint32 bytesPerElement, uint32 numElementsPadding,
-                                 BufferType bufferType, void *initialData, bool keepAsShadow,
-                                 VaoManager *vaoManager, BufferInterface *bufferInterface );
-        ~VulkanConstBufferPacked();
+        VkPipeline pso;
+        // id<MTLDepthStencilState> depthStencilState;
+        // MTLCullMode cullMode;
 
-        void bindBufferVS( uint16 slot ) override;
-        void bindBufferPS( uint16 slot ) override;
-        virtual void bindBufferGS( uint16 slot ) {}
-        virtual void bindBufferHS( uint16 slot ) {}
-        virtual void bindBufferDS( uint16 slot ) {}
-        void bindBufferCS( uint16 slot ) override;
-
-        void bindBufferVS( VkCommandBuffer cmdBuffer, uint16 slot, uint32 offsetBytes );
-        void bindBufferPS( VkCommandBuffer cmdBuffer, uint16 slot, uint32 offsetBytes );
-        void bindBufferCS( VkCommandBuffer cmdBuffer, uint16 slot, uint32 offsetBytes );
+        VulkanProgram *vertexShader;
+        VulkanProgram *pixelShader;
     };
+
+    /** @} */
+    /** @} */
+
 }  // namespace Ogre
+
+#include "OgreHeaderSuffix.h"
 
 #endif
