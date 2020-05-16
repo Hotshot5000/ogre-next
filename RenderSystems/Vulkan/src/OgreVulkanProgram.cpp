@@ -495,10 +495,11 @@ namespace Ogre
                 mConstantDefs->map.insert( GpuConstantDefinitionMap::value_type( paramName, def ) );
 
                 // const_cast to get around the fact that buildConstantDefinitions() is const.
-                const_cast<VulkanProgram *>( this )->mConstantDefsSorted.push_back( def );
+                VulkanProgram *vp = const_cast<VulkanProgram *>( this );
+                
+                vp->mConstantDefsSorted.push_back( def );
 
-                // const_cast to get around the fact that buildConstantDefinitions() is const.
-                const_cast<VulkanProgram*>(this)->mConstantsBytesToWrite = std::max<uint32>(
+                vp->mConstantsBytesToWrite = std::max<uint32>(
                     mConstantsBytesToWrite,
                     def.logicalIndex + def.arraySize * def.elementSize * sizeof( float ) );
             }

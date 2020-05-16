@@ -7,11 +7,13 @@
 #include "OgreException.h"
 #include "OgreTextureGpuListener.h"
 #include "OgreWindowEventUtilities.h"
-#define VK_USE_PLATFORM_WIN32_KHR
 #include "OgrePixelFormatGpuUtils.h"
 #include "OgreDepthBuffer.h"
 #include "OgreVulkanUtils.h"
 #include "OgreVulkanMappings.h"
+#define VK_USE_PLATFORM_WIN32_KHR
+#include <windows.h>
+#include "vulkan/vulkan_win32.h"
 #include "vulkan/vulkan.h"
 
 namespace Ogre

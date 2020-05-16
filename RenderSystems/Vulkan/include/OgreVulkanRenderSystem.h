@@ -34,6 +34,7 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreRenderSystem.h"
 
 #include "OgreVulkanRenderPassDescriptor.h"
+#include "Vao/OgreVulkanConstBufferPacked.h"
 
 namespace Ogre
 {
@@ -42,7 +43,7 @@ namespace Ogre
         class HardwareBufferManager;
     }
 
-    struct VulkanHlmsPso;
+    class VulkanHlmsPso;
 
     class _OgreVulkanExport VulkanPixelFormatToShaderType : public PixelFormatToShaderType
     {
@@ -182,6 +183,8 @@ namespace Ogre
         virtual void _dispatch( const HlmsComputePso &pso );
 
         virtual void _setVertexArrayObject( const VertexArrayObject *vao );
+        void flushDescriptorState( VkPipelineBindPoint pipeline_bind_point, const VulkanConstBufferPacked &constBuffer, const size_t
+                                   bindOffset );
 
         virtual void _render( const CbDrawCallIndexed *cmd );
         virtual void _render( const CbDrawCallStrip *cmd );

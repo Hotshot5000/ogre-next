@@ -54,6 +54,9 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 //#include "Windowing/X11/OgreVulkanXcbWindow.h"
 
+#include "OgreVulkanDescriptorPool.h"
+#include "OgreVulkanDescriptorSet.h"
+#include "OgreVulkanUtils2.h"
 #include "Windowing/win32/OgreVulkanWin32Window.h"
 
 #define TODO_check_layers_exist
@@ -586,6 +589,256 @@ namespace Ogre
         }
     }
     //-------------------------------------------------------------------------
+    void VulkanRenderSystem::flushDescriptorState( VkPipelineBindPoint pipeline_bind_point,
+                                                   const VulkanConstBufferPacked &constBuffer, const size_t bindOffset )
+    {
+        VulkanHlmsPso *pso = mPso;
+
+        // std::unordered_set<uint32_t> update_descriptor_sets;
+        //
+        // DescriptorSetLayoutArray::iterator itor = pso->descriptorSets.begin();
+        // DescriptorSetLayoutArray::iterator end = pso->descriptorSets.end();
+        //
+        // while( itor != end )
+        // {
+        //     VkDescriptorSetLayout &descSet = *itor;
+        //
+        //     update_descriptor_sets.emplace( descSet );
+        //     ++itor;
+        // }
+        //
+        // if( update_descriptor_sets.empty() )
+        //     return;
+
+        const VulkanBufferInterface *bufferInterface = static_cast<const VulkanBufferInterface *>(constBuffer.getBufferInterface());
+
+        BindingMap<VkDescriptorBufferInfo> buffer_infos;
+        BindingMap<VkDescriptorImageInfo> image_infos;
+
+        DescriptorSetLayoutBindingArray::const_iterator bindingArraySetItor = pso->descriptorLayoutBindingSets.begin();
+        DescriptorSetLayoutBindingArray::const_iterator bindingArraySetEnd = pso->descriptorLayoutBindingSets.end();
+
+        uint32 set = 0;
+
+        while( bindingArraySetItor != bindingArraySetEnd )
+        {
+            const FastArray<struct VkDescriptorSetLayoutBinding> bindings = *bindingArraySetItor;
+
+            FastArray<struct VkDescriptorSetLayoutBinding>::const_iterator bindingsItor = bindings.begin();
+            FastArray<struct VkDescriptorSetLayoutBinding>::const_iterator bindingsItorEnd =
+                bindings.end();
+
+            uint32 arrayElement = 0;
+
+            while( bindingsItor != bindingsItorEnd )
+            {
+                const VkDescriptorSetLayoutBinding &binding = *bindingsItor;
+
+                VkDescriptorBufferInfo buffer_info;
+
+                buffer_info.buffer = bufferInterface->getVboName();
+                buffer_info.offset = bindOffset;
+                buffer_info.range = constBuffer.getNumElements() * constBuffer.getBytesPerElement();
+
+                // if( is_dynamic_buffer_descriptor_type( binding_info->descriptorType ) )
+                // {
+                //     dynamic_offsets.push_back( to_u32( buffer_info.offset ) );
+                //
+                //     buffer_info.offset = 0;
+                // }
+
+                buffer_infos[set][arrayElement] = buffer_info;
+
+                ++bindingsItor;
+                ++arrayElement;
+            }
+
+            ++bindingArraySetItor;
+            ++set;
+        }
+
+        VulkanDescriptorPool *descriptorPool =
+            new VulkanDescriptorPool( mDevice->mDevice, pso->descriptorLayoutSets[0] );
+
+        VulkanDescriptorSet *descriptor_set =
+            new VulkanDescriptorSet( mDevice->mDevice, pso->descriptorLayoutSets[0], *descriptorPool, buffer_infos, image_infos );
+
+        VkDescriptorSet descriptor_set_handle = descriptor_set->get_handle();
+
+        // Bind descriptor set
+        vkCmdBindDescriptorSets( mDevice->mGraphicsQueue.mCurrentCmdBuffer, pipeline_bind_point, pso->pipelineLayout,
+                                 0, 1, &descriptor_set_handle,
+                                 0, 0);
+
+        // const auto &pipeline_layout = pipeline_state.get_pipeline_layout();
+        //
+        //
+        //
+        // // Iterate over the shader sets to check if they have already been bound
+        // // If they have, add the set so that the command buffer later updates it
+        // for( auto &set_it : pipeline_layout.get_shader_sets() )
+        // {
+        //     uint32_t descriptor_set_id = set_it.first;
+        //
+        //     auto descriptor_set_layout_it =
+        //         descriptor_set_layout_binding_state.find( descriptor_set_id );
+        //
+        //     if( descriptor_set_layout_it != descriptor_set_layout_binding_state.end() )
+        //     {
+        //         if( descriptor_set_layout_it->second->get_handle() !=
+        //             pipeline_layout.get_descriptor_set_layout( descriptor_set_id ).get_handle() )
+        //         {
+        //             update_descriptor_sets.emplace( descriptor_set_id );
+        //         }
+        //     }
+        // }
+        //
+        // // Validate that the bound descriptor set layouts exist in the pipeline layout
+        // for( auto set_it = descriptor_set_layout_binding_state.begin();
+        //      set_it != descriptor_set_layout_binding_state.end(); )
+        // {
+        //     if( !pipeline_layout.has_descriptor_set_layout( set_it->first ) )
+        //     {
+        //         set_it = descriptor_set_layout_binding_state.erase( set_it );
+        //     }
+        //     else
+        //     {
+        //         ++set_it;
+        //     }
+        // }
+        //
+        // // Check if a descriptor set needs to be created
+        // if( resource_binding_state.is_dirty() || !update_descriptor_sets.empty() )
+        // {
+        //     resource_binding_state.clear_dirty();
+        //
+        //     // Iterate over all of the resource sets bound by the command buffer
+        //     for( auto &resource_set_it : resource_binding_state.get_resource_sets() )
+        //     {
+        //         uint32_t descriptor_set_id = resource_set_it.first;
+        //         auto &resource_set = resource_set_it.second;
+        //
+        //         // Don't update resource set if it's not in the update list OR its state hasn't changed
+        //         if( !resource_set.is_dirty() && ( update_descriptor_sets.find( descriptor_set_id ) ==
+        //                                           update_descriptor_sets.end() ) )
+        //         {
+        //             continue;
+        //         }
+        //
+        //         // Clear dirty flag for resource set
+        //         resource_binding_state.clear_dirty( descriptor_set_id );
+        //
+        //         // Skip resource set if a descriptor set layout doesn't exist for it
+        //         if( !pipeline_layout.has_descriptor_set_layout( descriptor_set_id ) )
+        //         {
+        //             continue;
+        //         }
+        //
+        //         auto &descriptor_set_layout =
+        //             pipeline_layout.get_descriptor_set_layout( descriptor_set_id );
+        //
+        //         // Make descriptor set layout bound for current set
+        //         descriptor_set_layout_binding_state[descriptor_set_id] = &descriptor_set_layout;
+        //
+        //         BindingMap<VkDescriptorBufferInfo> buffer_infos;
+        //         BindingMap<VkDescriptorImageInfo> image_infos;
+        //
+        //         std::vector<uint32_t> dynamic_offsets;
+        //
+        //         // Iterate over all resource bindings
+        //         for( auto &binding_it : resource_set.get_resource_bindings() )
+        //         {
+        //             auto binding_index = binding_it.first;
+        //             auto &binding_resources = binding_it.second;
+        //
+        //             // Check if binding exists in the pipeline layout
+        //             if( auto binding_info = descriptor_set_layout.get_layout_binding( binding_index ) )
+        //             {
+        //                 // Iterate over all binding resources
+        //                 for( auto &element_it : binding_resources )
+        //                 {
+        //                     auto array_element = element_it.first;
+        //                     auto &resource_info = element_it.second;
+        //
+        //                     // Pointer references
+        //                     auto &buffer = resource_info.buffer;
+        //                     auto &sampler = resource_info.sampler;
+        //                     auto &image_view = resource_info.image_view;
+        //
+        //                     // Get buffer info
+        //                     if( buffer != nullptr &&
+        //                         is_buffer_descriptor_type( binding_info->descriptorType ) )
+        //                     {
+        //                         VkDescriptorBufferInfo buffer_info{};
+        //
+        //                         buffer_info.buffer = resource_info.buffer->get_handle();
+        //                         buffer_info.offset = resource_info.offset;
+        //                         buffer_info.range = resource_info.range;
+        //
+        //                         if( is_dynamic_buffer_descriptor_type( binding_info->descriptorType ) )
+        //                         {
+        //                             dynamic_offsets.push_back( to_u32( buffer_info.offset ) );
+        //
+        //                             buffer_info.offset = 0;
+        //                         }
+        //
+        //                         buffer_infos[binding_index][array_element] = buffer_info;
+        //                     }
+        //
+        //                     // Get image info
+        //                     else if( image_view != nullptr || sampler != VK_NULL_HANDLE )
+        //                     {
+        //                         // Can be null for input attachments
+        //                         VkDescriptorImageInfo image_info{};
+        //                         image_info.sampler = sampler ? sampler->get_handle() : VK_NULL_HANDLE;
+        //                         image_info.imageView = image_view->get_handle();
+        //
+        //                         if( image_view != nullptr )
+        //                         {
+        //                             // Add image layout info based on descriptor type
+        //                             switch( binding_info->descriptorType )
+        //                             {
+        //                             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+        //                             case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+        //                                 if( is_depth_stencil_format( image_view->get_format() ) )
+        //                                 {
+        //                                     image_info.imageLayout =
+        //                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        //                                 }
+        //                                 else
+        //                                 {
+        //                                     image_info.imageLayout =
+        //                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        //                                 }
+        //                                 break;
+        //                             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+        //                                 image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        //                                 break;
+        //
+        //                             default:
+        //                                 continue;
+        //                             }
+        //                         }
+        //
+        //                         image_infos[binding_index][array_element] = std::move( image_info );
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //
+        //         auto &descriptor_set = command_pool.get_render_frame()->request_descriptor_set(
+        //             descriptor_set_layout, buffer_infos, image_infos, command_pool.get_thread_index() );
+        //
+        //         VkDescriptorSet descriptor_set_handle = descriptor_set.get_handle();
+        //
+        //         // Bind descriptor set
+        //         vkCmdBindDescriptorSets( get_handle(), pipeline_bind_point, pipeline_layout.get_handle(),
+        //                                  descriptor_set_id, 1, &descriptor_set_handle,
+        //                                  to_u32( dynamic_offsets.size() ), dynamic_offsets.data() );
+        //     }
+        // }
+    }
+    //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const CbDrawCallIndexed *cmd )
     {
         Log *defaultLog = LogManager::getSingleton().getDefaultLog();
@@ -614,11 +867,13 @@ namespace Ogre
             defaultLog->logMessage( String( " * _renderEmulated: CbDrawCallIndexed " ) +
                                     std::to_string( cmd->vao->getVaoName() ) );
         }
+        
         const VulkanVertexArrayObject *vao = static_cast<const VulkanVertexArrayObject *>( cmd->vao );
         const VulkanBufferInterface *bufferInterface =
             static_cast<const VulkanBufferInterface *>( vao->getIndexBuffer()->getBufferInterface() );
         CbDrawIndexed *drawCmd = reinterpret_cast<CbDrawIndexed *>( mSwIndirectBufferPtr +
                                                                     (size_t)cmd->indirectBufferOffset );
+
         const size_t bytesPerIndexElement = vao->getIndexBuffer()->getBytesPerElement();
         
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
@@ -753,28 +1008,29 @@ namespace Ogre
                 static_cast<VulkanConstBufferPacked *>( mAutoParamsBuffer[mAutoParamsBufferIdx - 1u] );
             const size_t bindOffset =
                 constBuffer->getTotalSizeBytes() - mCurrentAutoParamsBufferSpaceLeft;
-            VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
-            switch( gptype )
-            {
-            case GPT_VERTEX_PROGRAM:
-                constBuffer->bindBufferVS( cmdBuffer, OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
-                                           bindOffset );
-                break;
-            case GPT_FRAGMENT_PROGRAM:
-                constBuffer->bindBufferPS(
-                    cmdBuffer, OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
-                                           bindOffset );
-                break;
-            case GPT_COMPUTE_PROGRAM:
-                constBuffer->bindBufferCS(
-                    cmdBuffer, OGRE_VULKAN_CS_PARAMETER_SLOT - OGRE_VULKAN_CS_CONST_SLOT_START,
-                                           bindOffset );
-                break;
-            case GPT_GEOMETRY_PROGRAM:
-            case GPT_HULL_PROGRAM:
-            case GPT_DOMAIN_PROGRAM:
-                break;
-            }
+            flushDescriptorState( VK_PIPELINE_BIND_POINT_GRAPHICS, *constBuffer, bindOffset );
+            // VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+            // switch( gptype )
+            // {
+            // case GPT_VERTEX_PROGRAM:
+            //     constBuffer->bindBufferVS( cmdBuffer, OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
+            //                                bindOffset );
+            //     break;
+            // case GPT_FRAGMENT_PROGRAM:
+            //     constBuffer->bindBufferPS(
+            //         cmdBuffer, OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
+            //                                bindOffset );
+            //     break;
+            // case GPT_COMPUTE_PROGRAM:
+            //     constBuffer->bindBufferCS(
+            //         cmdBuffer, OGRE_VULKAN_CS_PARAMETER_SLOT - OGRE_VULKAN_CS_CONST_SLOT_START,
+            //                                bindOffset );
+            //     break;
+            // case GPT_GEOMETRY_PROGRAM:
+            // case GPT_HULL_PROGRAM:
+            // case GPT_DOMAIN_PROGRAM:
+            //     break;
+            // }
 
             mCurrentAutoParamsBufferPtr += bytesToWrite;
 
@@ -1109,7 +1365,7 @@ namespace Ogre
         size_t numShaderStages = 0u;
         VkPipelineShaderStageCreateInfo shaderStages[GPT_COMPUTE_PROGRAM];
 
-        DescriptorSetLayoutArray descriptorSets;
+        DescriptorSetLayoutBindingArray descriptorLayoutBindingSets;
 
         VulkanProgram *vertexShader = 0;
         VulkanProgram *pixelShader = 0;
@@ -1119,7 +1375,7 @@ namespace Ogre
             vertexShader =
                 static_cast<VulkanProgram *>( newPso->vertexShader->_getBindingDelegate() );
             vertexShader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
-            VulkanDescriptors::generateAndMergeDescriptorSets( vertexShader, descriptorSets );
+            VulkanDescriptors::generateAndMergeDescriptorSets( vertexShader, descriptorLayoutBindingSets );
         }
 
         if( !newPso->geometryShader.isNull() )
@@ -1127,7 +1383,7 @@ namespace Ogre
             VulkanProgram *shader =
                 static_cast<VulkanProgram *>( newPso->geometryShader->_getBindingDelegate() );
             shader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
-            VulkanDescriptors::generateAndMergeDescriptorSets( shader, descriptorSets );
+            VulkanDescriptors::generateAndMergeDescriptorSets( shader, descriptorLayoutBindingSets );
         }
 
         if( !newPso->tesselationHullShader.isNull() )
@@ -1135,7 +1391,7 @@ namespace Ogre
             VulkanProgram *shader =
                 static_cast<VulkanProgram *>( newPso->tesselationHullShader->_getBindingDelegate() );
             shader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
-            VulkanDescriptors::generateAndMergeDescriptorSets( shader, descriptorSets );
+            VulkanDescriptors::generateAndMergeDescriptorSets( shader, descriptorLayoutBindingSets );
         }
 
         if( !newPso->tesselationDomainShader.isNull() )
@@ -1143,7 +1399,7 @@ namespace Ogre
             VulkanProgram *shader =
                 static_cast<VulkanProgram *>( newPso->tesselationDomainShader->_getBindingDelegate() );
             shader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
-            VulkanDescriptors::generateAndMergeDescriptorSets( shader, descriptorSets );
+            VulkanDescriptors::generateAndMergeDescriptorSets( shader, descriptorLayoutBindingSets );
         }
 
         if( !newPso->pixelShader.isNull() )
@@ -1151,11 +1407,13 @@ namespace Ogre
             pixelShader =
                 static_cast<VulkanProgram *>( newPso->pixelShader->_getBindingDelegate() );
             pixelShader->fillPipelineShaderStageCi( shaderStages[numShaderStages++] );
-            VulkanDescriptors::generateAndMergeDescriptorSets( pixelShader, descriptorSets );
+            VulkanDescriptors::generateAndMergeDescriptorSets( pixelShader, descriptorLayoutBindingSets );
         }
 
-        VulkanDescriptors::optimizeDescriptorSets( descriptorSets );
-        VkPipelineLayout layout = VulkanDescriptors::generateVkDescriptorSets( descriptorSets );
+        VulkanDescriptors::optimizeDescriptorSets( descriptorLayoutBindingSets );
+
+        DescriptorSetLayoutArray sets;
+        VkPipelineLayout layout = VulkanDescriptors::generateVkDescriptorSets( descriptorLayoutBindingSets, sets );
 
         VkPipelineVertexInputStateCreateInfo vertexFormatCi;
         makeVkStruct( vertexFormatCi, VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO );
@@ -1334,10 +1592,13 @@ namespace Ogre
                                                      &pipeline, 0, &vulkanPso );
         checkVkResult( result, "vkCreateGraphicsPipelines" );
 
-        VulkanHlmsPso *pso = new VulkanHlmsPso();
-        pso->pso = vulkanPso;
-        pso->vertexShader = vertexShader;
-        pso->pixelShader = pixelShader;
+        VulkanHlmsPso *pso =
+            new VulkanHlmsPso( vulkanPso, vertexShader, pixelShader, descriptorLayoutBindingSets, sets, layout );
+        // pso->pso = vulkanPso;
+        // pso->vertexShader = vertexShader;
+        // pso->pixelShader = pixelShader;
+        // pso->descriptorLayoutBindingSets = descriptorLayoutBindingSets;
+        // pso->descriptorSets = sets;
 
         newPso->rsData = pso;
     }

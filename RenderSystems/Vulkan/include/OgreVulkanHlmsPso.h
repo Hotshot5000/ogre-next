@@ -31,6 +31,8 @@ THE SOFTWARE.
 #include <vulkan/vulkan.h>
 
 #include "OgreHeaderPrefix.h"
+#include "OgreVulkanDescriptors.h"
+#include "OgreVulkanDescriptorSetLayout.h"
 #include "OgreVulkanPrerequisites.h"
 
 namespace Ogre
@@ -43,14 +45,29 @@ namespace Ogre
      */
 
     /// @See HlmsPso
-    struct _OgreVulkanExport VulkanHlmsPso
+    class _OgreVulkanExport VulkanHlmsPso
     {
+    public:
         VkPipeline pso;
         // id<MTLDepthStencilState> depthStencilState;
         // MTLCullMode cullMode;
 
         VulkanProgram *vertexShader;
         VulkanProgram *pixelShader;
+
+        DescriptorSetLayoutBindingArray descriptorLayoutBindingSets;
+        DescriptorSetLayoutArray descriptorSets;
+
+        std::vector<VulkanDescriptorSetLayout> descriptorLayoutSets;
+
+        VkPipelineLayout pipelineLayout;
+
+
+        VulkanHlmsPso( VkPipeline pso, VulkanProgram *vertexShader, VulkanProgram *pixelShader,
+                       const DescriptorSetLayoutBindingArray &descriptorLayoutBindingSets,
+                       const DescriptorSetLayoutArray &descriptorSets, VkPipelineLayout layout );
+
+        ~VulkanHlmsPso();
     };
 
     /** @} */

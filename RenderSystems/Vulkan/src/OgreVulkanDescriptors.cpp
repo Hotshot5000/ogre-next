@@ -54,8 +54,8 @@ namespace Ogre
                  a.pImmutableSamplers == b.pImmutableSamplers );
     }
     //-------------------------------------------------------------------------
-    bool VulkanDescriptors::canMergeDescriptorSets( const DescriptorSetLayoutArray &a,
-                                                    const DescriptorSetLayoutArray &b )
+    bool VulkanDescriptors::canMergeDescriptorSets( const DescriptorSetLayoutBindingArray &a,
+                                                    const DescriptorSetLayoutBindingArray &b )
     {
         const size_t minSize = std::min( a.size(), b.size() );
 
@@ -85,8 +85,8 @@ namespace Ogre
         return retVal;
     }
     //-------------------------------------------------------------------------
-    void VulkanDescriptors::mergeDescriptorSets( DescriptorSetLayoutArray &a, const String &shaderB,
-                                                 const DescriptorSetLayoutArray &b )
+    void VulkanDescriptors::mergeDescriptorSets( DescriptorSetLayoutBindingArray &a, const String &shaderB,
+                                                 const DescriptorSetLayoutBindingArray &b )
     {
         if( !canMergeDescriptorSets( a, b ) )
         {
@@ -131,7 +131,7 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanDescriptors::generateDescriptorSets( const String &shaderName,
                                                     const std::vector<uint32> &spirv,
-                                                    DescriptorSetLayoutArray &outputSets )
+                                                    DescriptorSetLayoutBindingArray &outputSets )
     {
         if( spirv.empty() )
             return;
@@ -222,9 +222,9 @@ namespace Ogre
     }
     //-------------------------------------------------------------------------
     void VulkanDescriptors::generateAndMergeDescriptorSets( VulkanProgram *shader,
-                                                            DescriptorSetLayoutArray &outputSets )
+                                                            DescriptorSetLayoutBindingArray &outputSets )
     {
-        DescriptorSetLayoutArray sets;
+        DescriptorSetLayoutBindingArray sets;
         generateDescriptorSets( shader->getName(), shader->getSpirv(), sets );
         if( outputSets.empty() )
             outputSets.swap( sets );
@@ -232,7 +232,7 @@ namespace Ogre
             mergeDescriptorSets( outputSets, shader->getName(), sets );
     }
     //-------------------------------------------------------------------------
-    void VulkanDescriptors::optimizeDescriptorSets( DescriptorSetLayoutArray &sets )
+    void VulkanDescriptors::optimizeDescriptorSets( DescriptorSetLayoutBindingArray &sets )
     {
         const size_t numSets = sets.size();
         for( size_t i = numSets; i--; )
@@ -246,25 +246,25 @@ namespace Ogre
         }
     }
     //-------------------------------------------------------------------------
-    VkPipelineLayout VulkanDescriptors::generateVkDescriptorSets( const DescriptorSetLayoutArray &sets )
+    VkPipelineLayout VulkanDescriptors::generateVkDescriptorSets(
+        const DescriptorSetLayoutBindingArray &bindingSets, DescriptorSetLayoutArray &sets )
     {
-        VkDescriptorSetLayoutArray vkSets;
 
         VulkanGpuProgramManager *vulkanProgramManager =
             static_cast<VulkanGpuProgramManager *>( VulkanGpuProgramManager::getSingletonPtr() );
 
-        vkSets.reserve( sets.size() );
+        sets.reserve( bindingSets.size() );
 
-        DescriptorSetLayoutArray::const_iterator itor = sets.begin();
-        DescriptorSetLayoutArray::const_iterator endt = sets.end();
+        DescriptorSetLayoutBindingArray::const_iterator itor = bindingSets.begin();
+        DescriptorSetLayoutBindingArray::const_iterator endt = bindingSets.end();
 
         while( itor != endt )
         {
-            vkSets.push_back( vulkanProgramManager->getCachedSet( *itor ) );
+            sets.push_back( vulkanProgramManager->getCachedSet( *itor ) );
             ++itor;
         }
 
-        VkPipelineLayout retVal = vulkanProgramManager->getCachedSets( vkSets );
+        VkPipelineLayout retVal = vulkanProgramManager->getCachedSets( sets );
         return retVal;
     }
 
