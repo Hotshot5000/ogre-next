@@ -64,6 +64,7 @@ namespace Ogre
         FastArray<VulkanQueue>  mTransferQueues;
         // clang-format on
 
+        VkPhysicalDeviceProperties mDeviceProperties;
         VkPhysicalDeviceMemoryProperties mMemoryProperties;
         FastArray<VkQueueFamilyProperties> mQueueProps;
 

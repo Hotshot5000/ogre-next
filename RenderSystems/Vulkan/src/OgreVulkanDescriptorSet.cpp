@@ -20,6 +20,8 @@
 // #include "common/logging.h"
 #include "OgreVulkanDescriptorPool.h"
 #include "OgreVulkanDescriptorSetLayout.h"
+#include "OgreVulkanUtils.h"
+
 // #include "device.h"
 
 namespace Ogre
@@ -62,13 +64,14 @@ void VulkanDescriptorSet::update(const BindingMap<VkDescriptorBufferInfo> &buffe
                 unsigned arrayElement = element_it.first;
                 const struct VkDescriptorBufferInfo &buffer_info = element_it.second;
 
-				VkWriteDescriptorSet write_descriptor_set{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+				VkWriteDescriptorSet write_descriptor_set;
+                makeVkStruct( write_descriptor_set, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET );
 
 				write_descriptor_set.dstBinding      = binding;
 				write_descriptor_set.descriptorType  = binding_info->descriptorType;
 				write_descriptor_set.pBufferInfo     = &buffer_info;
 				write_descriptor_set.dstSet          = handle;
-				write_descriptor_set.dstArrayElement = arrayElement;
+                write_descriptor_set.dstArrayElement = arrayElement;
 				write_descriptor_set.descriptorCount = 1;
 
 				set_updates.push_back(write_descriptor_set);
@@ -95,7 +98,8 @@ void VulkanDescriptorSet::update(const BindingMap<VkDescriptorBufferInfo> &buffe
                 unsigned arrayElement = element_it.first;
                 const struct VkDescriptorImageInfo &image_info = element_it.second;
 
-				VkWriteDescriptorSet write_descriptor_set{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+				VkWriteDescriptorSet write_descriptor_set;
+                makeVkStruct( write_descriptor_set, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET );
 
 				write_descriptor_set.dstBinding      = binding_index;
 				write_descriptor_set.descriptorType  = binding_info->descriptorType;

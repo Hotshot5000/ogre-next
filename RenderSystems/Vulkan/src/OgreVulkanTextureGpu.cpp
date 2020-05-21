@@ -110,7 +110,7 @@ namespace Ogre
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex =
-            findMemoryType( device->mPhysicalDevice, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+            findMemoryType( device->mPhysicalDevice, device->mMemoryProperties, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
 
         if( vkAllocateMemory( device->mDevice, &allocInfo, nullptr, &mTextureImageMemory ) !=
             VK_SUCCESS )
@@ -118,7 +118,14 @@ namespace Ogre
             throw std::runtime_error( "failed to allocate image memory!" );
         }
 
-        vkBindImageMemory( device->mDevice, mFinalTextureName, mTextureImageMemory, 0 );
+        // TODO use one large buffer and multiple offsets
+        VkDeviceSize offset = 0;
+        offset = alignMemory( offset, memRequirements.alignment );
+
+        if( vkBindImageMemory( device->mDevice, mFinalTextureName, mTextureImageMemory, offset ) != VK_SUCCESS )
+        {
+            throw std::runtime_error( "failed to bind image to memory!" );
+        }
 
         if( mMsaa > 1u && !hasMsaaExplicitResolves() )
         {

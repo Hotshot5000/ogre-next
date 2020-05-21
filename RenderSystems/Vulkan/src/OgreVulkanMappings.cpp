@@ -784,4 +784,30 @@ namespace Ogre
         }
         return result;
     }
+
+    GpuConstantType VulkanMappings::get( SpvOp op )
+    {
+        switch( op ) {
+        case SpvOpTypeBool:
+            return GCT_BOOL1;
+        case SpvOpTypeInt:
+            return GCT_INT1;
+        case SpvOpTypeFloat:
+            return GCT_FLOAT1;
+        case SpvOpTypeMatrix:
+            return GCT_MATRIX_4X4; // Need to check for actual number of rows and columns
+        case SpvOpTypeImage:
+            return GCT_SAMPLER2D;  // Need to check for actual sampler dimensions
+        case SpvOpTypeSampler:
+            return GCT_SAMPLER2D; // Need to check for actual sampler dimensions
+        case SpvOpTypeSampledImage:
+            return GCT_SAMPLER2D;  // Need to check for actual sampler dimensions
+        case SpvOpTypeArray:
+            return GCT_UNKNOWN;
+        case SpvOpTypeStruct:
+            return GCT_UNKNOWN;
+        default:
+            return GCT_UNKNOWN;
+        }
+    }
 }  // namespace Ogre

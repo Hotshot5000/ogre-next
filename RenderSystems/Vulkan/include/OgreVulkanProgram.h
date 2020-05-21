@@ -34,9 +34,16 @@ THE SOFTWARE.
 #include "OgreHighLevelGpuProgram.h"
 
 #include "OgreVulkanGlslangHeader.h"
-
+#include <unordered_map>
 namespace Ogre
 {
+
+    struct _OgreVulkanExport VulkanConstantDefinitionBindingParam
+    {
+        size_t offset;
+        size_t size;
+    };
+
     /** Specialisation of HighLevelGpuProgram to provide support for Vulkan
         Shader Language.
     @remarks
@@ -94,6 +101,12 @@ namespace Ogre
 
         const std::vector<uint32> &getSpirv( void ) const { return mSpirv; }
 
+
+        const unordered_map<uint32, VulkanConstantDefinitionBindingParam>::type &getConstantDefsBindingParams() const
+        {
+            return mConstantDefsBindingParams;
+        }
+
     protected:
         static CmdPreprocessorDefines msCmdPreprocessorDefines;
 
@@ -132,6 +145,7 @@ namespace Ogre
         String mPreprocessorDefines;
 
         vector<GpuConstantDefinition>::type mConstantDefsSorted;
+        unordered_map<uint32, VulkanConstantDefinitionBindingParam>::type mConstantDefsBindingParams;
         uint32 mConstantsBytesToWrite;
     };
 }  // namespace Ogre

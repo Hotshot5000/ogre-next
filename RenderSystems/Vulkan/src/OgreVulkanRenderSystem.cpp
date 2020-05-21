@@ -34,7 +34,6 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanDevice.h"
 #include "OgreVulkanGpuProgramManager.h"
 #include "OgreVulkanMappings.h"
-#include "OgreVulkanProgram.h"
 #include "OgreVulkanProgramFactory.h"
 #include "OgreVulkanRenderPassDescriptor.h"
 #include "OgreVulkanTextureGpuManager.h"
@@ -257,8 +256,12 @@ namespace Ogre
         RenderSystemCapabilities *rsc = new RenderSystemCapabilities();
         rsc->setRenderSystemName( getName() );
 
-        VkPhysicalDeviceProperties properties;
-        vkGetPhysicalDeviceProperties( mActiveDevice->mPhysicalDevice, &properties );
+        // We would like to save the device properties for the device capabilities limits.
+        // These limits are needed for buffers' binding alignments.
+        VkPhysicalDeviceProperties *vkProperties = const_cast<VkPhysicalDeviceProperties *>( &mActiveDevice->mDeviceProperties );
+        vkGetPhysicalDeviceProperties( mActiveDevice->mPhysicalDevice, vkProperties );
+
+        VkPhysicalDeviceProperties &properties = mActiveDevice->mDeviceProperties;
 
         rsc->setDeviceName( properties.deviceName );
 
@@ -590,7 +593,11 @@ namespace Ogre
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::flushDescriptorState( VkPipelineBindPoint pipeline_bind_point,
-                                                   const VulkanConstBufferPacked &constBuffer, const size_t bindOffset )
+                                                   const VulkanConstBufferPacked &constBuffer, 
+                                                   const size_t bindOffset, const size_t bytesToWrite,
+        const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &vertexShaderBindings,
+        const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type
+            &pixelShaderBindings )
     {
         VulkanHlmsPso *pso = mPso;
 
@@ -618,7 +625,9 @@ namespace Ogre
         DescriptorSetLayoutBindingArray::const_iterator bindingArraySetItor = pso->descriptorLayoutBindingSets.begin();
         DescriptorSetLayoutBindingArray::const_iterator bindingArraySetEnd = pso->descriptorLayoutBindingSets.end();
 
-        uint32 set = 0;
+        // uint32 set = 0;
+
+        // size_t currentOffset = bindOffset;
 
         while( bindingArraySetItor != bindingArraySetEnd )
         {
@@ -628,7 +637,7 @@ namespace Ogre
             FastArray<struct VkDescriptorSetLayoutBinding>::const_iterator bindingsItorEnd =
                 bindings.end();
 
-            uint32 arrayElement = 0;
+            // uint32 arrayElement = 0;
 
             while( bindingsItor != bindingsItorEnd )
             {
@@ -636,9 +645,30 @@ namespace Ogre
 
                 VkDescriptorBufferInfo buffer_info;
 
+                VulkanConstantDefinitionBindingParam bindingParam;
+                unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type::const_iterator vertexBindingParam = 
+                    vertexShaderBindings.find( binding.binding );
+                if( vertexBindingParam == vertexShaderBindings.end() )
+                {
+                    unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type::const_iterator pixelBindingParam = 
+                        pixelShaderBindings.find( binding.binding );
+                    if( pixelBindingParam == pixelShaderBindings.end() )
+                    {
+                        ++bindingsItor;
+                        continue;
+                    }
+                    bindingParam = (*pixelBindingParam).second;
+                }
+                else
+                {
+                    bindingParam = ( *vertexBindingParam ).second;
+                }
+
                 buffer_info.buffer = bufferInterface->getVboName();
-                buffer_info.offset = bindOffset;
-                buffer_info.range = constBuffer.getNumElements() * constBuffer.getBytesPerElement();
+                buffer_info.offset = bindingParam.offset;
+                buffer_info.range = bindingParam.size;
+
+                // currentOffset += bytesToWrite;
 
                 // if( is_dynamic_buffer_descriptor_type( binding_info->descriptorType ) )
                 // {
@@ -647,14 +677,14 @@ namespace Ogre
                 //     buffer_info.offset = 0;
                 // }
 
-                buffer_infos[set][arrayElement] = buffer_info;
+                buffer_infos[binding.binding][0] = buffer_info;
 
                 ++bindingsItor;
-                ++arrayElement;
+                // ++arrayElement;
             }
 
             ++bindingArraySetItor;
-            ++set;
+            // ++set;
         }
 
         VulkanDescriptorPool *descriptorPool =
@@ -952,6 +982,8 @@ namespace Ogre
         case GPT_VERTEX_PROGRAM:
             mActiveVertexGpuProgramParameters = params;
             shader = mPso->vertexShader;
+            // TODO right now we kind of accumulate the shader params before creating the descriptor set. This can probably be avoided.
+            // return;
             break;
         case GPT_FRAGMENT_PROGRAM:
             mActiveFragmentGpuProgramParameters = params;
@@ -978,7 +1010,7 @@ namespace Ogre
             break;
         }
 
-        size_t bytesToWrite = shader->getBufferRequiredSize();
+        size_t bytesToWrite = shader->getBufferRequiredSize();  // + mPso->pixelShader->getBufferRequiredSize();
         if( shader && bytesToWrite > 0 )
         {
             if( mCurrentAutoParamsBufferSpaceLeft < bytesToWrite )
@@ -999,7 +1031,10 @@ namespace Ogre
                 ++mAutoParamsBufferIdx;
             }
 
-            shader->updateBuffers( params, mCurrentAutoParamsBufferPtr );
+            shader->updateBuffers(
+                mActiveVertexGpuProgramParameters, mCurrentAutoParamsBufferPtr );
+            // mCurrentAutoParamsBufferPtr += mPso->vertexShader->getBufferRequiredSize();
+            // mPso->pixelShader->updateBuffers( mActiveFragmentGpuProgramParameters, mCurrentAutoParamsBufferPtr );
 
             assert(
                 dynamic_cast<VulkanConstBufferPacked *>( mAutoParamsBuffer[mAutoParamsBufferIdx - 1u] ) );
@@ -1008,7 +1043,17 @@ namespace Ogre
                 static_cast<VulkanConstBufferPacked *>( mAutoParamsBuffer[mAutoParamsBufferIdx - 1u] );
             const size_t bindOffset =
                 constBuffer->getTotalSizeBytes() - mCurrentAutoParamsBufferSpaceLeft;
-            flushDescriptorState( VK_PIPELINE_BIND_POINT_GRAPHICS, *constBuffer, bindOffset );
+
+            const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &vertexShaderBindings = 
+                shader->getConstantDefsBindingParams();
+            unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type pixelShaderBindings;
+            // const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type
+            //     &pixelShaderBindings = 
+            //     mPso->pixelShader->getConstantDefsBindingParams();
+
+            flushDescriptorState( VK_PIPELINE_BIND_POINT_GRAPHICS, *constBuffer, 
+                                  /*constBuffer->_getFinalBufferStart() * constBuffer->getBytesPerElement() +*/ bindOffset,
+                                  bytesToWrite, vertexShaderBindings, pixelShaderBindings );
             // VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
             // switch( gptype )
             // {

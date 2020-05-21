@@ -308,7 +308,14 @@ namespace Ogre
             result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
             checkVkResult( result, "vkCreateBuffer" );
 
-            result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, 0 );
+            VkMemoryRequirements memRequirements;
+            vkGetBufferMemoryRequirements( mDevice->mDevice, newVbo.vkBuffer, &memRequirements );
+
+            // TODO use one large buffer and multiple offsets
+            VkDeviceSize offset = 0;
+            offset = alignMemory( offset, memRequirements.alignment );
+
+            result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, offset );
             checkVkResult( result, "vkBindBufferMemory" );
 
             newVbo.sizeBytes = poolSize;
@@ -1020,7 +1027,14 @@ namespace Ogre
         result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
         checkVkResult( result, "vkCreateBuffer" );
 
-        result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, 0 );
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements( mDevice->mDevice, newVbo.vkBuffer, &memRequirements );
+
+        // TODO use one large buffer and multiple offsets
+        VkDeviceSize offset = 0;
+        offset = alignMemory( offset, memRequirements.alignment );
+
+        result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, offset );
         checkVkResult( result, "vkBindBufferMemory" );
 
         //const VboFlag vboFlag = CPU_ACCESSIBLE_PERSISTENT;

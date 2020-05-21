@@ -55,8 +55,14 @@ namespace Ogre
 
     VkFormat findDepthFormat( VkPhysicalDevice physicalDevice );
 
-    uint32_t findMemoryType( VkPhysicalDevice physicalDevice, uint32_t typeFilter,
+    uint32_t findMemoryType( VkPhysicalDevice physicalDevice,
+                             VkPhysicalDeviceMemoryProperties &memProperties, uint32_t typeFilter,
                              VkMemoryPropertyFlags properties );
+
+    inline VkDeviceSize alignMemory( size_t offset, VkDeviceSize &alignment )
+    {
+        return ( ( offset + alignment - 1 ) / alignment ) * alignment;
+    }
 
     String getSpirvReflectError( SpvReflectResult spirvReflectResult );
 }  // namespace Ogre

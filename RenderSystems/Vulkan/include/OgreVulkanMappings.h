@@ -29,6 +29,8 @@ Copyright (c) 2000-present Torus Knot Software Ltd
 #ifndef _OgreVulkanMappings_H_
 #define _OgreVulkanMappings_H_
 
+#include <SPIRV-Reflect/include/spirv/unified1/spirv.h>
+
 #include "OgreVulkanPrerequisites.h"
 
 #include "OgreBlendMode.h"
@@ -57,6 +59,8 @@ namespace Ogre
         static PixelFormatGpu VulkanMappings::get( VkFormat pf );
 
         static uint32_t getFormatSize( VkFormat format );
+
+        static GpuConstantType get( SpvOp op );
     };
 }  // namespace Ogre
 
