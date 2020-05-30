@@ -359,7 +359,7 @@ namespace Ogre
         rsc->setComputeProgramConstantIntCount( 256u );
         rsc->setComputeProgramConstantBoolCount( 256u );
 
-        rsc->addShaderProfile( "glsl" );
+        rsc->addShaderProfile( "glsl-vulkan" );
 
         return rsc;
     }
@@ -465,20 +465,53 @@ namespace Ogre
     {
     }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::flushUAVs( void ) {}
+    void VulkanRenderSystem::flushUAVs( void )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " flushUAVs " ) );
+        }
+    }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setCurrentDeviceFromTexture( TextureGpu *texture ) {}
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_setTexture( size_t unit, TextureGpu *texPtr ) {}
+    void VulkanRenderSystem::_setTexture( size_t unit, TextureGpu *texPtr )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _setTexture " ) );
+        }
+    }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setTextures( uint32 slotStart, const DescriptorSetTexture *set,
                                            uint32 hazardousTexIdx )
     {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _setTextures DescriptorSetTexture " ) );
+        }
     }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_setTextures( uint32 slotStart, const DescriptorSetTexture2 *set ) {}
+    void VulkanRenderSystem::_setTextures( uint32 slotStart, const DescriptorSetTexture2 *set )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _setTextures DescriptorSetTexture2 " ) );
+        }
+    }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_setSamplers( uint32 slotStart, const DescriptorSetSampler *set ) {}
+    void VulkanRenderSystem::_setSamplers( uint32 slotStart, const DescriptorSetSampler *set )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _setSamplers " ) );
+        }
+    }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setTexturesCS( uint32 slotStart, const DescriptorSetTexture *set ) {}
     //-------------------------------------------------------------------------
@@ -595,9 +628,7 @@ namespace Ogre
     void VulkanRenderSystem::flushDescriptorState( VkPipelineBindPoint pipeline_bind_point,
                                                    const VulkanConstBufferPacked &constBuffer, 
                                                    const size_t bindOffset, const size_t bytesToWrite,
-        const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &vertexShaderBindings,
-        const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type
-            &pixelShaderBindings )
+        const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &shaderBindings )
     {
         VulkanHlmsPso *pso = mPso;
 
@@ -643,41 +674,74 @@ namespace Ogre
             {
                 const VkDescriptorSetLayoutBinding &binding = *bindingsItor;
 
-                VkDescriptorBufferInfo buffer_info;
-
-                VulkanConstantDefinitionBindingParam bindingParam;
-                unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type::const_iterator vertexBindingParam = 
-                    vertexShaderBindings.find( binding.binding );
-                if( vertexBindingParam == vertexShaderBindings.end() )
+                if( is_buffer_descriptor_type(binding.descriptorType) )
                 {
-                    unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type::const_iterator pixelBindingParam = 
-                        pixelShaderBindings.find( binding.binding );
-                    if( pixelBindingParam == pixelShaderBindings.end() )
+
+                    VkDescriptorBufferInfo buffer_info;
+
+                    VulkanConstantDefinitionBindingParam bindingParam;
+                    unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type::const_iterator constantDefinitionBinding = 
+                        shaderBindings.find( binding.binding );
+                    if( constantDefinitionBinding == shaderBindings.end() )
                     {
                         ++bindingsItor;
                         continue;
                     }
-                    bindingParam = (*pixelBindingParam).second;
+                    else
+                    {
+                        bindingParam = ( *constantDefinitionBinding ).second;
+                    }
+
+                    buffer_info.buffer = bufferInterface->getVboName();
+                    buffer_info.offset = bindingParam.offset;
+                    buffer_info.range = bindingParam.size;
+
+                    // currentOffset += bytesToWrite;
+
+                    // if( is_dynamic_buffer_descriptor_type( binding_info->descriptorType ) )
+                    // {
+                    //     dynamic_offsets.push_back( to_u32( buffer_info.offset ) );
+                    //
+                    //     buffer_info.offset = 0;
+                    // }
+
+                    buffer_infos[binding.binding][0] = buffer_info;
+
                 }
-                else
-                {
-                    bindingParam = ( *vertexBindingParam ).second;
-                }
-
-                buffer_info.buffer = bufferInterface->getVboName();
-                buffer_info.offset = bindingParam.offset;
-                buffer_info.range = bindingParam.size;
-
-                // currentOffset += bytesToWrite;
-
-                // if( is_dynamic_buffer_descriptor_type( binding_info->descriptorType ) )
+                // else if( image_view != nullptr || sampler != VK_NULL_HANDLE )
                 // {
-                //     dynamic_offsets.push_back( to_u32( buffer_info.offset ) );
+                //     // Can be null for input attachments
+                //     VkDescriptorImageInfo image_info{};
+                //     image_info.sampler = sampler ? sampler->get_handle() : VK_NULL_HANDLE;
+                //     image_info.imageView = image_view->get_handle();
                 //
-                //     buffer_info.offset = 0;
+                //     if( image_view != nullptr )
+                //     {
+                //         // Add image layout info based on descriptor type
+                //         switch( binding.descriptorType )
+                //         {
+                //         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+                //         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+                //             if( is_depth_stencil_format( image_view->get_format() ) )
+                //             {
+                //                 image_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                //             }
+                //             else
+                //             {
+                //                 image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                //             }
+                //             break;
+                //         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+                //             image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                //             break;
+                //
+                //         default:
+                //             continue;
+                //         }
+                //     }
+                //
+                //     image_infos[binding.binding][0] = std::move( image_info );
                 // }
-
-                buffer_infos[binding.binding][0] = buffer_info;
 
                 ++bindingsItor;
                 // ++arrayElement;
@@ -690,14 +754,14 @@ namespace Ogre
         VulkanDescriptorPool *descriptorPool =
             new VulkanDescriptorPool( mDevice->mDevice, pso->descriptorLayoutSets[0] );
 
-        VulkanDescriptorSet *descriptor_set =
+        VulkanDescriptorSet *descriptorSet =
             new VulkanDescriptorSet( mDevice->mDevice, pso->descriptorLayoutSets[0], *descriptorPool, buffer_infos, image_infos );
 
-        VkDescriptorSet descriptor_set_handle = descriptor_set->get_handle();
+        VkDescriptorSet descriptorSetHandle = descriptorSet->get_handle();
 
         // Bind descriptor set
         vkCmdBindDescriptorSets( mDevice->mGraphicsQueue.mCurrentCmdBuffer, pipeline_bind_point, pso->pipelineLayout,
-                                 0, 1, &descriptor_set_handle,
+                                 0, 1, &descriptorSetHandle,
                                  0, 0);
 
         // const auto &pipeline_layout = pipeline_state.get_pipeline_layout();
@@ -897,8 +961,78 @@ namespace Ogre
             defaultLog->logMessage( String( " * _renderEmulated: CbDrawCallIndexed " ) +
                                     std::to_string( cmd->vao->getVaoName() ) );
         }
-        
+
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+
+        BindingMap<VkDescriptorBufferInfo> buffer_infos;
+        BindingMap<VkBufferView> buffer_views;
+        BindingMap<VkDescriptorImageInfo> image_infos;
+
+        const std::vector<VulkanConstBufferPacked *> &constBuffers = vaoManager->getConstBuffers();
+        std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersIt = constBuffers.begin();
+        std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersEnd = constBuffers.end();
+
+        while( constBuffersIt != constBuffersEnd )
+        {
+            VulkanConstBufferPacked * const constBuffer = *constBuffersIt;
+            if( constBuffer->isDirty() )
+            {
+                const VkDescriptorBufferInfo &bufferInfo = constBuffer->getBufferInfo();
+                uint16 binding = constBuffer->getCurrentBinding();
+                buffer_infos[binding][0] = bufferInfo;
+                constBuffer->resetDirty();
+            }
+            ++constBuffersIt;
+        }
+
+        const std::vector<VulkanTexBufferPacked *> &texBuffers = vaoManager->getTexBuffersPacked();
+        std::vector<VulkanTexBufferPacked *>::const_iterator texBuffersIt = texBuffers.begin();
+        std::vector<VulkanTexBufferPacked *>::const_iterator texBuffersEnd = texBuffers.end();
+
+        while( texBuffersIt != texBuffersEnd )
+        {
+            VulkanTexBufferPacked * const texBuffer = *texBuffersIt;
+            if( texBuffer->isDirty() )
+            {
+                VkBufferView bufferView = texBuffer->getBufferView();
+                uint16 binding = texBuffer->getCurrentBinding();
+                buffer_views[binding][0] = bufferView;
+                texBuffer->resetDirty();
+            }
+            ++texBuffersIt;
+        }
+
+        VulkanHlmsPso *pso = mPso;
+
+        VulkanDescriptorPool *descriptorPool =
+            new VulkanDescriptorPool( mDevice->mDevice, pso->descriptorLayoutSets[0] );
+
+        VulkanDescriptorSet *descriptorSet = new VulkanDescriptorSet(
+            mDevice->mDevice, pso->descriptorLayoutSets[0], *descriptorPool, buffer_infos, image_infos, buffer_views );
+
+        VkDescriptorSet descriptorSetHandle = descriptorSet->get_handle();
+
+        // Bind descriptor set
+        vkCmdBindDescriptorSets( mDevice->mGraphicsQueue.mCurrentCmdBuffer,
+                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                 pso->pipelineLayout, 0, 1, &descriptorSetHandle, 0, 0 );
+
         const VulkanVertexArrayObject *vao = static_cast<const VulkanVertexArrayObject *>( cmd->vao );
+
+        // Calculate bytesPerVertexBuffer & numVertexBuffers which is the same for all draws in this cmd
+        uint32 bytesPerVertexBuffer[15];
+        size_t numVertexBuffers = 0;
+        const VertexBufferPackedVec &vertexBuffersPackedVec = vao->getVertexBuffers();
+        VertexBufferPackedVec::const_iterator itor = vertexBuffersPackedVec.begin();
+        VertexBufferPackedVec::const_iterator end = vertexBuffersPackedVec.end();
+
+        while( itor != end )
+        {
+            bytesPerVertexBuffer[numVertexBuffers] = ( *itor )->getBytesPerElement();
+            ++numVertexBuffers;
+            ++itor;
+        }
+
         const VulkanBufferInterface *bufferInterface =
             static_cast<const VulkanBufferInterface *>( vao->getIndexBuffer()->getBufferInterface() );
         CbDrawIndexed *drawCmd = reinterpret_cast<CbDrawIndexed *>( mSwIndirectBufferPtr +
@@ -912,6 +1046,20 @@ namespace Ogre
 
         for( uint32 i = cmd->numDraws; i--; )
         {
+            std::vector<VkBuffer> vertexBuffers;
+            std::vector<VkDeviceSize> offsets;
+
+            vertexBuffers.reserve( numVertexBuffers );
+            offsets.reserve( numVertexBuffers );
+
+            for( size_t j = 0; j < numVertexBuffers; ++j )
+            {
+                VulkanBufferInterface *bufIntf = static_cast<VulkanBufferInterface *>( vertexBuffersPackedVec[j]->getBufferInterface() );
+                vertexBuffers[j] = bufIntf->getVboName();
+                offsets[j] = drawCmd->baseVertex * bytesPerVertexBuffer[j];
+            }
+            vkCmdBindVertexBuffers( cmdBuffer, 0, 1, vertexBuffers.data(), offsets.data() );
+
             vkCmdDrawIndexed( cmdBuffer, drawCmd->primCount, drawCmd->instanceCount,
                               drawCmd->firstVertexIndex, drawCmd->baseVertex, drawCmd->baseInstance );
             ++drawCmd;
@@ -982,8 +1130,6 @@ namespace Ogre
         case GPT_VERTEX_PROGRAM:
             mActiveVertexGpuProgramParameters = params;
             shader = mPso->vertexShader;
-            // TODO right now we kind of accumulate the shader params before creating the descriptor set. This can probably be avoided.
-            // return;
             break;
         case GPT_FRAGMENT_PROGRAM:
             mActiveFragmentGpuProgramParameters = params;
@@ -1031,10 +1177,7 @@ namespace Ogre
                 ++mAutoParamsBufferIdx;
             }
 
-            shader->updateBuffers(
-                mActiveVertexGpuProgramParameters, mCurrentAutoParamsBufferPtr );
-            // mCurrentAutoParamsBufferPtr += mPso->vertexShader->getBufferRequiredSize();
-            // mPso->pixelShader->updateBuffers( mActiveFragmentGpuProgramParameters, mCurrentAutoParamsBufferPtr );
+            shader->updateBuffers( params, mCurrentAutoParamsBufferPtr );
 
             assert(
                 dynamic_cast<VulkanConstBufferPacked *>( mAutoParamsBuffer[mAutoParamsBufferIdx - 1u] ) );
@@ -1044,38 +1187,25 @@ namespace Ogre
             const size_t bindOffset =
                 constBuffer->getTotalSizeBytes() - mCurrentAutoParamsBufferSpaceLeft;
 
-            const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &vertexShaderBindings = 
-                shader->getConstantDefsBindingParams();
-            unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type pixelShaderBindings;
-            // const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type
-            //     &pixelShaderBindings = 
-            //     mPso->pixelShader->getConstantDefsBindingParams();
-
-            flushDescriptorState( VK_PIPELINE_BIND_POINT_GRAPHICS, *constBuffer, 
-                                  /*constBuffer->_getFinalBufferStart() * constBuffer->getBytesPerElement() +*/ bindOffset,
-                                  bytesToWrite, vertexShaderBindings, pixelShaderBindings );
-            // VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
-            // switch( gptype )
-            // {
-            // case GPT_VERTEX_PROGRAM:
-            //     constBuffer->bindBufferVS( cmdBuffer, OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
-            //                                bindOffset );
-            //     break;
-            // case GPT_FRAGMENT_PROGRAM:
-            //     constBuffer->bindBufferPS(
-            //         cmdBuffer, OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
-            //                                bindOffset );
-            //     break;
-            // case GPT_COMPUTE_PROGRAM:
-            //     constBuffer->bindBufferCS(
-            //         cmdBuffer, OGRE_VULKAN_CS_PARAMETER_SLOT - OGRE_VULKAN_CS_CONST_SLOT_START,
-            //                                bindOffset );
-            //     break;
-            // case GPT_GEOMETRY_PROGRAM:
-            // case GPT_HULL_PROGRAM:
-            // case GPT_DOMAIN_PROGRAM:
-            //     break;
-            // }
+            // const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &vertexShaderBindings = 
+            //     shader->getConstantDefsBindingParams();
+            //
+            // flushDescriptorState( VK_PIPELINE_BIND_POINT_GRAPHICS, *constBuffer, bindOffset,
+            //                       bytesToWrite, vertexShaderBindings );
+            VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+            switch( gptype )
+            {
+            case GPT_VERTEX_PROGRAM:
+            case GPT_FRAGMENT_PROGRAM:
+            case GPT_COMPUTE_PROGRAM:
+                constBuffer->bindBuffer( OGRE_VULKAN_PARAMETER_SLOT - OGRE_VULKAN_CONST_SLOT_START,
+                                           bindOffset );
+                break;
+            case GPT_GEOMETRY_PROGRAM:
+            case GPT_HULL_PROGRAM:
+            case GPT_DOMAIN_PROGRAM:
+                break;
+            }
 
             mCurrentAutoParamsBufferPtr += bytesToWrite;
 
@@ -1660,5 +1790,96 @@ namespace Ogre
 
         delete vulkanPso;
         pso->rsData = 0;
+    }
+
+    void VulkanRenderSystem::_hlmsMacroblockCreated( HlmsMacroblock *newBlock )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _hlmsMacroblockCreated " ) );
+        }
+    }
+
+    void VulkanRenderSystem::_hlmsMacroblockDestroyed( HlmsMacroblock *block )
+    {
+    }
+
+    void VulkanRenderSystem::_hlmsBlendblockCreated( HlmsBlendblock *newBlock )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _hlmsBlendblockCreated " ) );
+        }
+    }
+
+    void VulkanRenderSystem::_hlmsBlendblockDestroyed( HlmsBlendblock *block )
+    {
+    }
+
+    void VulkanRenderSystem::_hlmsSamplerblockCreated( HlmsSamplerblock *newBlock )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _hlmsSamplerblockCreated " ) );
+        }
+    }
+
+    void VulkanRenderSystem::_hlmsSamplerblockDestroyed( HlmsSamplerblock *block )
+    {
+    }
+
+    void VulkanRenderSystem::_descriptorSetTextureCreated( DescriptorSetTexture *newSet )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _descriptorSetTextureCreated " ) );
+        }
+    }
+
+    void VulkanRenderSystem::_descriptorSetTextureDestroyed( DescriptorSetTexture *set )
+    {
+    }
+
+    void VulkanRenderSystem::_descriptorSetTexture2Created( DescriptorSetTexture2 *newSet )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _descriptorSetTexture2Created " ) );
+        }
+    }
+
+    void VulkanRenderSystem::_descriptorSetTexture2Destroyed( DescriptorSetTexture2 *set )
+    {
+    }
+
+    void VulkanRenderSystem::_descriptorSetSamplerCreated( DescriptorSetSampler *newSet )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _descriptorSetSamplerCreated " ) );
+        }
+    }
+
+    void VulkanRenderSystem::_descriptorSetSamplerDestroyed( DescriptorSetSampler *set )
+    {
+    }
+
+    void VulkanRenderSystem::_descriptorSetUavCreated( DescriptorSetUav *newSet )
+    {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " _descriptorSetUavCreated " ) );
+        }
+    }
+
+    void VulkanRenderSystem::_descriptorSetUavDestroyed( DescriptorSetUav *set )
+    {
     }
 }  // namespace Ogre

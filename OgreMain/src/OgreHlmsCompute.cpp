@@ -97,10 +97,10 @@ namespace Ogre
         if( mRenderSystem )
         {
             //Prefer glsl over glsles
-            const String shaderProfiles[3] = { "hlsl", "glsles", "glsl" };
+            const String shaderProfiles[4] = { "hlsl", "glsles", "glsl", "glsl-vulkan" };
             const RenderSystemCapabilities *capabilities = mRenderSystem->getCapabilities();
 
-            for( size_t i=0; i<3; ++i )
+            for( size_t i=0; i<4; ++i )
             {
                 if( capabilities->isShaderProfileSupported( shaderProfiles[i] ) )
                     mShaderProfile = shaderProfiles[i];
@@ -192,7 +192,7 @@ namespace Ogre
         ResourceGroupManager &resourceGroupMgr = ResourceGroupManager::getSingleton();
         DataStreamPtr inFile = resourceGroupMgr.openResource( sourceFilename );
 
-        if( mShaderProfile == "glsl" ) //TODO: String comparision
+        if( mShaderProfile == "glsl" || mShaderProfile == "glsl-vulkan" )  // TODO: String comparision
         {
             setProperty( HlmsBaseProp::GL3Plus,
                          mRenderSystem->getNativeShadingLanguageVersion() );

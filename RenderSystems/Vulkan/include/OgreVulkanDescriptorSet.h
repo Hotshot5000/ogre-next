@@ -48,7 +48,8 @@ class VulkanDescriptorSet
 	              VulkanDescriptorSetLayout &                     descriptor_set_layout,
 	              VulkanDescriptorPool &                          descriptor_pool,
 	              const BindingMap<VkDescriptorBufferInfo> &buffer_infos = {},
-	              const BindingMap<VkDescriptorImageInfo> & image_infos  = {});
+	              const BindingMap<VkDescriptorImageInfo> & image_infos  = {},
+                  const BindingMap<VkBufferView> &buffer_views = {} );
 
 	VulkanDescriptorSet(const VulkanDescriptorSet &) = delete;
 
@@ -62,7 +63,8 @@ class VulkanDescriptorSet
 	VulkanDescriptorSet &operator=(VulkanDescriptorSet &&) = delete;
 
 	void update(const BindingMap<VkDescriptorBufferInfo> &buffer_infos,
-	            const BindingMap<VkDescriptorImageInfo> & image_infos);
+	            const BindingMap<VkDescriptorImageInfo> & image_infos,
+                const BindingMap<VkBufferView> &buffer_views );
 
 	const VulkanDescriptorSetLayout &get_layout() const;
 

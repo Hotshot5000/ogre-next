@@ -186,9 +186,7 @@ namespace Ogre
         virtual void _setVertexArrayObject( const VertexArrayObject *vao );
         void flushDescriptorState( VkPipelineBindPoint pipeline_bind_point, const VulkanConstBufferPacked &constBuffer, const size_t bindOffset, const size_t bytesToWrite,
             const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type
-                &vertexShaderBindings,
-            const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type
-                &pixelShaderBindings );
+                &shaderBindings );
 
         virtual void _render( const CbDrawCallIndexed *cmd );
         virtual void _render( const CbDrawCallStrip *cmd );
@@ -249,8 +247,22 @@ namespace Ogre
         void notifySwapchainCreated( VulkanWindow *window );
         void notifySwapchainDestroyed( VulkanWindow *window );
 
-        virtual void _hlmsPipelineStateObjectCreated( HlmsPso *newPso );
-        virtual void _hlmsPipelineStateObjectDestroyed( HlmsPso *pos );
+        virtual void _hlmsPipelineStateObjectCreated( HlmsPso *newPso ) override;
+        virtual void _hlmsPipelineStateObjectDestroyed( HlmsPso *pos ) override;
+        virtual void _hlmsMacroblockCreated( HlmsMacroblock *newBlock ) override;
+        virtual void _hlmsMacroblockDestroyed( HlmsMacroblock *block ) override;
+        virtual void _hlmsBlendblockCreated( HlmsBlendblock *newBlock ) override;
+        virtual void _hlmsBlendblockDestroyed( HlmsBlendblock *block ) override;
+        virtual void _hlmsSamplerblockCreated( HlmsSamplerblock *newBlock ) override;
+        virtual void _hlmsSamplerblockDestroyed( HlmsSamplerblock *block ) override;
+        virtual void _descriptorSetTextureCreated( DescriptorSetTexture *newSet ) override;
+        virtual void _descriptorSetTextureDestroyed( DescriptorSetTexture *set ) override;
+        virtual void _descriptorSetTexture2Created( DescriptorSetTexture2 *newSet ) override;
+        virtual void _descriptorSetTexture2Destroyed( DescriptorSetTexture2 *set ) override;
+        virtual void _descriptorSetSamplerCreated( DescriptorSetSampler *newSet ) override;
+        virtual void _descriptorSetSamplerDestroyed( DescriptorSetSampler *set ) override;
+        virtual void _descriptorSetUavCreated( DescriptorSetUav *newSet ) override;
+        virtual void _descriptorSetUavDestroyed( DescriptorSetUav *set ) override;
 
         VulkanDevice *getVulkanDevice() const { return mDevice;  }
     };

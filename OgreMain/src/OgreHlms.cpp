@@ -2132,7 +2132,8 @@ namespace Ogre
             const String filename = ShaderFiles[i] + mShaderFileExt;
             if( mDataFolder->exists( filename ) )
             {
-                if( mShaderProfile == "glsl" ) //TODO: String comparision
+                if( mShaderProfile == "glsl" ||
+                    mShaderProfile == "glsl-vulkan" )  // TODO: String comparision
                 {
                     setProperty( HlmsBaseProp::GL3Plus,
                                  mRenderSystem->getNativeShadingLanguageVersion() );
@@ -3048,7 +3049,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void Hlms::applyTextureRegisters( const HlmsCache *psoEntry )
     {
-        if( mShaderProfile == "hlsl" || mShaderProfile == "metal" )
+        if( mShaderProfile == "hlsl" || mShaderProfile == "metal" || mShaderProfile == "glsl-vulkan" )
             return; //D3D embeds the texture slots in the shader.
 
         GpuProgramPtr shaders[NumShaderTypes];
@@ -3174,10 +3175,10 @@ namespace Ogre
             }
 
             //Prefer glsl over glsles
-            const String shaderProfiles[4] = { "hlsl", "glsles", "glsl", "metal" };
+            const String shaderProfiles[5] = { "hlsl", "glsles", "glsl", "metal", "glsl-vulkan" };
             const RenderSystemCapabilities *capabilities = mRenderSystem->getCapabilities();
 
-            for( size_t i=0; i<4; ++i )
+            for( size_t i=0; i<5; ++i )
             {
                 if( capabilities->isShaderProfileSupported( shaderProfiles[i] ) )
                 {

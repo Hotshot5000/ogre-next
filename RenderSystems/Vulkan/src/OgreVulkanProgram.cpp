@@ -98,7 +98,7 @@ namespace Ogre
         }
 
         // Manually assign language now since we use it immediately
-        mSyntaxCode = "glsl";
+        mSyntaxCode = "glsl-vulkan";
     }
     //---------------------------------------------------------------------------
     VulkanProgram::~VulkanProgram()
@@ -450,6 +450,9 @@ namespace Ogre
             for( size_t bindingPos = 0; bindingPos < numUsedBindings; ++bindingPos )
             {
                 const SpvReflectDescriptorBinding &reflBinding = *( reflSet.bindings[bindingPos] );
+
+                if( reflBinding.binding != OGRE_VULKAN_PARAMETER_SLOT )
+                    continue;
                 
                 const VkDescriptorType type =
                     static_cast<VkDescriptorType>( reflBinding.descriptor_type );

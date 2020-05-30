@@ -89,7 +89,7 @@ struct AreaLtcLight
 @insertpiece( DeclIrradianceFieldStruct )
 
 //Uniforms that change per pass
-CONST_BUFFER_STRUCT_BEGIN( PassBuffer, 0 )
+CONST_BUFFER_STRUCT_BEGIN( PassBuffer, OGRE_VULKAN_CONST_SLOT_START+0 )
 {
 	//Vertex shader (common to both receiver and casters)
 @property( !hlms_instanced_stereo )
@@ -260,7 +260,7 @@ struct Material
 	@property( normal_weight_tex )#define normalMapWeight material.emissive.w@end
 
 	@property( syntax != metal )
-		CONST_BUFFER( MaterialBuf, 2 )
+		CONST_BUFFER( MaterialBuf, OGRE_VULKAN_CONST_SLOT_START+1 )
 		{
 			Material materialArray[@value( materials_per_buffer )];
 		};
@@ -276,7 +276,7 @@ struct Material
 @property( syntax != metal )
 	@piece( InstanceStructDecl )
 		//Uniforms that change per Item/Entity
-		CONST_BUFFER( InstanceBuffer, 3 )
+		CONST_BUFFER( InstanceBuffer, OGRE_VULKAN_CONST_SLOT_START+2 )
 		{
 			//.x =
 			//The lower 9 bits contain the material's start index.
@@ -305,7 +305,7 @@ struct Material
 @property( envprobe_map && envprobe_map != target_envprobe_map && use_parallax_correct_cubemaps && !hlms_enable_cubemaps_auto )
 @piece( PccManualProbeDecl )
 	@property( syntax != metal )
-		CONST_BUFFER( ManualProbe, 3 )
+		CONST_BUFFER( ManualProbe, OGRE_VULKAN_CONST_SLOT_START+3 )
 		{
 			CubemapProbe manualProbe;
 		};

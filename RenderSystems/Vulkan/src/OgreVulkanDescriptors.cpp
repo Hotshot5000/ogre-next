@@ -98,6 +98,7 @@ namespace Ogre
         }
 
         const size_t minSize = std::min( a.size(), b.size() );
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
 
         for( size_t i = 0u; i < minSize; ++i )
         {
@@ -109,15 +110,46 @@ namespace Ogre
             else if( !b[i].empty() )
             {
                 const size_t minBindings = std::min( a[i].size(), b[i].size() );
+                
+                for( size_t j = 0u; j < minBindings; ++j )
+                {
+                    if( defaultLog )
+                    {
+                        defaultLog->logMessage( String( " * j " ) + std::to_string( j ) +
+                                                " binding: " + 
+                                                std::to_string( a[i][j].binding ) );
+                    }
+                }
                 for( size_t j = 0u; j < minBindings; ++j )
                 {
                     // OGRE_ASSERT_HIGH( a[i][j].binding == j );
                     // OGRE_ASSERT_HIGH( b[i][j].binding == j );
-                    if( a[i][j].binding == j && b[i][j].binding == j )
+                    if( a[i][j].binding == j && b[i][j].binding == j && a[i][j].descriptorCount > 0 &&
+                        b[i][j].descriptorCount > 0 )
+                    {
                         a[i][j].stageFlags |= b[i][j].stageFlags;
+                    }
+                    else if( a[i][j].descriptorCount == 0 && b[i][j].descriptorCount > 0 )
+                    {
+                        // We have a descriptor in the new set that does not exist in the original set.
+                        a[i][j].binding = b[i][j].binding;
+                        a[i][j].descriptorType = b[i][j].descriptorType;
+                        a[i][j].descriptorCount = b[i][j].descriptorCount;
+                        a[i][j].stageFlags = b[i][j].stageFlags;
+                        a[i][j].pImmutableSamplers = b[i][j].pImmutableSamplers;
+                    }
+                        
                 }
 
                 a[i].appendPOD( b[i].begin() + minBindings, b[i].end() );
+                for( size_t j = 0u; j < a[i].size(); ++j )
+                {
+                    if( defaultLog )
+                    {
+                        defaultLog->logMessage( String( " * j " ) + std::to_string( j ) +
+                                                " binding: " + std::to_string( a[i][j].binding ) );
+                    }
+                }
             }
             // else
             //{

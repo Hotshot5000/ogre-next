@@ -803,15 +803,25 @@ namespace Ogre
         VulkanBufferInterface *bufferInterface =
             new VulkanBufferInterface( vboIdx, vbo.vkBuffer, vbo.dynamicBuffer );
 
-        ConstBufferPacked *retVal = OGRE_NEW VulkanConstBufferPacked(
+        VulkanConstBufferPacked *retVal = OGRE_NEW VulkanConstBufferPacked(
             bufferOffset, requestedSize, 1u, ( uint32 )( sizeBytes - requestedSize ), bufferType,
             initialData, keepAsShadow, this, bufferInterface );
+
+        mConstBuffers.push_back( retVal );
 
         return retVal;
     }
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::destroyConstBufferImpl( ConstBufferPacked *constBuffer )
     {
+        vector<VulkanConstBufferPacked *>::type::iterator it =
+            std::find( mConstBuffers.begin(), mConstBuffers.end(), constBuffer );
+        if( it == mConstBuffers.end() )
+        {
+            OGRE_EXCEPT( Exception::ERR_ITEM_NOT_FOUND, "", "VulkanVaoManager::destroyConstBufferImpl" );
+        }
+        mConstBuffers.erase( it );
+        
         VulkanBufferInterface *bufferInterface =
             static_cast<VulkanBufferInterface *>( constBuffer->getBufferInterface() );
 
@@ -847,9 +857,11 @@ namespace Ogre
         VulkanBufferInterface *bufferInterface =
             new VulkanBufferInterface( vboIdx, vbo.vkBuffer, vbo.dynamicBuffer );
 
-        TexBufferPacked *retVal = OGRE_NEW VulkanTexBufferPacked(
+        VulkanTexBufferPacked *retVal = OGRE_NEW VulkanTexBufferPacked(
             bufferOffset, requestedSize, 1u, ( uint32 )( sizeBytes - requestedSize ), bufferType,
             initialData, keepAsShadow, this, bufferInterface, pixelFormat );
+
+        mTexBuffersPacked.push_back( retVal );
 
         if( initialData )
             bufferInterface->_firstUpload( initialData, 0, requestedSize );
@@ -859,6 +871,14 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::destroyTexBufferImpl( TexBufferPacked *texBuffer )
     {
+        vector<VulkanTexBufferPacked *>::type::iterator it =
+            std::find( mTexBuffersPacked.begin(), mTexBuffersPacked.end(), texBuffer );
+        if( it == mTexBuffersPacked.end() )
+        {
+            OGRE_EXCEPT( Exception::ERR_ITEM_NOT_FOUND, "", "VulkanVaoManager::destroyConstBufferImpl" );
+        }
+        mTexBuffersPacked.erase( it );
+
         VulkanBufferInterface *bufferInterface =
             static_cast<VulkanBufferInterface *>( texBuffer->getBufferInterface() );
 

@@ -64,7 +64,7 @@ std::ostream &operator<<(std::ostream &os, const VkResult result)
 	return os;
 }
 
-namespace vkb
+namespace Ogre
 {
 namespace
 {

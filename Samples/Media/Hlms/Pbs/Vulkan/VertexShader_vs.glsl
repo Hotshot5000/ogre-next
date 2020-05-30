@@ -46,7 +46,7 @@ layout( location = 0 )in vec4 vertex;
 @end
 
 // START UNIFORM GL DECLARATION
-layout(binding = 1) uniform samplerBuffer worldMatBuf;
+layout(binding = OGRE_VULKAN_TEX_SLOT_START+0) uniform samplerBuffer worldMatBuf;
 @property( !GL_ARB_base_instance )uniform uint baseInstance;@end
 // END UNIFORM GL DECLARATION
 

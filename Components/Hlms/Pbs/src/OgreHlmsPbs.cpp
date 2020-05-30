@@ -438,7 +438,7 @@ namespace Ogre
         const HlmsCache *retVal = Hlms::createShaderCacheEntry( renderableHash, passCache, finalHash,
                                                                 queuedRenderable );
 
-        if( mShaderProfile == "hlsl" || mShaderProfile == "metal" )
+        if( mShaderProfile == "hlsl" || mShaderProfile == "metal" || mShaderProfile == "glsl-vulkan" )
         {
             mListener->shaderCacheEntryCreated( mShaderProfile, retVal, passCache,
                                                 mSetProperties, queuedRenderable );

@@ -115,7 +115,9 @@ namespace Ogre
         if( vkAllocateMemory( device->mDevice, &allocInfo, nullptr, &mTextureImageMemory ) !=
             VK_SUCCESS )
         {
-            throw std::runtime_error( "failed to allocate image memory!" );
+            OGRE_EXCEPT( Exception::ERR_INVALID_STATE,
+                         "Could not allocate memory",
+                         "VulkanTextureGpu::createInternalResourcesImpl" );
         }
 
         // TODO use one large buffer and multiple offsets
@@ -124,7 +126,9 @@ namespace Ogre
 
         if( vkBindImageMemory( device->mDevice, mFinalTextureName, mTextureImageMemory, offset ) != VK_SUCCESS )
         {
-            throw std::runtime_error( "failed to bind image to memory!" );
+            OGRE_EXCEPT( Exception::ERR_INVALID_STATE, 
+                        "Could not allocate bind image to memory",
+                        "VulkanTextureGpu::createInternalResourcesImpl" );
         }
 
         if( mMsaa > 1u && !hasMsaaExplicitResolves() )

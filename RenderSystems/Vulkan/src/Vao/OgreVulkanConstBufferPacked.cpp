@@ -39,7 +39,9 @@ namespace Ogre
                                                       VaoManager *vaoManager,
                                                       BufferInterface *bufferInterface ) :
         ConstBufferPacked( internalBufferStartBytes, numElements, bytesPerElement, numElementsPadding,
-                           bufferType, initialData, keepAsShadow, vaoManager, bufferInterface )
+                           bufferType, initialData, keepAsShadow, vaoManager, bufferInterface ),
+        mCurrentBinding( -1 ),
+        mDirty( false )
     {
     }
     //-----------------------------------------------------------------------------------
@@ -47,42 +49,29 @@ namespace Ogre
 
     void VulkanConstBufferPacked::bindBufferVS( uint16 slot )
     {
+        bindBuffer( slot, 0 );
     }
 
     void VulkanConstBufferPacked::bindBufferPS( uint16 slot )
     {
+        bindBuffer( slot, 0 );
     }
 
     void VulkanConstBufferPacked::bindBufferCS( uint16 slot )
     {
-    }
+        bindBuffer( slot, 0 );
+    }    
 
-    void VulkanConstBufferPacked::bindBufferVS( VkCommandBuffer cmdBuffer, uint16 slot,
-        uint32 offsetBytes )
+    void VulkanConstBufferPacked::VulkanConstBufferPacked::bindBuffer( uint16 slot,
+                                                                            uint32 offsetBytes )
     {
         assert( dynamic_cast<VulkanBufferInterface *>( mBufferInterface ) );
-        VulkanBufferInterface *bufferInterface =
-            static_cast<VulkanBufferInterface *>( mBufferInterface );
-        VkBuffer vertexBuffers[] = { bufferInterface->getVboName() };
-        VkDeviceSize offsets[] = { mFinalBufferStart * mBytesPerElement + offsetBytes };
-        vkCmdBindVertexBuffers( cmdBuffer, slot + OGRE_VULKAN_CONST_SLOT_START, 1, vertexBuffers, offsets );
-    }
-
-    void VulkanConstBufferPacked::bindBufferPS( VkCommandBuffer cmdBuffer, uint16 slot,
-        uint32 offsetBytes )
-    {
-        assert( dynamic_cast<VulkanBufferInterface *>( mBufferInterface ) );
-        VulkanBufferInterface *bufferInterface =
-            static_cast<VulkanBufferInterface *>( mBufferInterface );
-        VkBuffer vertexBuffers[] = { bufferInterface->getVboName() };
-        VkDeviceSize offsets[] = { mFinalBufferStart * mBytesPerElement + offsetBytes };
-        vkCmdBindVertexBuffers( cmdBuffer, slot + OGRE_VULKAN_CONST_SLOT_START, 1, vertexBuffers,
-                                offsets );
-    }
-
-    void VulkanConstBufferPacked::bindBufferCS( VkCommandBuffer cmdBuffer, uint16 slot,
-        uint32 offsetBytes )
-    {
+        VulkanBufferInterface *bufferInterface = static_cast<VulkanBufferInterface *>( mBufferInterface );
+        mBufferInfo.buffer = bufferInterface->getVboName();
+        mBufferInfo.offset = mFinalBufferStart * mBytesPerElement + offsetBytes;
+        mBufferInfo.range = mNumElements * mBytesPerElement;
+        mCurrentBinding = slot + OGRE_VULKAN_CONST_SLOT_START;
+        mDirty = true;
     }
 
     //-----------------------------------------------------------------------------------

@@ -30,19 +30,22 @@ VulkanDescriptorSet::VulkanDescriptorSet(VkDevice                               
                              VulkanDescriptorSetLayout &                     descriptor_set_layout,
                              VulkanDescriptorPool &                          descriptor_pool,
                              const BindingMap<VkDescriptorBufferInfo> &buffer_infos,
-                             const BindingMap<VkDescriptorImageInfo> & image_infos) :
+                             const BindingMap<VkDescriptorImageInfo> & image_infos,
+                             const BindingMap<VkBufferView> &buffer_views) :
     device{device},
     descriptor_set_layout{descriptor_set_layout},
     descriptor_pool{descriptor_pool},
     handle{descriptor_pool.allocate()}
 {
-	if (!buffer_infos.empty() || !image_infos.empty())
+	if (!buffer_infos.empty() || !image_infos.empty() || !buffer_views.empty())
 	{
-		update(buffer_infos, image_infos);
+		update(buffer_infos, image_infos, buffer_views);
 	}
 }
 
-void VulkanDescriptorSet::update(const BindingMap<VkDescriptorBufferInfo> &buffer_infos, const BindingMap<VkDescriptorImageInfo> &image_infos)
+void VulkanDescriptorSet::update( const BindingMap<VkDescriptorBufferInfo> &buffer_infos,
+                                  const BindingMap<VkDescriptorImageInfo> &image_infos,
+                                  const BindingMap<VkBufferView> &buffer_views )
 {
 	this->buffer_infos = buffer_infos;
 	this->image_infos  = image_infos;
@@ -116,6 +119,40 @@ void VulkanDescriptorSet::update(const BindingMap<VkDescriptorBufferInfo> &buffe
 			// LOGE("Shader layout set does not use image binding at #{}", binding_index);
 		}
 	}
+
+    for( const BindingMap<VkBufferView>::value_type &binding_it : buffer_views )
+    {
+        unsigned binding_index = binding_it.first;
+        const std::map<unsigned, VkBufferView> &binding_resources = binding_it.second;
+
+        if( std::unique_ptr<VkDescriptorSetLayoutBinding> binding_info =
+                descriptor_set_layout.get_layout_binding( binding_index ) )
+        {
+            // Iterate over all binding images in array
+            for( const std::map<unsigned, VkBufferView>::value_type &element_it :
+                 binding_resources )
+            {
+                unsigned arrayElement = element_it.first;
+                const VkBufferView &buffer_info = element_it.second;
+
+                VkWriteDescriptorSet write_descriptor_set;
+                makeVkStruct( write_descriptor_set, VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET );
+
+                write_descriptor_set.dstBinding = binding_index;
+                write_descriptor_set.descriptorType = binding_info->descriptorType;
+                write_descriptor_set.pTexelBufferView = &buffer_info;
+                write_descriptor_set.dstSet = handle;
+                write_descriptor_set.dstArrayElement = arrayElement;
+                write_descriptor_set.descriptorCount = 1;
+
+                set_updates.push_back( write_descriptor_set );
+            }
+        }
+        else
+        {
+            // LOGE("Shader layout set does not use image binding at #{}", binding_index);
+        }
+    }
 
 	vkUpdateDescriptorSets(device, set_updates.size(), set_updates.data(), 0, nullptr);
 }

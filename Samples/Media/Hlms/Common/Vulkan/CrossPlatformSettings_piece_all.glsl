@@ -92,6 +92,16 @@
 #define outVs_viewportIndex gl_ViewportIndex
 #define outVs_clipDistance0 gl_ClipDistance[0]
 
+#define OGRE_VULKAN_CONST_SLOT_START 16u
+#define OGRE_VULKAN_TEX_SLOT_START 24u
+#define OGRE_VULKAN_PARAMETER_SLOT 23u
+#define OGRE_VULKAN_UAV_SLOT_START 28u
+
+#define OGRE_VULKAN_CS_PARAMETER_SLOT 7u
+#define OGRE_VULKAN_CS_CONST_SLOT_START 0u
+#define OGRE_VULKAN_CS_UAV_SLOT_START 8u
+#define OGRE_VULKAN_CS_TEX_SLOT_START 16u
+
 #define gl_SampleMaskIn0 gl_SampleMaskIn[0]
 
 #define outPs_colour0 outColour

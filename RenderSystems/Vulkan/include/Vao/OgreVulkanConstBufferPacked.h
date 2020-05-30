@@ -53,9 +53,29 @@ namespace Ogre
         virtual void bindBufferDS( uint16 slot ) {}
         void bindBufferCS( uint16 slot ) override;
 
-        void bindBufferVS( VkCommandBuffer cmdBuffer, uint16 slot, uint32 offsetBytes );
-        void bindBufferPS( VkCommandBuffer cmdBuffer, uint16 slot, uint32 offsetBytes );
-        void bindBufferCS( VkCommandBuffer cmdBuffer, uint16 slot, uint32 offsetBytes );
+        void bindBuffer( uint16 slot, uint32 offsetBytes );
+
+        const VkDescriptorBufferInfo &getBufferInfo() const { return mBufferInfo; }
+
+        // Used to check if it makes sense to update VkWriteDescriptorSet with this buffer info.
+        bool isDirty() const
+        {
+            return mDirty;
+        }
+
+        void resetDirty() { mDirty = false; }
+
+
+        uint16 getCurrentBinding() const
+        {
+            return mCurrentBinding;
+        }
+
+    private:
+
+        VkDescriptorBufferInfo mBufferInfo;
+        uint16 mCurrentBinding;
+        bool mDirty;
     };
 }  // namespace Ogre
 

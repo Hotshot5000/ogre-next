@@ -29,7 +29,9 @@ THE SOFTWARE.
 #ifndef _Ogre_VulkanVaoManager_H_
 #define _Ogre_VulkanVaoManager_H_
 
+#include "OgreVulkanConstBufferPacked.h"
 #include "OgreVulkanPrerequisites.h"
+#include "OgreVulkanTexBufferPacked.h"
 
 #include "Vao/OgreVaoManager.h"
 
@@ -156,6 +158,9 @@ namespace Ogre
         VkSemaphoreArray mAvailableSemaphores;
 
         VulkanDevice *mDevice;
+
+        std::vector<VulkanConstBufferPacked *> mConstBuffers;
+        std::vector<VulkanTexBufferPacked *> mTexBuffersPacked;
 
         bool mFenceFlushed;
 
@@ -301,6 +306,17 @@ namespace Ogre
         uint8 waitForTailFrameToFinish( void );
         virtual void waitForSpecificFrameToFinish( uint32 frameCount );
         virtual bool isFrameFinished( uint32 frameCount );
+
+
+        const std::vector<VulkanConstBufferPacked *> &getConstBuffers() const
+        {
+            return mConstBuffers;
+        }
+
+        const std::vector<VulkanTexBufferPacked *> &getTexBuffersPacked() const
+        {
+            return mTexBuffersPacked;
+        }
     };
 }  // namespace Ogre
 
