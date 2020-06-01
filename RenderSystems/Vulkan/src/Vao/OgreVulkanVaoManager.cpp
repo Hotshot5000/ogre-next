@@ -119,6 +119,14 @@ namespace Ogre
         mDrawId = createVertexBuffer( vertexElements, 4096, BT_IMMUTABLE, drawIdPtr, true );
     }
     //-----------------------------------------------------------------------------------
+    void VulkanVaoManager::bindDrawIdVertexBuffer( VkCommandBuffer cmdBuffer )
+    {
+        VulkanBufferInterface *bufIntf = static_cast<VulkanBufferInterface *>( mDrawId->getBufferInterface() );
+        VkBuffer vertexBuffers[] = { bufIntf->getVboName() };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers( cmdBuffer, 0, 1, vertexBuffers, offsets );
+    }
+    //-----------------------------------------------------------------------------------
     void VulkanVaoManager::getMemoryStats( MemoryStatsEntryVec &outStats, size_t &outCapacityBytes,
                                            size_t &outFreeBytes, Log *log ) const
     {
@@ -143,7 +151,7 @@ namespace Ogre
         for( size_t i = 0u; i < MAX_VBO_FLAG; ++i )
             mBestVkMemoryTypeIndex[i] = std::numeric_limits<uint32>::max();
 
-        const VkPhysicalDeviceMemoryProperties &memProperties = mDevice->mMemoryProperties;
+        const VkPhysicalDeviceMemoryProperties &memProperties = mDevice->mDeviceMemoryProperties;
         const uint32 numMemoryTypes = memProperties.memoryTypeCount;
 
         for( uint32 i = 0u; i < numMemoryTypes; ++i )
@@ -286,7 +294,7 @@ namespace Ogre
 
             // No luck, allocate a new buffer.
             OGRE_ASSERT_LOW( mBestVkMemoryTypeIndex[vboFlag] <
-                             mDevice->mMemoryProperties.memoryTypeCount );
+                             mDevice->mDeviceMemoryProperties.memoryTypeCount );
 
             VkMemoryAllocateInfo memAllocInfo;
             makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
@@ -441,7 +449,7 @@ namespace Ogre
     //     for( size_t i = 0u; i < MAX_VBO_FLAG; ++i )
     //         mBestVkMemoryTypeIndex[i] = std::numeric_limits<uint32>::max();
     //
-    //     const VkPhysicalDeviceMemoryProperties &memProperties = mDevice->mMemoryProperties;
+    //     const VkPhysicalDeviceMemoryProperties &memProperties = mDevice->mDeviceMemoryProperties;
     //     const uint32 numMemoryTypes = memProperties.memoryTypeCount;
     //
     //     for( uint32 i = 0u; i < numMemoryTypes; ++i )
@@ -570,7 +578,7 @@ namespace Ogre
     //
     //         // No luck, allocate a new buffer.
     //         OGRE_ASSERT_LOW( mBestVkMemoryTypeIndex[vboFlag] <
-    //                          mDevice->mMemoryProperties.memoryTypeCount );
+    //                          mDevice->mDeviceMemoryProperties.memoryTypeCount );
     //
     //         VkMemoryAllocateInfo memAllocInfo;
     //         makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
@@ -1021,34 +1029,37 @@ namespace Ogre
     {
         sizeBytes = std::max<size_t>( sizeBytes, 4u * 1024u * 1024u );
 
-        size_t vboIdx;
         size_t bufferOffset = 0;
         //allocateVbo( sizeBytes, 4u, BT_DYNAMIC_PERSISTENT, vboIdx, bufferOffset );
 
         Vbo newVbo;
         VboFlag vboFlag = CPU_ACCESSIBLE_PERSISTENT;
 
-        VkMemoryAllocateInfo memAllocInfo;
-        makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
-        memAllocInfo.allocationSize = sizeBytes;
-        memAllocInfo.memoryTypeIndex = mBestVkMemoryTypeIndex[vboFlag];
-
-        VkResult result = vkAllocateMemory( mDevice->mDevice, &memAllocInfo, NULL, &newVbo.vboName );
-        checkVkResult( result, "vkAllocateMemory" );
-
         VkBufferCreateInfo bufferCi;
         makeVkStruct( bufferCi, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO );
         bufferCi.size = sizeBytes;
-        bufferCi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+        bufferCi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | 
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                          VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                         VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-        result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
+                         VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | 
+                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | 
+                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | 
+                         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        VkResult result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
         checkVkResult( result, "vkCreateBuffer" );
 
         VkMemoryRequirements memRequirements;
         vkGetBufferMemoryRequirements( mDevice->mDevice, newVbo.vkBuffer, &memRequirements );
+
+        VkMemoryAllocateInfo memAllocInfo;
+        makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
+        memAllocInfo.allocationSize = memRequirements.size;
+        memAllocInfo.memoryTypeIndex = mBestVkMemoryTypeIndex[vboFlag];
+
+        result = vkAllocateMemory( mDevice->mDevice, &memAllocInfo, NULL, &newVbo.vboName );
+        checkVkResult( result, "vkAllocateMemory" );
 
         // TODO use one large buffer and multiple offsets
         VkDeviceSize offset = 0;
@@ -1094,7 +1105,7 @@ namespace Ogre
             --mFrameCount;
         }
 
-        unsigned long currentTimeMs = mTimer->getMilliseconds();
+        unsigned long long currentTimeMs = mTimer->getMilliseconds();
 
         if( currentTimeMs >= mNextStagingBufferTimestampCheckpoint )
         {

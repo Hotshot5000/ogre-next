@@ -65,7 +65,8 @@ namespace Ogre
         // clang-format on
 
         VkPhysicalDeviceProperties mDeviceProperties;
-        VkPhysicalDeviceMemoryProperties mMemoryProperties;
+        VkPhysicalDeviceMemoryProperties mDeviceMemoryProperties;
+        VkPhysicalDeviceFeatures mDeviceFeatures;
         FastArray<VkQueueFamilyProperties> mQueueProps;
 
         VulkanVaoManager *mVaoManager;

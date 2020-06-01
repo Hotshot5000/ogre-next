@@ -108,7 +108,7 @@ namespace Ogre
 
         void newCommandBuffer( void );
 
-    protected:
+    public:
         void endCommandBuffer( void );
 
     public:

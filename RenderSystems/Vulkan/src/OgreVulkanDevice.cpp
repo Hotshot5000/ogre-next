@@ -52,7 +52,7 @@ namespace Ogre
         mVaoManager( 0 ),
         mRenderSystem( renderSystem )
     {
-        memset( &mMemoryProperties, 0, sizeof( mMemoryProperties ) );
+        memset( &mDeviceMemoryProperties, 0, sizeof( mDeviceMemoryProperties ) );
         createPhysicalDevice( deviceIdx );
     }
     //-------------------------------------------------------------------------
@@ -176,7 +176,9 @@ namespace Ogre
         checkVkResult( result, "vkEnumeratePhysicalDevices" );
         mPhysicalDevice = pd[0];
 
-        vkGetPhysicalDeviceMemoryProperties( mPhysicalDevice, &mMemoryProperties );
+        vkGetPhysicalDeviceMemoryProperties( mPhysicalDevice, &mDeviceMemoryProperties );
+
+        vkGetPhysicalDeviceFeatures( mPhysicalDevice, &mDeviceFeatures );
     }
     //-------------------------------------------------------------------------
     void VulkanDevice::findGraphicsQueue( FastArray<uint32> &inOutUsedQueueCount )

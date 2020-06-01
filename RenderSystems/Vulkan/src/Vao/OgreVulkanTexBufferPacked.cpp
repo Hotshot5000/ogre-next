@@ -93,7 +93,7 @@ namespace Ogre
             {
                 // Destroy first? Is there any way to reuse these things instead of destroying and
                 // recreating them??
-                vkDestroyBufferView( vulkanVaoManager->getDevice()->mDevice, mBufferView, 0 );
+                // vkDestroyBufferView( vulkanVaoManager->getDevice()->mDevice, mBufferView, 0 );
             }
 
             VkBufferViewCreateInfo bufferCreateInfo;
@@ -104,7 +104,7 @@ namespace Ogre
             bufferCreateInfo.range = currentSizeBytes;
 
             checkVkResult(
-                vkCreateBufferView( vulkanVaoManager->getDevice()->mDevice, &bufferCreateInfo, 0, &mBufferView ) );
+                vkCreateBufferView( vulkanVaoManager->getDevice()->mDevice, &bufferCreateInfo, 0, &mBufferView ), "vkCreateBufferView" );
 
             mPrevSizeBytes = currentSizeBytes;
             mPrevOffset = currentOffset;

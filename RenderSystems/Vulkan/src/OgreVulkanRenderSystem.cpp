@@ -1020,7 +1020,7 @@ namespace Ogre
         const VulkanVertexArrayObject *vao = static_cast<const VulkanVertexArrayObject *>( cmd->vao );
 
         // Calculate bytesPerVertexBuffer & numVertexBuffers which is the same for all draws in this cmd
-        uint32 bytesPerVertexBuffer[15];
+        size_t bytesPerVertexBuffer[15];
         size_t numVertexBuffers = 0;
         const VertexBufferPackedVec &vertexBuffersPackedVec = vao->getVertexBuffers();
         VertexBufferPackedVec::const_iterator itor = vertexBuffersPackedVec.begin();
@@ -1049,8 +1049,8 @@ namespace Ogre
             std::vector<VkBuffer> vertexBuffers;
             std::vector<VkDeviceSize> offsets;
 
-            vertexBuffers.reserve( numVertexBuffers );
-            offsets.reserve( numVertexBuffers );
+            vertexBuffers.resize( numVertexBuffers );
+            offsets.resize( numVertexBuffers );
 
             for( size_t j = 0; j < numVertexBuffers; ++j )
             {
@@ -1058,7 +1058,10 @@ namespace Ogre
                 vertexBuffers[j] = bufIntf->getVboName();
                 offsets[j] = drawCmd->baseVertex * bytesPerVertexBuffer[j];
             }
-            vkCmdBindVertexBuffers( cmdBuffer, 0, 1, vertexBuffers.data(), offsets.data() );
+            vkCmdBindVertexBuffers( cmdBuffer, 0, numVertexBuffers, vertexBuffers.data(),
+                                    offsets.data() );
+
+            vaoManager->bindDrawIdVertexBuffer( cmdBuffer );
 
             vkCmdDrawIndexed( cmdBuffer, drawCmd->primCount, drawCmd->instanceCount,
                               drawCmd->firstVertexIndex, drawCmd->baseVertex, drawCmd->baseInstance );

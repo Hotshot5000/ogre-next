@@ -261,6 +261,7 @@ namespace Ogre
         virtual ~VulkanVaoManager();
 
         void initDrawIdVertexBuffer();
+        void bindDrawIdVertexBuffer( VkCommandBuffer cmdBuffer );
 
         virtual void getMemoryStats( MemoryStatsEntryVec &outStats, size_t &outCapacityBytes,
                                      size_t &outFreeBytes, Log *log ) const;

@@ -65,16 +65,24 @@ namespace Ogre
         assert( mUploadOnly );
 
         mMappingStart = 0;
-        mMappingCount = sizeBytes;
+        
 
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
         VulkanDevice *device = vaoManager->getDevice();
 
-        
+        mMappingCount = alignMemory( sizeBytes, device->mDeviceProperties.limits.nonCoherentAtomSize );
 
         VkResult result = vkMapMemory( device->mDevice, mDeviceMemory, mInternalBufferStart + mMappingStart,
                          mMappingCount, 0, &mMappedPtr );
         checkVkResult( result, "vkMapMemory" );
+
+        VkMappedMemoryRange memRange;
+        makeVkStruct( memRange, VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE );
+        memRange.memory = mDeviceMemory;
+        memRange.offset = mInternalBufferStart + mMappingStart;
+        memRange.size = mMappingCount;
+        result = vkInvalidateMappedMemoryRanges( device->mDevice, 1, &memRange );
+        checkVkResult( result, "vkInvalidateMappedMemoryRanges" );
 
         // mMappedPtr =
         //     mBufferInterface->map( mInternalBufferStart + mMappingStart, sizeBytes, MappingState::MS_UNMAPPED );
@@ -93,7 +101,32 @@ namespace Ogre
 
         //vkBindBufferMemory( device->mDevice, mVboName, mDeviceMemory, 0 );
 
+        VkMappedMemoryRange memRange;
+        makeVkStruct( memRange, VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE );
+        memRange.memory = mDeviceMemory;
+        memRange.offset = mInternalBufferStart + mMappingStart;
+        memRange.size = mMappingCount;
+        VkResult result = vkFlushMappedMemoryRanges( device->mDevice, 1, &memRange );
+        checkVkResult( result, "VkMappedMemoryRange" );
+
         vkUnmapMemory( device->mDevice, mDeviceMemory );
+
+        VkBufferMemoryBarrier buffer_memory_barrier;
+        makeVkStruct( buffer_memory_barrier, VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER );
+        buffer_memory_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+        buffer_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        buffer_memory_barrier.buffer = mVboName;
+        buffer_memory_barrier.offset = mInternalBufferStart + mMappingStart;
+        buffer_memory_barrier.size = mMappingCount;
+        buffer_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        buffer_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+        VkPipelineStageFlags src_stage_mask = VK_PIPELINE_STAGE_HOST_BIT;
+        VkPipelineStageFlags dst_stage_mask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+        vkCmdPipelineBarrier( device->mGraphicsQueue.mCurrentCmdBuffer, src_stage_mask, dst_stage_mask,
+                              0, 0, nullptr, 1,
+                              &buffer_memory_barrier, 0, nullptr );
 
         mMappedPtr = 0;
 
@@ -116,6 +149,17 @@ namespace Ogre
             vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer,
                              bufferInterface->getVboName(),
                              mVboName, 1u, &region );
+
+            buffer_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            buffer_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            src_stage_mask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+            vkCmdPipelineBarrier( device->mGraphicsQueue.mCurrentCmdBuffer, src_stage_mask,
+                                  dst_stage_mask, 0, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr );
+
+            // device->mGraphicsQueue.commitAndNextCommandBuffer( false );
 
             // uint8 *dstPtr = bufferInterface->getVulkanDataPtr();
 

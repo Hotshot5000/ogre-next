@@ -259,6 +259,7 @@ namespace Ogre
         VkFence fence = getFence();
 
         vkQueueSubmit( mQueue, 1u, &submitInfo, fence );
+        vkQueueWaitIdle( mQueue );
 
         mPerFrameData[dynBufferFrame].mProtectingFences.push_back( fence );
 
