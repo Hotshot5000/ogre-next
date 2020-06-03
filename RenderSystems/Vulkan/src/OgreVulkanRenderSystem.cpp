@@ -1044,13 +1044,18 @@ namespace Ogre
 
         vkCmdBindIndexBuffer( cmdBuffer, bufferInterface->getVboName(), 0, VK_INDEX_TYPE_UINT16 );
 
+        VulkanBufferInterface *bufIntf =
+            static_cast<VulkanBufferInterface *>( vaoManager->getDrawId()->getBufferInterface() );
+        // VkBuffer vertexBuffers[] = { bufIntf->getVboName() };
+        // VkDeviceSize offsets[] = { 0 };
+
         for( uint32 i = cmd->numDraws; i--; )
         {
             std::vector<VkBuffer> vertexBuffers;
             std::vector<VkDeviceSize> offsets;
 
-            vertexBuffers.resize( numVertexBuffers );
-            offsets.resize( numVertexBuffers );
+            vertexBuffers.resize( numVertexBuffers + 1 );
+            offsets.resize( numVertexBuffers + 1 );
 
             for( size_t j = 0; j < numVertexBuffers; ++j )
             {
@@ -1058,10 +1063,12 @@ namespace Ogre
                 vertexBuffers[j] = bufIntf->getVboName();
                 offsets[j] = drawCmd->baseVertex * bytesPerVertexBuffer[j];
             }
-            vkCmdBindVertexBuffers( cmdBuffer, 0, numVertexBuffers, vertexBuffers.data(),
+            vertexBuffers[numVertexBuffers] = bufIntf->getVboName();
+            offsets[numVertexBuffers] = 0;
+            vkCmdBindVertexBuffers( cmdBuffer, 0, numVertexBuffers + 1, vertexBuffers.data(),
                                     offsets.data() );
 
-            vaoManager->bindDrawIdVertexBuffer( cmdBuffer );
+            // vaoManager->bindDrawIdVertexBuffer( cmdBuffer );
 
             vkCmdDrawIndexed( cmdBuffer, drawCmd->primCount, drawCmd->instanceCount,
                               drawCmd->firstVertexIndex, drawCmd->baseVertex, drawCmd->baseInstance );
@@ -1595,7 +1602,7 @@ namespace Ogre
 
         VkPipelineVertexInputStateCreateInfo vertexFormatCi;
         makeVkStruct( vertexFormatCi, VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO );
-        VkVertexInputBindingDescription binding_description;
+        VkVertexInputBindingDescription binding_description[2];
         std::vector<VkVertexInputAttributeDescription> attribute_descriptions;
         TODO_vertex_format;
         if( !newPso->vertexShader.isNull() )
@@ -1604,10 +1611,10 @@ namespace Ogre
                 static_cast<VulkanProgram *>( newPso->vertexShader->_getBindingDelegate() );
             VulkanDescriptors::generateVertexInputBindings( shader, newPso, binding_description,
                                                             attribute_descriptions );
-            vertexFormatCi.vertexBindingDescriptionCount = 1;
+            vertexFormatCi.vertexBindingDescriptionCount = 2;
             vertexFormatCi.vertexAttributeDescriptionCount =
                 static_cast<uint32_t>( attribute_descriptions.size() );
-            vertexFormatCi.pVertexBindingDescriptions = &binding_description;
+            vertexFormatCi.pVertexBindingDescriptions = binding_description;
             vertexFormatCi.pVertexAttributeDescriptions = attribute_descriptions.data();
         }
 

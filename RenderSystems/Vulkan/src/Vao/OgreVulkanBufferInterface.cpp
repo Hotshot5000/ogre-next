@@ -133,11 +133,11 @@ namespace Ogre
                 ( mBuffer->mLastMappingStart + flushStartElem ) * mBuffer->mBytesPerElement,
                 flushSizeElem * mBuffer->mBytesPerElement );
 
-            if( unmapOption == UO_UNMAP_ALL )
-            {
+            // if( unmapOption == UO_UNMAP_ALL )
+            // {
                 mDynamicBuffer->unmap( mUnmapTicket );
                 mMappedPtr = 0;
-            }
+            // }
         }
     }
     //-----------------------------------------------------------------------------------

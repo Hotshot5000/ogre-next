@@ -124,7 +124,7 @@ namespace Ogre
         VulkanBufferInterface *bufIntf = static_cast<VulkanBufferInterface *>( mDrawId->getBufferInterface() );
         VkBuffer vertexBuffers[] = { bufIntf->getVboName() };
         VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers( cmdBuffer, 0, 1, vertexBuffers, offsets );
+        vkCmdBindVertexBuffers( cmdBuffer, 1, 1, vertexBuffers, offsets );
     }
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::getMemoryStats( MemoryStatsEntryVec &outStats, size_t &outCapacityBytes,
@@ -279,6 +279,8 @@ namespace Ogre
 
             ++itor;
         }
+
+        bestBlockIdx = (size_t)-1;
 
         if( bestBlockIdx == (size_t)-1 )
         {
@@ -1072,6 +1074,8 @@ namespace Ogre
         //Vbo &vbo = mVbos[vboFlag][vboIdx];
         // VulkanBufferInterface *bufferInterface =
         //     new VulkanBufferInterface( vboIdx, vbo.vkBuffer, vbo.dynamicBuffer );
+
+        newVbo.dynamicBuffer = 0;
 
         VulkanStagingBuffer *stagingBuffer = 
              OGRE_NEW VulkanStagingBuffer( bufferOffset, sizeBytes, this, forUpload, newVbo.vboName,

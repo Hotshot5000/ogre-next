@@ -135,9 +135,9 @@
 
 @piece( DefaultBodyVS )
 	@property( !hlms_skeleton )
-		ogre_float4x3 worldMat = UNPACK_MAT4x3( worldMatBuf, inVs_drawId @property( !hlms_shadowcaster )<< 1u@end );
+		ogre_float4x3 worldMat = UNPACK_MAT4x3( worldMatBuf, 0 );
 		@property( hlms_normal || hlms_qtangent )
-			float4x4 worldView = UNPACK_MAT4( worldMatBuf, (inVs_drawId << 1u) + 1u );
+			float4x4 worldView = UNPACK_MAT4( worldMatBuf, 1 );
 		@end
 
 		float4 worldPos = float4( mul(inVs_vertex, worldMat).xyz, 1.0f );

@@ -318,6 +318,12 @@ namespace Ogre
         {
             return mTexBuffersPacked;
         }
+
+
+        VertexBufferPacked * getDrawId() const
+        {
+            return mDrawId;
+        }
     };
 }  // namespace Ogre
 

@@ -100,18 +100,19 @@ namespace Ogre
     void VulkanDynamicBuffer::flush( size_t ticket, size_t start, size_t count )
     {
         assert( start <= mMappedRanges[ticket].count && start + count <= mMappedRanges[ticket].count );
-        if( mNonCoherentMemory )
-        {
+        // if( mNonCoherentMemory )
+        // {
             VkMappedMemoryRange mappedRange;
             // Not using makeVkStruct due to how frequent this function may get called
             mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
             mappedRange.pNext = 0;
             mappedRange.memory = mDeviceMemory;
             mappedRange.offset = start;
-            mappedRange.size = count;
+            mappedRange.size =
+                alignMemory( count, mDevice->mDeviceProperties.limits.nonCoherentAtomSize );
             VkResult result = vkFlushMappedMemoryRanges( mDevice->mDevice, 1u, &mappedRange );
             checkVkResult( result, "vkFlushMappedMemoryRanges" );
-        }
+        // }
     }
     //-----------------------------------------------------------------------------------
     void VulkanDynamicBuffer::unmap( size_t ticket )

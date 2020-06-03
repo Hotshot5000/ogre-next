@@ -220,6 +220,8 @@ namespace Ogre
             mMappingState = MS_UNMAPPED;
         }
 
+        mMappingState = MS_UNMAPPED;
+
         mLastMappingStart = 0;
         mLastMappingCount = 0;
     }

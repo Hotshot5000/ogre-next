@@ -124,9 +124,9 @@ namespace Ogre
         VkPipelineStageFlags src_stage_mask = VK_PIPELINE_STAGE_HOST_BIT;
         VkPipelineStageFlags dst_stage_mask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
-        vkCmdPipelineBarrier( device->mGraphicsQueue.mCurrentCmdBuffer, src_stage_mask, dst_stage_mask,
-                              0, 0, nullptr, 1,
-                              &buffer_memory_barrier, 0, nullptr );
+        // vkCmdPipelineBarrier( device->mGraphicsQueue.mCurrentCmdBuffer, src_stage_mask, dst_stage_mask,
+        //                       0, 0, nullptr, 1,
+        //                       &buffer_memory_barrier, 0, nullptr );
 
         mMappedPtr = 0;
 
@@ -146,15 +146,17 @@ namespace Ogre
             region.srcOffset = mInternalBufferStart + mMappingStart + dst.srcOffset;
             region.dstOffset = dstOffset;
             region.size = dst.length;
-            vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer,
-                             bufferInterface->getVboName(),
-                             mVboName, 1u, &region );
+            vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer, mVboName,
+                             bufferInterface->getVboName(), 1u, &region );
 
             buffer_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             buffer_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
+
             src_stage_mask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-            dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+            dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+
+            buffer_memory_barrier.buffer = bufferInterface->getVboName();
 
             vkCmdPipelineBarrier( device->mGraphicsQueue.mCurrentCmdBuffer, src_stage_mask,
                                   dst_stage_mask, 0, 0, nullptr, 1, &buffer_memory_barrier, 0, nullptr );

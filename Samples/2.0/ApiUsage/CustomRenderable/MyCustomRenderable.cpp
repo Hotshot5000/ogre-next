@@ -14,13 +14,16 @@ namespace Ogre
 {
     struct CubeVertices
     {
-        float px, py, pz;   //Position
+        float px, py, pz, pw;   //Position
         float nx, ny, nz;   //Normals
 
         CubeVertices() {}
-        CubeVertices( float _px, float _py, float _pz,
+        CubeVertices( float _px, float _py, float _pz, float _pw,
                       float _nx, float _ny, float _nz ) :
-            px( _px ), py( _py ), pz( _pz ),
+            px( _px ),
+            py( _py ),
+            pz( _pz ),
+            pw( _pw ),
             nx( _nx ), ny( _ny ), nz( _nz )
         {
         }
@@ -28,14 +31,14 @@ namespace Ogre
 
     const CubeVertices c_originalVertices[8] =
     {
-        CubeVertices( -1, -1,  1, -0.57737, -0.57737,  0.57737 ),
-        CubeVertices(  1, -1,  1,  0.57737, -0.57737,  0.57737 ),
-        CubeVertices(  1,  1,  1,  0.57737,  0.57737,  0.57737 ),
-        CubeVertices( -1,  1,  1, -0.57737,  0.57737,  0.57737 ),
-        CubeVertices( -1, -1, -1, -0.57737, -0.57737, -0.57737 ),
-        CubeVertices(  1, -1, -1,  0.57737, -0.57737, -0.57737 ),
-        CubeVertices(  1,  1, -1,  0.57737,  0.57737, -0.57737 ),
-        CubeVertices( -1,  1, -1, -0.57737,  0.57737, -0.57737 )
+        CubeVertices( -1, -1,  1, 1, -0.57737, -0.57737,  0.57737 ),
+        CubeVertices( 1, -1, 1, 1, 0.57737, -0.57737, 0.57737 ),
+        CubeVertices( 1, 1, 1, 1, 0.57737, 0.57737, 0.57737 ),
+        CubeVertices( -1, 1, 1, 1, -0.57737, 0.57737, 0.57737 ),
+        CubeVertices( -1, -1, -1, 1, -0.57737, -0.57737, -0.57737 ),
+        CubeVertices( 1, -1, -1, 1, 0.57737, -0.57737, -0.57737 ),
+        CubeVertices( 1, 1, -1, 1, 0.57737, 0.57737, -0.57737 ),
+        CubeVertices( -1, 1, -1, 1, -0.57737, 0.57737, -0.57737 )
     };
 
     MyCustomRenderable::MyCustomRenderable( IdType id, ObjectMemoryManager *objectMemoryManager,
@@ -144,7 +147,7 @@ namespace Ogre
 
         //Vertex declaration
         VertexElement2Vec vertexElements;
-        vertexElements.push_back( VertexElement2( VET_FLOAT3, VES_POSITION ) );
+        vertexElements.push_back( VertexElement2( VET_FLOAT4, VES_POSITION ) );
         vertexElements.push_back( VertexElement2( VET_FLOAT3, VES_NORMAL ) );
 
         //For immutable buffers, it is mandatory that cubeVertices is not a null pointer.

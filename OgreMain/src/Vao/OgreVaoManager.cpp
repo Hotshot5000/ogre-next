@@ -498,15 +498,15 @@ namespace Ogre
         for( size_t i=0; i<NUM_STALL_TYPES && !retVal; ++i )
             retVal = candidates[i];
 
-        if( !retVal )
-        {
+        // if( !retVal )
+        // {
             //No buffer is large enough. Get a new one.
             retVal = createStagingBuffer( minSizeBytes, forUpload );
-        }
-        else
-        {
-            retVal->addReferenceCount();
-        }
+        // }
+        // else
+        // {
+            // retVal->addReferenceCount();
+        // }
 
         return retVal;
     }

@@ -69,7 +69,7 @@ namespace Ogre
                                                           DescriptorSetLayoutArray &sets );
 
         static void generateVertexInputBindings(
-            VulkanProgram *shader, HlmsPso *newPso, VkVertexInputBindingDescription &binding_description,
+            VulkanProgram *shader, HlmsPso *newPso, VkVertexInputBindingDescription *binding_description,
             std::vector<VkVertexInputAttributeDescription> &attribute_descriptions );
     };
 }  // namespace Ogre
