@@ -933,6 +933,65 @@ namespace Ogre
         // }
     }
     //-------------------------------------------------------------------------
+    void VulkanRenderSystem::bindDescriptorSet()
+    {
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+
+        BindingMap<VkDescriptorBufferInfo> buffer_infos;
+        BindingMap<VkBufferView> buffer_views;
+        BindingMap<VkDescriptorImageInfo> image_infos;
+
+        const std::vector<VulkanConstBufferPacked *> &constBuffers = vaoManager->getConstBuffers();
+        std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersIt = constBuffers.begin();
+        std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersEnd = constBuffers.end();
+
+        while( constBuffersIt != constBuffersEnd )
+        {
+            VulkanConstBufferPacked *const constBuffer = *constBuffersIt;
+            if( constBuffer->isDirty() )
+            {
+                const VkDescriptorBufferInfo &bufferInfo = constBuffer->getBufferInfo();
+                uint16 binding = constBuffer->getCurrentBinding();
+                buffer_infos[binding][0] = bufferInfo;
+                constBuffer->resetDirty();
+            }
+            ++constBuffersIt;
+        }
+
+        const std::vector<VulkanTexBufferPacked *> &texBuffers = vaoManager->getTexBuffersPacked();
+        std::vector<VulkanTexBufferPacked *>::const_iterator texBuffersIt = texBuffers.begin();
+        std::vector<VulkanTexBufferPacked *>::const_iterator texBuffersEnd = texBuffers.end();
+
+        while( texBuffersIt != texBuffersEnd )
+        {
+            VulkanTexBufferPacked *const texBuffer = *texBuffersIt;
+            if( texBuffer->isDirty() )
+            {
+                VkBufferView bufferView = texBuffer->getBufferView();
+                uint16 binding = texBuffer->getCurrentBinding();
+                buffer_views[binding][0] = bufferView;
+                texBuffer->resetDirty();
+            }
+            ++texBuffersIt;
+        }
+
+        VulkanHlmsPso *pso = mPso;
+
+        VulkanDescriptorPool *descriptorPool =
+            new VulkanDescriptorPool( mDevice->mDevice, pso->descriptorLayoutSets[0] );
+
+        VulkanDescriptorSet *descriptorSet =
+            new VulkanDescriptorSet( mDevice->mDevice, pso->descriptorLayoutSets[0], *descriptorPool,
+                                     buffer_infos, image_infos, buffer_views );
+
+        VkDescriptorSet descriptorSetHandle = descriptorSet->get_handle();
+
+        // Bind descriptor set
+        vkCmdBindDescriptorSets( mDevice->mGraphicsQueue.mCurrentCmdBuffer,
+                                 VK_PIPELINE_BIND_POINT_GRAPHICS, pso->pipelineLayout, 0, 1,
+                                 &descriptorSetHandle, 0, 0 );
+    }
+    //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const CbDrawCallIndexed *cmd )
     {
         Log *defaultLog = LogManager::getSingleton().getDefaultLog();
@@ -964,58 +1023,7 @@ namespace Ogre
 
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
 
-        BindingMap<VkDescriptorBufferInfo> buffer_infos;
-        BindingMap<VkBufferView> buffer_views;
-        BindingMap<VkDescriptorImageInfo> image_infos;
-
-        const std::vector<VulkanConstBufferPacked *> &constBuffers = vaoManager->getConstBuffers();
-        std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersIt = constBuffers.begin();
-        std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersEnd = constBuffers.end();
-
-        while( constBuffersIt != constBuffersEnd )
-        {
-            VulkanConstBufferPacked * const constBuffer = *constBuffersIt;
-            if( constBuffer->isDirty() )
-            {
-                const VkDescriptorBufferInfo &bufferInfo = constBuffer->getBufferInfo();
-                uint16 binding = constBuffer->getCurrentBinding();
-                buffer_infos[binding][0] = bufferInfo;
-                constBuffer->resetDirty();
-            }
-            ++constBuffersIt;
-        }
-
-        const std::vector<VulkanTexBufferPacked *> &texBuffers = vaoManager->getTexBuffersPacked();
-        std::vector<VulkanTexBufferPacked *>::const_iterator texBuffersIt = texBuffers.begin();
-        std::vector<VulkanTexBufferPacked *>::const_iterator texBuffersEnd = texBuffers.end();
-
-        while( texBuffersIt != texBuffersEnd )
-        {
-            VulkanTexBufferPacked * const texBuffer = *texBuffersIt;
-            if( texBuffer->isDirty() )
-            {
-                VkBufferView bufferView = texBuffer->getBufferView();
-                uint16 binding = texBuffer->getCurrentBinding();
-                buffer_views[binding][0] = bufferView;
-                texBuffer->resetDirty();
-            }
-            ++texBuffersIt;
-        }
-
-        VulkanHlmsPso *pso = mPso;
-
-        VulkanDescriptorPool *descriptorPool =
-            new VulkanDescriptorPool( mDevice->mDevice, pso->descriptorLayoutSets[0] );
-
-        VulkanDescriptorSet *descriptorSet = new VulkanDescriptorSet(
-            mDevice->mDevice, pso->descriptorLayoutSets[0], *descriptorPool, buffer_infos, image_infos, buffer_views );
-
-        VkDescriptorSet descriptorSetHandle = descriptorSet->get_handle();
-
-        // Bind descriptor set
-        vkCmdBindDescriptorSets( mDevice->mGraphicsQueue.mCurrentCmdBuffer,
-                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                 pso->pipelineLayout, 0, 1, &descriptorSetHandle, 0, 0 );
+        bindDescriptorSet();
 
         const VulkanVertexArrayObject *vao = static_cast<const VulkanVertexArrayObject *>( cmd->vao );
 
@@ -1046,8 +1054,6 @@ namespace Ogre
 
         VulkanBufferInterface *bufIntf =
             static_cast<VulkanBufferInterface *>( vaoManager->getDrawId()->getBufferInterface() );
-        // VkBuffer vertexBuffers[] = { bufIntf->getVboName() };
-        // VkDeviceSize offsets[] = { 0 };
 
         for( uint32 i = cmd->numDraws; i--; )
         {
@@ -1094,6 +1100,42 @@ namespace Ogre
         {
             defaultLog->logMessage( String(" v1 * _render: CbRenderOp " ) );
         }
+
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+
+        // vkCmdBindIndexBuffer( cmdBuffer, cmd->indexData->indexBuffer->getVboName(), 0, VK_INDEX_TYPE_UINT16 );
+        //
+        // VulkanBufferInterface *bufIntf =
+        //     static_cast<VulkanBufferInterface *>( vaoManager->getDrawId()->getBufferInterface() );
+        //
+        // for( uint32 i = cmd->numDraws; i--; )
+        // {
+        //     std::vector<VkBuffer> vertexBuffers;
+        //     std::vector<VkDeviceSize> offsets;
+        //
+        //     vertexBuffers.resize( numVertexBuffers + 1 );
+        //     offsets.resize( numVertexBuffers + 1 );
+        //
+        //     for( size_t j = 0; j < numVertexBuffers; ++j )
+        //     {
+        //         VulkanBufferInterface *bufIntf = static_cast<VulkanBufferInterface *>(
+        //             vertexBuffersPackedVec[j]->getBufferInterface() );
+        //         vertexBuffers[j] = bufIntf->getVboName();
+        //         offsets[j] = drawCmd->baseVertex * bytesPerVertexBuffer[j];
+        //     }
+        //     vertexBuffers[numVertexBuffers] = bufIntf->getVboName();
+        //     offsets[numVertexBuffers] = 0;
+        //     vkCmdBindVertexBuffers( cmdBuffer, 0, numVertexBuffers + 1, vertexBuffers.data(),
+        //                             offsets.data() );
+        //
+        //     // vaoManager->bindDrawIdVertexBuffer( cmdBuffer );
+        //
+        //     vkCmdDrawIndexed( cmdBuffer, drawCmd->primCount, drawCmd->instanceCount,
+        //                       drawCmd->firstVertexIndex, drawCmd->baseVertex, drawCmd->baseInstance );
+        //     ++drawCmd;
+        // }
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const v1::CbDrawCallIndexed *cmd )
@@ -1112,6 +1154,10 @@ namespace Ogre
         {
             defaultLog->logMessage( String(" v1 * _render: CbDrawCallStrip " ) );
         }
+
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+
+        bindDescriptorSet();
     }
 
     void VulkanRenderSystem::_render( const v1::RenderOperation &op )

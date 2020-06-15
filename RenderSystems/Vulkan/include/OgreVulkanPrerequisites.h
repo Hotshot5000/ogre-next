@@ -77,9 +77,18 @@ namespace Ogre
     class VulkanRenderSystem;
     class VulkanVaoManager;
     class VulkanWindow;
+    class VulkanDiscardBuffer;
+    class VulkanDiscardBufferManager;
 
     typedef FastArray<VkSemaphore> VkSemaphoreArray;
     typedef FastArray<VkFence> VkFenceArray;
+
+    namespace v1
+    {
+        class VulkanHardwareBufferCommon;
+        class VulkanHardwareIndexBuffer;
+        class VulkanHardwareVertexBuffer;
+    }
 }  // namespace Ogre
 
 #define OGRE_VK_EXCEPT( code, num, desc, src ) \

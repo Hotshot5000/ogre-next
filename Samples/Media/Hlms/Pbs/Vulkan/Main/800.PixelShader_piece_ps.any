@@ -133,7 +133,7 @@
 @piece( LoadMaterial )
 	@property( !lower_gpu_overhead )
 		@property( syntax != metal )
-            ushort materialId	= worldMaterialIdx[0].x & 0x1FFu;
+            ushort materialId	= worldMaterialIdx[inPs.drawId].x & 0x1FFu;
             #define material materialArray[materialId]
 		@else
 			#define material materialArray[inPs.materialId]

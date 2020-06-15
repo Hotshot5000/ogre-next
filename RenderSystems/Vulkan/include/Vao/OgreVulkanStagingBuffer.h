@@ -66,6 +66,9 @@ namespace Ogre
         virtual StagingStallType uploadWillStall( size_t sizeBytes );
 
         virtual size_t _asyncDownload( BufferPacked *source, size_t srcOffset, size_t srcLength );
+        void _unmapToV1( v1::VulkanHardwareBufferCommon * hwBuffer, size_t lockStart, size_t lockSize );
+        unsigned long long _asyncDownloadV1( v1::VulkanHardwareBufferCommon *source, size_t srcOffset,
+                                             size_t srcLength );
     };
 }  // namespace Ogre
 

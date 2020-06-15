@@ -349,7 +349,7 @@ namespace Ogre
 
         binding_description[1].binding = 1;
         binding_description[1].stride = 0;  // computed below
-        binding_description[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        binding_description[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE; // DrawId is per instance.
         
         attribute_descriptions.resize(
             inputVars.size(), VkVertexInputAttributeDescription{} );

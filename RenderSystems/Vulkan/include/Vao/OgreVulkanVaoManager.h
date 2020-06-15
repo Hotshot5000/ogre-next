@@ -39,7 +39,7 @@ namespace Ogre
 {
     class _OgreVulkanExport VulkanVaoManager : public VaoManager
     {
-    protected:
+    public:
         enum VboFlag
         {
             CPU_INACCESSIBLE,
@@ -207,8 +207,7 @@ namespace Ogre
         void deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes,
                             BufferType bufferType );
 
-        /// @see StagingBuffer::mergeContiguousBlocks
-        static void mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks );
+        
 
         virtual VertexBufferPacked *createVertexBufferImpl( size_t numElements, uint32 bytesPerElement,
                                                             BufferType bufferType, void *initialData,
@@ -308,6 +307,9 @@ namespace Ogre
         virtual void waitForSpecificFrameToFinish( uint32 frameCount );
         virtual bool isFrameFinished( uint32 frameCount );
 
+        /// @see StagingBuffer::mergeContiguousBlocks
+        static void mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks );
+
 
         const std::vector<VulkanConstBufferPacked *> &getConstBuffers() const
         {
@@ -324,6 +326,8 @@ namespace Ogre
         {
             return mDrawId;
         }
+
+        const uint32 *getBestVkMemoryTypeIndex() { return mBestVkMemoryTypeIndex; }
     };
 }  // namespace Ogre
 

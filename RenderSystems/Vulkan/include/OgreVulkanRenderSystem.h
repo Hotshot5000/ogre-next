@@ -108,6 +108,8 @@ namespace Ogre
         /// Creates a dummy VkRenderPass for use in PSO creation
         VkRenderPass getVkRenderPass( HlmsPassPso passPso, uint8 &outMrtCount );
 
+        void bindDescriptorSet();
+
     public:
         VulkanRenderSystem();
 
@@ -190,6 +192,7 @@ namespace Ogre
 
         virtual void _render( const CbDrawCallIndexed *cmd );
         virtual void _render( const CbDrawCallStrip *cmd );
+        void bindDescriptorSet( VulkanVaoManager *&vaoManager );
         virtual void _renderEmulated( const CbDrawCallIndexed *cmd );
         virtual void _renderEmulated( const CbDrawCallStrip *cmd );
 

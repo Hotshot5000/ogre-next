@@ -33,6 +33,7 @@ THE SOFTWARE.
 
 #include "OgreStringConverter.h"
 
+#include "OgreVulkanHardwareBufferCommon.h"
 #include "OgreVulkanDevice.h"
 #include "OgreVulkanQueue.h"
 #include "OgreVulkanUtils.h"
@@ -229,6 +230,107 @@ namespace Ogre
 
         return freeRegionOffset;
     }
+
+    void VulkanStagingBuffer::_unmapToV1( v1::VulkanHardwareBufferCommon *hwBuffer, size_t lockStart,
+        size_t lockSize )
+    {
+        assert( mUploadOnly );
+
+        if( mMappingState != MS_MAPPED )
+        {
+            // This stuff would normally be done in StagingBuffer::unmap
+            OGRE_EXCEPT( Exception::ERR_INVALID_STATE, "Unmapping an unmapped buffer!",
+                         "MetalStagingBuffer::unmap" );
+        }
+
+        mMappedPtr = 0;
+
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+        VulkanDevice *device = vaoManager->getDevice();
+
+        VkBufferCopy region;
+        region.srcOffset = mInternalBufferStart + mMappingStart;
+        region.dstOffset = lockStart;
+        region.size = alignToNextMultiple( lockSize, 4u );
+        vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer, mVboName,
+                         hwBuffer->getBufferNameForGpuWrite(), 1u, &region );
+
+        // __unsafe_unretained id<MTLBlitCommandEncoder> blitEncoder = mDevice->getBlitEncoder();
+        // [blitEncoder copyFromBuffer:mVboName
+        //                sourceOffset:mInternalBufferStart + mMappingStart
+        //                    toBuffer:hwBuffer->getBufferNameForGpuWrite()
+        //           destinationOffset:lockStart
+        //                        size:alignToNextMultiple( lockSize, 4u )];
+
+        if( mUploadOnly )
+        {
+            // Add fence to this region (or at least, track the hazard).
+            // addFence( mMappingStart, mMappingStart + mMappingCount - 1, false );
+        }
+
+        // This stuff would normally be done in StagingBuffer::unmap
+        mMappingState = MS_UNMAPPED;
+        mMappingStart += mMappingCount;
+
+        if( mMappingStart >= mSizeBytes )
+            mMappingStart = 0;
+    }
+
+    unsigned long long VulkanStagingBuffer::_asyncDownloadV1( v1::VulkanHardwareBufferCommon *source,
+        size_t srcOffset, size_t srcLength )
+    {
+        // Metal has alignment restrictions of 4 bytes for offset and size in copyFromBuffer
+        size_t freeRegionOffset = getFreeDownloadRegion( srcLength );
+
+        if( freeRegionOffset == ( size_t )( -1 ) )
+        {
+            OGRE_EXCEPT(
+                Exception::ERR_INVALIDPARAMS,
+                "Cannot download the request amount of " + StringConverter::toString( srcLength ) +
+                    " bytes to this staging buffer. "
+                    "Try another one (we're full of requests that haven't been read by CPU yet)",
+                "MetalStagingBuffer::_asyncDownload" );
+        }
+
+        assert( !mUploadOnly );
+        assert( ( srcOffset + srcLength ) <= source->getSizeBytes() );
+
+        size_t extraOffset = 0;
+        if( srcOffset & 0x03 )
+        {
+            // Not multiple of 4. Backtrack to make it multiple of 4, then add this value
+            // to the return value so it gets correctly mapped in _mapForRead.
+            extraOffset = srcOffset & 0x03;
+            srcOffset -= extraOffset;
+        }
+
+        size_t srcOffsetStart = 0;
+
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+        VulkanDevice *device = vaoManager->getDevice();
+
+        VkBuffer srcBuffer = source->getBufferName( srcOffsetStart );
+
+        VkBufferCopy region;
+        region.srcOffset = srcOffset + srcOffsetStart;
+        region.dstOffset = mInternalBufferStart + freeRegionOffset;
+        region.size = alignToNextMultiple( srcLength, 4u );
+        vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer, srcBuffer, mVboName, 1u, &region );
+        // __unsafe_unretained id<MTLBuffer> srcBuffer = source->getBufferName( srcOffsetStart );
+        //
+        // __unsafe_unretained id<MTLBlitCommandEncoder> blitEncoder = mDevice->getBlitEncoder();
+        // [blitEncoder copyFromBuffer:srcBuffer
+        //                sourceOffset:srcOffset + srcOffsetStart
+        //                    toBuffer:mVboName
+        //           destinationOffset:mInternalBufferStart + freeRegionOffset
+        //                        size:alignToNextMultiple( srcLength, 4u )];
+#if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
+        //[blitEncoder synchronizeResource:mVboName];
+#endif
+
+        return freeRegionOffset + extraOffset;
+    }
+
     //-----------------------------------------------------------------------------------
     const void *VulkanStagingBuffer::_mapForReadImpl( size_t offset, size_t sizeBytes )
     {
