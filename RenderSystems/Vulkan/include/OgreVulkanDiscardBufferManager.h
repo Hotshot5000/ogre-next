@@ -130,6 +130,8 @@ namespace Ogre
         friend class VulkanDiscardBufferManager;
 
         VkBuffer mBuffer;
+        VulkanDevice *mDevice;
+        VkDeviceMemory mDeviceMemory;
         size_t mBlockPrePadding;
         size_t mBufferOffset;
         size_t mBufferSize;
@@ -141,7 +143,7 @@ namespace Ogre
         VulkanDiscardBufferManager *mOwner;
 
     public:
-        VulkanDiscardBuffer( size_t bufferSize, uint16 alignment, VaoManager *vaoManager,
+        VulkanDiscardBuffer( size_t bufferSize, uint16 alignment, VaoManager *vaoManager, VulkanDevice *device, 
                             VulkanDiscardBufferManager *owner );
 
         /** Returns a pointer that maps to the beginning of this buffer to begin writing.

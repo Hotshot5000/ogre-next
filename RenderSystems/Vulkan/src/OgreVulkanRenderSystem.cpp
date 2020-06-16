@@ -55,6 +55,8 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 #include "OgreVulkanDescriptorPool.h"
 #include "OgreVulkanDescriptorSet.h"
+#include "OgreVulkanHardwareIndexBuffer.h"
+#include "OgreVulkanHardwareVertexBuffer.h"
 #include "OgreVulkanUtils2.h"
 #include "Windowing/win32/OgreVulkanWin32Window.h"
 
@@ -1105,6 +1107,44 @@ namespace Ogre
 
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
 
+        VkBuffer vulkanVertexBuffers[15];
+        int offsets[15];
+        memset( offsets, 0, sizeof( offsets ) );
+
+        size_t maxUsedSlot = 0;
+        const v1::VertexBufferBinding::VertexBufferBindingMap &binds =
+            cmd->vertexData->vertexBufferBinding->getBindings();
+        v1::VertexBufferBinding::VertexBufferBindingMap::const_iterator itor = binds.begin();
+        v1::VertexBufferBinding::VertexBufferBindingMap::const_iterator end = binds.end();
+
+        while( itor != end )
+        {
+            v1::VulkanHardwareVertexBuffer *metalBuffer =
+                reinterpret_cast<v1::VulkanHardwareVertexBuffer *>( itor->second.get() );
+
+            const size_t slot = itor->first;
+#if OGRE_DEBUG_MODE
+            assert( slot < 15u );
+#endif
+            size_t offsetStart;
+            vulkanVertexBuffers[slot] = metalBuffer->getBufferName( offsetStart );
+            offsets[slot] = offsetStart;
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+            offsets[slot] += cmd->vertexData->vertexStart * metalBuffer->getVertexSize();
+#endif
+            ++itor;
+            maxUsedSlot = std::max( maxUsedSlot, slot + 1u );
+        }
+
+        // [mActiveRenderEncoder setVertexBuffers:metalVertexBuffers
+        //                                offsets:offsets
+        //                              withRange:NSMakeRange( 0, maxUsedSlot )];
+
+        mCurrentIndexBuffer = cmd->indexData;
+        mCurrentVertexBuffer = cmd->vertexData;
+        mCurrentPrimType = std::min( VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                                     static_cast<VkPrimitiveTopology>( cmd->operationType - 1u ) );
+
         // vkCmdBindIndexBuffer( cmdBuffer, cmd->indexData->indexBuffer->getVboName(), 0, VK_INDEX_TYPE_UINT16 );
         //
         // VulkanBufferInterface *bufIntf =
@@ -1145,6 +1185,47 @@ namespace Ogre
         {
             defaultLog->logMessage( String( " v1 * _render: CbDrawCallIndexed " ) );
         }
+
+        const VkPrimitiveTopology indexType =
+            static_cast<VkPrimitiveTopology>( mCurrentIndexBuffer->indexBuffer->getType() );
+
+        // Get index buffer stuff which is the same for all draws in this cmd
+        const size_t bytesPerIndexElement = mCurrentIndexBuffer->indexBuffer->getIndexSize();
+
+        size_t offsetStart;
+        v1::VulkanHardwareIndexBuffer *metalBuffer =
+            static_cast<v1::VulkanHardwareIndexBuffer *>( mCurrentIndexBuffer->indexBuffer.get() );
+        VkBuffer indexBuffer = metalBuffer->getBufferName( offsetStart );
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+#    if OGRE_DEBUG_MODE
+        assert( ( ( cmd->firstVertexIndex * bytesPerIndexElement ) & 0x03 ) == 0 &&
+                "Index Buffer must be aligned to 4 bytes. If you're messing with "
+                "IndexBuffer::indexStart, you've entered an invalid "
+                "indexStart; not supported by the Metal API." );
+#    endif
+
+        // Setup baseInstance.
+        // [mActiveRenderEncoder setVertexBufferOffset:cmd->baseInstance * sizeof( uint32 ) atIndex:15];
+        //
+        // [mActiveRenderEncoder
+        //     drawIndexedPrimitives:mCurrentPrimType
+        //                indexCount:cmd->primCount
+        //                 indexType:indexType
+        //               indexBuffer:indexBuffer
+        //         indexBufferOffset:cmd->firstVertexIndex * bytesPerIndexElement + offsetStart
+        //             instanceCount:cmd->instanceCount];
+#else
+        // [mActiveRenderEncoder
+        //     drawIndexedPrimitives:mCurrentPrimType
+        //                indexCount:cmd->primCount
+        //                 indexType:indexType
+        //               indexBuffer:indexBuffer
+        //         indexBufferOffset:cmd->firstVertexIndex * bytesPerIndexElement + offsetStart
+        //             instanceCount:cmd->instanceCount
+        //                baseVertex:mCurrentVertexBuffer->vertexStart
+        //              baseInstance:cmd->baseInstance];
+#endif
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const v1::CbDrawCallStrip *cmd )
@@ -1158,6 +1239,22 @@ namespace Ogre
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
 
         bindDescriptorSet();
+
+        #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+        // Setup baseInstance.
+        // [mActiveRenderEncoder setVertexBufferOffset:cmd->baseInstance * sizeof( uint32 ) atIndex:15];
+        // [mActiveRenderEncoder
+        //     drawPrimitives:mCurrentPrimType
+        //        vertexStart:0 /*cmd->firstVertexIndex already handled in _setRenderOperation*/
+        //        vertexCount:cmd->primCount
+        //      instanceCount:cmd->instanceCount];
+#else
+        // [mActiveRenderEncoder drawPrimitives:mCurrentPrimType
+        //                          vertexStart:cmd->firstVertexIndex
+        //                          vertexCount:cmd->primCount
+        //                        instanceCount:cmd->instanceCount
+        //                         baseInstance:cmd->baseInstance];
+#endif
     }
 
     void VulkanRenderSystem::_render( const v1::RenderOperation &op )
@@ -1167,6 +1264,109 @@ namespace Ogre
         {
             defaultLog->logMessage( String( " * _render: RenderOperation " ) +
                                     std::to_string( op.operationType ) );
+        }
+
+        // Call super class.
+        RenderSystem::_render( op );
+
+        const size_t numberOfInstances = op.numberOfInstances;
+        const bool hasInstanceData = mCurrentVertexBuffer->vertexBufferBinding->getHasInstanceData();
+
+        // Render to screen!
+        if( op.useIndexes )
+        {
+            do
+            {
+                // Update derived depth bias.
+                if( mDerivedDepthBias && mCurrentPassIterationNum > 0 )
+                {
+                    const float biasSign = mReverseDepth ? 1.0f : -1.0f;
+                    // [mActiveRenderEncoder
+                    //     setDepthBias:( mDerivedDepthBiasBase +
+                    //                    mDerivedDepthBiasMultiplier * mCurrentPassIterationNum ) *
+                    //                  biasSign
+                    //       slopeScale:mDerivedDepthBiasSlopeScale * biasSign
+                    //            clamp:0.0f];
+                }
+
+                const VkPrimitiveTopology indexType =
+                    static_cast<VkPrimitiveTopology>( mCurrentIndexBuffer->indexBuffer->getType() );
+
+                // Get index buffer stuff which is the same for all draws in this cmd
+                const size_t bytesPerIndexElement = mCurrentIndexBuffer->indexBuffer->getIndexSize();
+
+                size_t offsetStart;
+                v1::VulkanHardwareIndexBuffer *metalBuffer =
+                    static_cast<v1::VulkanHardwareIndexBuffer *>( mCurrentIndexBuffer->indexBuffer.get() );
+                VkBuffer indexBuffer =
+                    metalBuffer->getBufferName( offsetStart );
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+#    if OGRE_DEBUG_MODE
+                assert( ( ( mCurrentIndexBuffer->indexStart * bytesPerIndexElement ) & 0x03 ) == 0 &&
+                        "Index Buffer must be aligned to 4 bytes. If you're messing with "
+                        "IndexBuffer::indexStart, you've entered an invalid "
+                        "indexStart; not supported by the Metal API." );
+#    endif
+
+                // [mActiveRenderEncoder
+                //     drawIndexedPrimitives:mCurrentPrimType
+                //                indexCount:mCurrentIndexBuffer->indexCount
+                //                 indexType:indexType
+                //               indexBuffer:indexBuffer
+                //         indexBufferOffset:mCurrentIndexBuffer->indexStart * bytesPerIndexElement +
+                //                           offsetStart
+                //             instanceCount:numberOfInstances];
+#else
+                // [mActiveRenderEncoder
+                //     drawIndexedPrimitives:mCurrentPrimType
+                //                indexCount:mCurrentIndexBuffer->indexCount
+                //                 indexType:indexType
+                //               indexBuffer:indexBuffer
+                //         indexBufferOffset:mCurrentIndexBuffer->indexStart * bytesPerIndexElement +
+                //                           offsetStart
+                //             instanceCount:numberOfInstances
+                //                baseVertex:mCurrentVertexBuffer->vertexStart
+                //              baseInstance:0];
+#endif
+            } while( updatePassIterationRenderState() );
+        }
+        else
+        {
+            do
+            {
+                // Update derived depth bias.
+                if( mDerivedDepthBias && mCurrentPassIterationNum > 0 )
+                {
+                    const float biasSign = mReverseDepth ? 1.0f : -1.0f;
+                    // [mActiveRenderEncoder
+                    //     setDepthBias:( mDerivedDepthBiasBase +
+                    //                    mDerivedDepthBiasMultiplier * mCurrentPassIterationNum ) *
+                    //                  biasSign
+                    //       slopeScale:mDerivedDepthBiasSlopeScale * biasSign
+                    //            clamp:0.0f];
+                }
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+                const uint32 vertexStart = 0;
+#else
+                const uint32 vertexStart = static_cast<uint32>( mCurrentVertexBuffer->vertexStart );
+#endif
+
+                if( hasInstanceData )
+                {
+                    // [mActiveRenderEncoder drawPrimitives:mCurrentPrimType
+                    //                          vertexStart:vertexStart
+                    //                          vertexCount:mCurrentVertexBuffer->vertexCount
+                    //                        instanceCount:numberOfInstances];
+                }
+                else
+                {
+                    // [mActiveRenderEncoder drawPrimitives:mCurrentPrimType
+                    //                          vertexStart:vertexStart
+                    //                          vertexCount:mCurrentVertexBuffer->vertexCount];
+                }
+            } while( updatePassIterationRenderState() );
         }
     }
 

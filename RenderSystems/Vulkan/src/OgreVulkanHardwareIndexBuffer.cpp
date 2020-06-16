@@ -25,3 +25,118 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
   THE SOFTWARE.
   -----------------------------------------------------------------------------
 */
+
+#include "OgreVulkanDiscardBufferManager.h"
+#include "OgreVulkanHardwareBufferManager.h"
+#include "OgreVulkanHardwareIndexBuffer.h"
+
+namespace Ogre
+{
+namespace v1
+{
+    VulkanHardwareIndexBuffer::VulkanHardwareIndexBuffer( VulkanHardwareBufferManagerBase *mgr,
+                                                        IndexType idxType, size_t numIndexes,
+                                                        HardwareBuffer::Usage usage,
+                                                        bool useShadowBuffer ) :
+        HardwareIndexBuffer( mgr, idxType, numIndexes, usage, false, false ),
+        mVulkanHardwareBufferCommon( mSizeInBytes, usage, 4, mgr->_getDiscardBufferManager(),
+                                    mgr->_getDiscardBufferManager()->getDevice() )
+    {
+    }
+    //-----------------------------------------------------------------------------------
+    VulkanHardwareIndexBuffer::~VulkanHardwareIndexBuffer() {}
+    //-----------------------------------------------------------------------------------
+    void *VulkanHardwareIndexBuffer::lockImpl( size_t offset, size_t length, LockOptions options )
+    {
+        return mVulkanHardwareBufferCommon.lockImpl( offset, length, options, mIsLocked );
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanHardwareIndexBuffer::unlockImpl( void )
+    {
+        mVulkanHardwareBufferCommon.unlockImpl( mLockStart, mLockSize );
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanHardwareIndexBuffer::_notifyDeviceStalled( void )
+    {
+        mVulkanHardwareBufferCommon._notifyDeviceStalled();
+    }
+    //-----------------------------------------------------------------------------------
+    VkBuffer VulkanHardwareIndexBuffer::getBufferName( size_t &outOffset )
+    {
+        return mVulkanHardwareBufferCommon.getBufferName( outOffset );
+    }
+    //-----------------------------------------------------------------------------------
+    VkBuffer VulkanHardwareIndexBuffer::getBufferNameForGpuWrite( void )
+    {
+        return mVulkanHardwareBufferCommon.getBufferNameForGpuWrite();
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanHardwareIndexBuffer::readData( size_t offset, size_t length, void *pDest )
+    {
+        if( mUseShadowBuffer )
+        {
+            void *srcData = mShadowBuffer->lock( offset, length, HBL_READ_ONLY );
+            memcpy( pDest, srcData, length );
+            mShadowBuffer->unlock();
+        }
+        else
+        {
+            mVulkanHardwareBufferCommon.readData( offset, length, pDest );
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanHardwareIndexBuffer::writeData( size_t offset, size_t length, const void *pSource,
+                                              bool discardWholeBuffer )
+    {
+        // Update the shadow buffer
+        if( mUseShadowBuffer )
+        {
+            void *destData =
+                mShadowBuffer->lock( offset, length, discardWholeBuffer ? HBL_DISCARD : HBL_NORMAL );
+            memcpy( destData, pSource, length );
+            mShadowBuffer->unlock();
+        }
+
+        mVulkanHardwareBufferCommon.writeData(
+            offset, length, pSource,
+            discardWholeBuffer || ( offset == 0 && length == mSizeInBytes ) );
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanHardwareIndexBuffer::copyData( HardwareBuffer &srcBuffer, size_t srcOffset,
+                                             size_t dstOffset, size_t length,
+                                             bool discardWholeBuffer )
+    {
+        if( srcBuffer.isSystemMemory() )
+        {
+            HardwareBuffer::copyData( srcBuffer, srcOffset, dstOffset, length, discardWholeBuffer );
+        }
+        else
+        {
+            VulkanHardwareBufferCommon *VulkanBuffer =
+                reinterpret_cast<VulkanHardwareBufferCommon *>( srcBuffer.getRenderSystemData() );
+            mVulkanHardwareBufferCommon.copyData(
+                VulkanBuffer, srcOffset, dstOffset, length,
+                discardWholeBuffer || ( dstOffset == 0 && length == mSizeInBytes ) );
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanHardwareIndexBuffer::_updateFromShadow( void )
+    {
+        if( mUseShadowBuffer && mShadowUpdated && !mSuppressHardwareUpdate )
+        {
+            const void *srcData = mShadowBuffer->lock( mLockStart, mLockSize, HBL_READ_ONLY );
+
+            const bool discardBuffer = mLockStart == 0 && mLockSize == mSizeInBytes;
+            mVulkanHardwareBufferCommon.writeData( mLockStart, mLockSize, srcData, discardBuffer );
+
+            mShadowBuffer->unlock();
+            mShadowUpdated = false;
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void *VulkanHardwareIndexBuffer::getRenderSystemData( void )
+    {
+        return &mVulkanHardwareBufferCommon;
+    }
+}  // namespace v1
+}  // namespace Ogre

@@ -38,9 +38,16 @@ namespace v1
 {
     class _OgreVulkanExport VulkanHardwareBufferManagerBase : public HardwareBufferManagerBase
     {
+    protected:
+        VulkanDiscardBufferManager *mDiscardBufferManager;
+
     public:
-        VulkanHardwareBufferManagerBase();
+        VulkanHardwareBufferManagerBase( VulkanDevice *device, VaoManager *vaoManager );
         virtual ~VulkanHardwareBufferManagerBase();
+
+        void _notifyDeviceStalled( void );
+
+        VulkanDiscardBufferManager *_getDiscardBufferManager( void ) { return mDiscardBufferManager; }
 
 
         virtual HardwareVertexBufferSharedPtr createVertexBuffer( size_t vertexSize, size_t numVerts,
@@ -56,14 +63,19 @@ namespace v1
     class _OgreVulkanExport VulkanHardwareBufferManager : public HardwareBufferManager
     {
     public:
-        VulkanHardwareBufferManager( HardwareBufferManagerBase *imp ) :
-            HardwareBufferManager( OGRE_NEW VulkanHardwareBufferManagerBase() )
+        VulkanHardwareBufferManager( VulkanDevice *device, VaoManager *vaoManager ) :
+            HardwareBufferManager( OGRE_NEW VulkanHardwareBufferManagerBase( device, vaoManager ) )
         {
         }
 
         virtual ~VulkanHardwareBufferManager()
         {
             OGRE_DELETE mImpl;
+        }
+
+        void _notifyDeviceStalled( void )
+        {
+            static_cast<VulkanHardwareBufferManagerBase *>( mImpl )->_notifyDeviceStalled();
         }
     };
     

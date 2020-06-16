@@ -40,20 +40,35 @@ namespace Ogre
 
         class _OgreVulkanExport VulkanHardwareIndexBuffer : public HardwareIndexBuffer
         {
+        private:
+            VulkanHardwareBufferCommon mVulkanHardwareBufferCommon;
         protected:
             virtual void *lockImpl( size_t offset, size_t length, LockOptions options ) override;
             virtual void unlockImpl( void ) override;
 
         public:
-            VulkanHardwareIndexBuffer( VulkanHardwareBufferManagerBase *mgr, size_t vertexSize,
-                                        size_t numVertices, HardwareBuffer::Usage usage,
-                                        bool useSystemMemory, bool useShadowBuffer );
+            VulkanHardwareIndexBuffer( VulkanHardwareBufferManagerBase *mgr, IndexType idxType,
+                                       size_t numIndexes, HardwareBuffer::Usage usage,
+                                       bool useShadowBuffer );
             virtual ~VulkanHardwareIndexBuffer();
+
+            void _notifyDeviceStalled( void );
+
+            /// @copydoc VulkanHardwareBufferCommon::getBufferName
+            VkBuffer getBufferName( size_t &outOffset );
+            /// @copydoc VulkanHardwareBufferCommon::getBufferNameForGpuWrite
+            VkBuffer getBufferNameForGpuWrite( void );
 
             virtual void readData( size_t offset, size_t length, void *pDest ) override;
 
             virtual void writeData( size_t offset, size_t length, const void *pSource,
                                     bool discardWholeBuffer = false ) override;
+            virtual void copyData( HardwareBuffer &srcBuffer, size_t srcOffset, size_t dstOffset,
+                                   size_t length, bool discardWholeBuffer = false );
+
+            virtual void _updateFromShadow( void );
+
+            virtual void *getRenderSystemData( void );
         };
     }  // namespace v1
 }  // namespace Ogre

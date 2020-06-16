@@ -85,6 +85,11 @@ namespace Ogre
         size_t mCurrentAutoParamsBufferSpaceLeft;
         size_t mHistoricalAutoParamsSize[60];
 
+        // For v1 rendering.
+        v1::IndexData *mCurrentIndexBuffer;
+        v1::VertexData *mCurrentVertexBuffer;
+        VkPrimitiveTopology mCurrentPrimType;
+
         VulkanDevice *mActiveDevice;
 
         VulkanDevice *mDevice;
