@@ -306,6 +306,7 @@ namespace Ogre
         uint8 waitForTailFrameToFinish( void );
         virtual void waitForSpecificFrameToFinish( uint32 frameCount );
         virtual bool isFrameFinished( uint32 frameCount );
+        void _notifyDeviceStalled();
 
         /// @see StagingBuffer::mergeContiguousBlocks
         static void mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks );

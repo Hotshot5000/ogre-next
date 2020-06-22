@@ -51,6 +51,10 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "Vao/OgreIndirectBufferPacked.h"
 #include "Vao/OgreVulkanBufferInterface.h"
 
+#include "OgreVulkanHardwareBufferManager.h"
+#include "OgreVulkanHardwareIndexBuffer.h"
+#include "OgreVulkanHardwareVertexBuffer.h"
+
 //#include "Windowing/X11/OgreVulkanXcbWindow.h"
 
 #include "OgreVulkanDescriptorPool.h"
@@ -429,6 +433,7 @@ namespace Ogre
             mHardwareBufferManager = new v1::DefaultHardwareBufferManager();
             VulkanVaoManager *vaoManager = OGRE_NEW VulkanVaoManager( dynBufferMultiplier, mDevice );
             mVaoManager = vaoManager;
+            mHardwareBufferManager = new v1::VulkanHardwareBufferManager( mDevice, mVaoManager );
             mTextureGpuManager = OGRE_NEW VulkanTextureGpuManager( mVaoManager, this );
 
             mActiveDevice->mVaoManager = vaoManager;
@@ -441,6 +446,16 @@ namespace Ogre
         win->_initialize( mTextureGpuManager );
 
         return win;
+    }
+
+    void VulkanRenderSystem::_notifyDeviceStalled()
+    {
+        v1::VulkanHardwareBufferManager *hwBufferMgr =
+            static_cast<v1::VulkanHardwareBufferManager *>( mHardwareBufferManager );
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+
+        hwBufferMgr->_notifyDeviceStalled();
+        vaoManager->_notifyDeviceStalled();
     }
     //-------------------------------------------------------------------------
     String VulkanRenderSystem::getErrorDescription( long errorNumber ) const { return BLANKSTRING; }
@@ -1054,9 +1069,6 @@ namespace Ogre
 
         vkCmdBindIndexBuffer( cmdBuffer, bufferInterface->getVboName(), 0, VK_INDEX_TYPE_UINT16 );
 
-        VulkanBufferInterface *bufIntf =
-            static_cast<VulkanBufferInterface *>( vaoManager->getDrawId()->getBufferInterface() );
-
         for( uint32 i = cmd->numDraws; i--; )
         {
             std::vector<VkBuffer> vertexBuffers;
@@ -1071,6 +1083,9 @@ namespace Ogre
                 vertexBuffers[j] = bufIntf->getVboName();
                 offsets[j] = drawCmd->baseVertex * bytesPerVertexBuffer[j];
             }
+
+            VulkanBufferInterface *bufIntf =
+                static_cast<VulkanBufferInterface *>( vaoManager->getDrawId()->getBufferInterface() );
             vertexBuffers[numVertexBuffers] = bufIntf->getVboName();
             offsets[numVertexBuffers] = 0;
             vkCmdBindVertexBuffers( cmdBuffer, 0, numVertexBuffers + 1, vertexBuffers.data(),
@@ -1108,7 +1123,7 @@ namespace Ogre
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
 
         VkBuffer vulkanVertexBuffers[15];
-        int offsets[15];
+        VkDeviceSize offsets[15];
         memset( offsets, 0, sizeof( offsets ) );
 
         size_t maxUsedSlot = 0;
@@ -1119,7 +1134,7 @@ namespace Ogre
 
         while( itor != end )
         {
-            v1::VulkanHardwareVertexBuffer *metalBuffer =
+            v1::VulkanHardwareVertexBuffer *vulkanBuffer =
                 reinterpret_cast<v1::VulkanHardwareVertexBuffer *>( itor->second.get() );
 
             const size_t slot = itor->first;
@@ -1127,14 +1142,22 @@ namespace Ogre
             assert( slot < 15u );
 #endif
             size_t offsetStart;
-            vulkanVertexBuffers[slot] = metalBuffer->getBufferName( offsetStart );
+            vulkanVertexBuffers[slot] = vulkanBuffer->getBufferName( offsetStart );
             offsets[slot] = offsetStart;
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
-            offsets[slot] += cmd->vertexData->vertexStart * metalBuffer->getVertexSize();
+            offsets[slot] += cmd->vertexData->vertexStart * vulkanBuffer->getVertexSize();
 #endif
             ++itor;
             maxUsedSlot = std::max( maxUsedSlot, slot + 1u );
         }
+
+        VulkanBufferInterface *bufIntf =
+            static_cast<VulkanBufferInterface *>( vaoManager->getDrawId()->getBufferInterface() );
+        vulkanVertexBuffers[maxUsedSlot] = bufIntf->getVboName();
+        offsets[maxUsedSlot] = 0;
+
+        vkCmdBindVertexBuffers( cmdBuffer, 0, maxUsedSlot + 1, vulkanVertexBuffers,
+                                offsets );
 
         // [mActiveRenderEncoder setVertexBuffers:metalVertexBuffers
         //                                offsets:offsets
@@ -1144,38 +1167,6 @@ namespace Ogre
         mCurrentVertexBuffer = cmd->vertexData;
         mCurrentPrimType = std::min( VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
                                      static_cast<VkPrimitiveTopology>( cmd->operationType - 1u ) );
-
-        // vkCmdBindIndexBuffer( cmdBuffer, cmd->indexData->indexBuffer->getVboName(), 0, VK_INDEX_TYPE_UINT16 );
-        //
-        // VulkanBufferInterface *bufIntf =
-        //     static_cast<VulkanBufferInterface *>( vaoManager->getDrawId()->getBufferInterface() );
-        //
-        // for( uint32 i = cmd->numDraws; i--; )
-        // {
-        //     std::vector<VkBuffer> vertexBuffers;
-        //     std::vector<VkDeviceSize> offsets;
-        //
-        //     vertexBuffers.resize( numVertexBuffers + 1 );
-        //     offsets.resize( numVertexBuffers + 1 );
-        //
-        //     for( size_t j = 0; j < numVertexBuffers; ++j )
-        //     {
-        //         VulkanBufferInterface *bufIntf = static_cast<VulkanBufferInterface *>(
-        //             vertexBuffersPackedVec[j]->getBufferInterface() );
-        //         vertexBuffers[j] = bufIntf->getVboName();
-        //         offsets[j] = drawCmd->baseVertex * bytesPerVertexBuffer[j];
-        //     }
-        //     vertexBuffers[numVertexBuffers] = bufIntf->getVboName();
-        //     offsets[numVertexBuffers] = 0;
-        //     vkCmdBindVertexBuffers( cmdBuffer, 0, numVertexBuffers + 1, vertexBuffers.data(),
-        //                             offsets.data() );
-        //
-        //     // vaoManager->bindDrawIdVertexBuffer( cmdBuffer );
-        //
-        //     vkCmdDrawIndexed( cmdBuffer, drawCmd->primCount, drawCmd->instanceCount,
-        //                       drawCmd->firstVertexIndex, drawCmd->baseVertex, drawCmd->baseInstance );
-        //     ++drawCmd;
-        // }
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const v1::CbDrawCallIndexed *cmd )
@@ -1186,6 +1177,10 @@ namespace Ogre
             defaultLog->logMessage( String( " v1 * _render: CbDrawCallIndexed " ) );
         }
 
+        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+
+        bindDescriptorSet();
+
         const VkPrimitiveTopology indexType =
             static_cast<VkPrimitiveTopology>( mCurrentIndexBuffer->indexBuffer->getType() );
 
@@ -1193,9 +1188,16 @@ namespace Ogre
         const size_t bytesPerIndexElement = mCurrentIndexBuffer->indexBuffer->getIndexSize();
 
         size_t offsetStart;
-        v1::VulkanHardwareIndexBuffer *metalBuffer =
+        v1::VulkanHardwareIndexBuffer *vulkanBuffer =
             static_cast<v1::VulkanHardwareIndexBuffer *>( mCurrentIndexBuffer->indexBuffer.get() );
-        VkBuffer indexBuffer = metalBuffer->getBufferName( offsetStart );
+        VkBuffer indexBuffer = vulkanBuffer->getBufferName( offsetStart );
+
+
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+        vkCmdBindIndexBuffer( cmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16 );
+
+        vkCmdDrawIndexed( cmdBuffer, cmd->primCount, cmd->instanceCount, cmd->firstVertexIndex + offsetStart, mCurrentVertexBuffer->vertexStart,
+                          cmd->baseInstance );
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
 #    if OGRE_DEBUG_MODE
@@ -1239,6 +1241,12 @@ namespace Ogre
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
 
         bindDescriptorSet();
+
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+
+        vkCmdDraw( cmdBuffer, mCurrentVertexBuffer->vertexCount,
+                          cmd->instanceCount, mCurrentVertexBuffer->vertexStart,
+                          cmd->baseInstance );
 
         #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
         // Setup baseInstance.
@@ -1296,10 +1304,10 @@ namespace Ogre
                 const size_t bytesPerIndexElement = mCurrentIndexBuffer->indexBuffer->getIndexSize();
 
                 size_t offsetStart;
-                v1::VulkanHardwareIndexBuffer *metalBuffer =
+                v1::VulkanHardwareIndexBuffer *vulkanBuffer =
                     static_cast<v1::VulkanHardwareIndexBuffer *>( mCurrentIndexBuffer->indexBuffer.get() );
                 VkBuffer indexBuffer =
-                    metalBuffer->getBufferName( offsetStart );
+                    vulkanBuffer->getBufferName( offsetStart );
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
 #    if OGRE_DEBUG_MODE

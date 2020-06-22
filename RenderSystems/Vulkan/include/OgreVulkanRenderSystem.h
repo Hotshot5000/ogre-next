@@ -273,6 +273,7 @@ namespace Ogre
         virtual void _descriptorSetUavDestroyed( DescriptorSetUav *set ) override;
 
         VulkanDevice *getVulkanDevice() const { return mDevice;  }
+        void _notifyDeviceStalled();
     };
 }  // namespace Ogre
 

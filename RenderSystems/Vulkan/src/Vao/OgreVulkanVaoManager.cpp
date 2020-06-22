@@ -1275,6 +1275,39 @@ namespace Ogre
     void VulkanVaoManager::waitForSpecificFrameToFinish( uint32 frameCount ) {}
     //-----------------------------------------------------------------------------------
     bool VulkanVaoManager::isFrameFinished( uint32 frameCount ) { return true; }
+
+    void VulkanVaoManager::_notifyDeviceStalled()
+    {
+        mFenceFlushed = true;
+
+        for( size_t i = 0; i < 2u; ++i )
+        {
+            StagingBufferVec::const_iterator itor = mRefedStagingBuffers[i].begin();
+            StagingBufferVec::const_iterator end = mRefedStagingBuffers[i].end();
+
+            while( itor != end )
+            {
+                VulkanStagingBuffer *stagingBuffer = static_cast<VulkanStagingBuffer *>( *itor );
+                stagingBuffer->_notifyDeviceStalled();
+                ++itor;
+            }
+
+            itor = mZeroRefStagingBuffers[i].begin();
+            end = mZeroRefStagingBuffers[i].end();
+
+            while( itor != end )
+            {
+                VulkanStagingBuffer *stagingBuffer = static_cast<VulkanStagingBuffer *>( *itor );
+                stagingBuffer->_notifyDeviceStalled();
+                ++itor;
+            }
+        }
+
+        _destroyAllDelayedBuffers();
+
+        mFrameCount += mDynamicBufferMultiplier;
+    }
+
     //-----------------------------------------------------------------------------------
     VulkanVaoManager::VboFlag VulkanVaoManager::bufferTypeToVboFlag( BufferType bufferType )
     {

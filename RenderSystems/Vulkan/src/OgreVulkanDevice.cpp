@@ -338,7 +338,12 @@ namespace Ogre
         mGraphicsQueue.commitAndNextCommandBuffer( endingFrame );
     }
     //-------------------------------------------------------------------------
-    void VulkanDevice::stall( void ) { vkDeviceWaitIdle( mDevice ); }
+    void VulkanDevice::stall( void )
+    {
+        vkDeviceWaitIdle( mDevice );
+
+        mRenderSystem->_notifyDeviceStalled();
+    }
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
