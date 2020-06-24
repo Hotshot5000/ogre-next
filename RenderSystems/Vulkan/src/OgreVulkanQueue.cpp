@@ -52,7 +52,8 @@ namespace Ogre
         mCurrentCmdBuffer( 0 ),
         mOwnerDevice( 0 ),
         mVaoManager( 0 ),
-        mRenderSystem( 0 )
+        mRenderSystem( 0 ),
+        mCurrentFence( 0 )
     {
     }
     //-------------------------------------------------------------------------
@@ -256,10 +257,12 @@ namespace Ogre
         // clang-format on
 
         const uint8 dynBufferFrame = mVaoManager->waitForTailFrameToFinish();
-        VkFence fence = getFence();
+        VkFence fence = getCurrentFence();
 
         vkQueueSubmit( mQueue, 1u, &submitInfo, fence );
         vkQueueWaitIdle( mQueue );
+
+        mCurrentFence = 0;
 
         mPerFrameData[dynBufferFrame].mProtectingFences.push_back( fence );
 

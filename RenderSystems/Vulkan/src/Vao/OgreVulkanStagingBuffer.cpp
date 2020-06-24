@@ -102,10 +102,11 @@ namespace Ogre
                 {
                     // We wrapped back to 0. Can't keep merging. Make a fence.
                     VulkanFence fence( startRange, endRange );
-                    VkFenceCreateInfo fenceCi;
-                    makeVkStruct( fenceCi, VK_STRUCTURE_TYPE_FENCE_CREATE_INFO );
-                    VkResult result = vkCreateFence( device->mDevice, &fenceCi, 0, &fence.fenceName );
-                    checkVkResult( result, "VulkanStagingBuffer::addFence" );
+                    fence.fenceName = device->mGraphicsQueue.getCurrentFence();
+                    // VkFenceCreateInfo fenceCi;
+                    // makeVkStruct( fenceCi, VK_STRUCTURE_TYPE_FENCE_CREATE_INFO );
+                    // VkResult result = vkCreateFence( device->mDevice, &fenceCi, 0, &fence.fenceName );
+                    // checkVkResult( result, "VulkanStagingBuffer::addFence" );
 
                     // __block dispatch_semaphore_t blockSemaphore = fence.fenceName;
                     // [mDevice->mCurrentCommandBuffer
@@ -123,10 +124,11 @@ namespace Ogre
 
             // Make the last fence.
             VulkanFence fence( startRange, endRange );
-            VkFenceCreateInfo fenceCi;
-            makeVkStruct( fenceCi, VK_STRUCTURE_TYPE_FENCE_CREATE_INFO );
-            VkResult result = vkCreateFence( device->mDevice, &fenceCi, 0, &fence.fenceName );
-            checkVkResult( result, "VulkanStagingBuffer::addFence" );
+            fence.fenceName = device->mGraphicsQueue.getCurrentFence();
+            // VkFenceCreateInfo fenceCi;
+            // makeVkStruct( fenceCi, VK_STRUCTURE_TYPE_FENCE_CREATE_INFO );
+            // VkResult result = vkCreateFence( device->mDevice, &fenceCi, 0, &fence.fenceName );
+            // checkVkResult( result, "VulkanStagingBuffer::addFence" );
             // __block dispatch_semaphore_t blockSemaphore = fence.fenceName;
             // [mDevice->mCurrentCommandBuffer addCompletedHandler:^( id<MTLCommandBuffer> buffer ) {
             //   dispatch_semaphore_signal( blockSemaphore );

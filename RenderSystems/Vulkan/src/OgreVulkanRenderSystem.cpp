@@ -430,10 +430,9 @@ namespace Ogre
             FastArray<const char *> deviceExtensions;
             mDevice->createDevice( deviceExtensions, 0u, 0u );
 
-            mHardwareBufferManager = new v1::DefaultHardwareBufferManager();
             VulkanVaoManager *vaoManager = OGRE_NEW VulkanVaoManager( dynBufferMultiplier, mDevice );
             mVaoManager = vaoManager;
-            mHardwareBufferManager = new v1::VulkanHardwareBufferManager( mDevice, mVaoManager );
+            mHardwareBufferManager = OGRE_NEW v1::VulkanHardwareBufferManager( mDevice, mVaoManager );
             mTextureGpuManager = OGRE_NEW VulkanTextureGpuManager( mVaoManager, this );
 
             mActiveDevice->mVaoManager = vaoManager;
@@ -1280,6 +1279,8 @@ namespace Ogre
         const size_t numberOfInstances = op.numberOfInstances;
         const bool hasInstanceData = mCurrentVertexBuffer->vertexBufferBinding->getHasInstanceData();
 
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+
         // Render to screen!
         if( op.useIndexes )
         {
@@ -1289,10 +1290,14 @@ namespace Ogre
                 if( mDerivedDepthBias && mCurrentPassIterationNum > 0 )
                 {
                     const float biasSign = mReverseDepth ? 1.0f : -1.0f;
+                    vkCmdSetDepthBias( cmdBuffer,
+                                       ( mDerivedDepthBiasBase +
+                                         mDerivedDepthBiasMultiplier * mCurrentPassIterationNum ) *
+                                           biasSign, 0.f, mDerivedDepthBiasSlopeScale * biasSign );
                     // [mActiveRenderEncoder
-                    //     setDepthBias:( mDerivedDepthBiasBase +
-                    //                    mDerivedDepthBiasMultiplier * mCurrentPassIterationNum ) *
-                    //                  biasSign
+                    // setDepthBias:( mDerivedDepthBiasBase +
+                    //                mDerivedDepthBiasMultiplier * mCurrentPassIterationNum ) *
+                    //              biasSign
                     //       slopeScale:mDerivedDepthBiasSlopeScale * biasSign
                     //            clamp:0.0f];
                 }
@@ -1347,6 +1352,11 @@ namespace Ogre
                 if( mDerivedDepthBias && mCurrentPassIterationNum > 0 )
                 {
                     const float biasSign = mReverseDepth ? 1.0f : -1.0f;
+                    vkCmdSetDepthBias( cmdBuffer,
+                                       ( mDerivedDepthBiasBase +
+                                         mDerivedDepthBiasMultiplier * mCurrentPassIterationNum ) *
+                                           biasSign,
+                                       0.f, mDerivedDepthBiasSlopeScale * biasSign );
                     // [mActiveRenderEncoder
                     //     setDepthBias:( mDerivedDepthBiasBase +
                     //                    mDerivedDepthBiasMultiplier * mCurrentPassIterationNum ) *

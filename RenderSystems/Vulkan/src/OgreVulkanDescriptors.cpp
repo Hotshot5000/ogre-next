@@ -110,6 +110,8 @@ namespace Ogre
             else if( !b[i].empty() )
             {
                 const size_t minBindings = std::min( a[i].size(), b[i].size() );
+
+                defaultLog->logMessage( String( "BEFORE MERGING" ) );
                 
                 for( size_t j = 0u; j < minBindings; ++j )
                 {
@@ -142,6 +144,8 @@ namespace Ogre
                 }
 
                 a[i].appendPOD( b[i].begin() + minBindings, b[i].end() );
+
+                defaultLog->logMessage( String( "AFTER MERGING" ) );
                 for( size_t j = 0u; j < a[i].size(); ++j )
                 {
                     if( defaultLog )

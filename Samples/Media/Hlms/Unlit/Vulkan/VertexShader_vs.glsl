@@ -35,7 +35,7 @@ layout(location = 0)out block
 // START UNIFORM DECLARATION
 @insertpiece( PassDecl )
 @insertpiece( InstanceDecl )
-layout(binding = 1) uniform samplerBuffer worldMatBuf;
+layout(binding = OGRE_VULKAN_TEX_SLOT_START+0) uniform samplerBuffer worldMatBuf;
 @property( texture_matrix )/*layout(binding = 1) */uniform samplerBuffer animationMatrixBuf;@end
 @insertpiece( custom_vs_uniformDeclaration )
 @property( !GL_ARB_base_instance )uniform uint baseInstance;@end

@@ -92,6 +92,8 @@ namespace Ogre
         VulkanVaoManager *mVaoManager;
         VulkanRenderSystem *mRenderSystem;
 
+        VkFence mCurrentFence;
+
         /// Returns a signaled fence, could be recycled or new
         VkFence getFence( void );
 
@@ -107,6 +109,15 @@ namespace Ogre
         void destroy( void );
 
         void newCommandBuffer( void );
+
+        VkFence getCurrentFence()
+        {
+            if( mCurrentFence == 0 )
+            {
+                mCurrentFence = getFence();
+            }
+            return mCurrentFence;
+        }
 
     public:
         void endCommandBuffer( void );
