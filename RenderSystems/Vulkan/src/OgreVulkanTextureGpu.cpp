@@ -43,6 +43,7 @@ namespace Ogre
                                         TextureTypes::TextureTypes initialType,
                                         TextureGpuManager *textureManager ) :
         TextureGpu( pageOutStrategy, vaoManager, name, textureFlags, initialType, textureManager ),
+        mDisplayTextureName( 0 ),
         mFinalTextureName( 0 ),
         mMsaaFramebufferName( 0 )
     {
@@ -176,13 +177,55 @@ namespace Ogre
             locations.push_back( Vector2( 0, 0 ) );
     }
     //-----------------------------------------------------------------------------------
-    void VulkanTextureGpu::notifyDataIsReady( void ) {}
+    void VulkanTextureGpu::notifyDataIsReady( void )
+    {
+        assert( mResidencyStatus == GpuResidency::Resident );
+        assert( mFinalTextureName || mPixelFormat == PFG_NULL );
+
+        mDisplayTextureName = getView();
+
+        notifyAllListenersTextureChanged( TextureGpuListener::ReadyForRendering );
+    }
     //-----------------------------------------------------------------------------------
-    void VulkanTextureGpu::_autogenerateMipmaps( void ) {}
+    void VulkanTextureGpu::setTextureType( TextureTypes::TextureTypes textureType )
+    {
+    }
     //-----------------------------------------------------------------------------------
-    void VulkanTextureGpu::_setToDisplayDummyTexture( void ) {}
+    void VulkanTextureGpu::copyTo( TextureGpu *dst, const TextureBox &dstBox, uint8 dstMipLevel,
+        const TextureBox &srcBox, uint8 srcMipLevel )
+    {
+    }
     //-----------------------------------------------------------------------------------
-    bool VulkanTextureGpu::_isDataReadyImpl( void ) const { return true; }
+    void VulkanTextureGpu::_autogenerateMipmaps( void )
+    {
+        
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanTextureGpu::_setToDisplayDummyTexture( void )
+    {
+        if( !mTextureManager )
+        {
+            assert( isRenderWindowSpecific() );
+            return;  // This can happen if we're a window and we're on shutdown
+        }
+
+        VulkanTextureGpuManager *textureManagerVulkan =
+            static_cast<VulkanTextureGpuManager *>( mTextureManager );
+        if( hasAutomaticBatching() )
+        {
+            mDisplayTextureName =
+                textureManagerVulkan->getBlankTextureViewVulkanName( TextureTypes::Type2DArray );
+        }
+        else
+        {
+            mDisplayTextureName = textureManagerVulkan->getBlankTextureViewVulkanName( mTextureType );
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    bool VulkanTextureGpu::_isDataReadyImpl( void ) const
+    {
+        return mDisplayTextureName != 0;
+    }
     //-----------------------------------------------------------------------------------
     VkImageType VulkanTextureGpu::getVulkanTextureType( void ) const
     {
@@ -220,7 +263,80 @@ namespace Ogre
         // clang-format on
     }
     //-----------------------------------------------------------------------------------
+    VkImageView VulkanTextureGpu::getView( PixelFormatGpu pixelFormat, uint8 mipLevel, uint8 numMipmaps,
+        uint16 arraySlice, bool cubemapsAs2DArrays, bool forUav )
+    {
+        if( pixelFormat == PFG_UNKNOWN )
+        {
+            pixelFormat = mPixelFormat;
+            if( forUav )
+                pixelFormat = PixelFormatGpuUtils::getEquivalentLinear( pixelFormat );
+        }
+        VkImageViewType texType = this->getVulkanTextureViewType();
+
+        if( mMsaa > 1u && hasMsaaExplicitResolves() )
+            texType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        //MTLTextureType2DMultisample;
+
+        if( cubemapsAs2DArrays &&
+            ( mTextureType == TextureTypes::TypeCube || mTextureType == TextureTypes::TypeCubeArray ) )
+        {
+            texType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        }
+
+        if( !numMipmaps )
+            numMipmaps = mNumMipmaps - mipLevel;
+
+        OGRE_ASSERT_LOW( numMipmaps <= mNumMipmaps - mipLevel &&
+                         "Asking for more mipmaps than the texture has!" );
+
+        VulkanTextureGpuManager *textureManager =
+            static_cast<VulkanTextureGpuManager *>( mTextureManager );
+        VulkanDevice *device = textureManager->getDevice();
+
+
+        VkImageViewCreateInfo imageViewCi;
+        makeVkStruct( imageViewCi, VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO );
+        imageViewCi.image = mFinalTextureName;
+        imageViewCi.viewType = texType;
+        imageViewCi.format = VulkanMappings::get( pixelFormat );
+        imageViewCi.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewCi.subresourceRange.baseMipLevel = mipLevel;
+        imageViewCi.subresourceRange.levelCount = numMipmaps;
+        imageViewCi.subresourceRange.baseArrayLayer = arraySlice;
+        imageViewCi.subresourceRange.layerCount = this->getNumSlices() - arraySlice;
+
+        VkImageView imageView;
+        VkResult result = vkCreateImageView( device->mDevice, &imageViewCi, 0, &imageView );
+        checkVkResult( result, "VulkanTextureGpu::getView" );
+
+        return imageView;
+    }
     //-----------------------------------------------------------------------------------
+    VkImageView VulkanTextureGpu::getView( DescriptorSetTexture2::TextureSlot texSlot )
+    {
+        return getView( texSlot.pixelFormat, texSlot.mipmapLevel, texSlot.numMipmaps,
+                        texSlot.textureArrayIndex, texSlot.cubemapsAs2DArrays, false );
+    }
+    //-----------------------------------------------------------------------------------
+    VkImageView VulkanTextureGpu::getView( DescriptorSetUav::TextureSlot texSlot )
+    {
+        return getView( texSlot.pixelFormat, texSlot.mipmapLevel, 1u, texSlot.textureArrayIndex, false,
+                        true );
+    }
+    //-----------------------------------------------------------------------------------
+    VkImageView VulkanTextureGpu::getView()
+    {
+        return getView( mPixelFormat, 0, 1, 0, false, false );
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanTextureGpu::destroyView( VkImageView imageView )
+    {
+        VulkanTextureGpuManager *textureManager =
+            static_cast<VulkanTextureGpuManager *>( mTextureManager );
+        VulkanDevice *device = textureManager->getDevice();
+        vkDestroyImageView( device->mDevice, imageView, 0 );
+    }
     //-----------------------------------------------------------------------------------
     VulkanTextureGpuRenderTarget::VulkanTextureGpuRenderTarget(
         GpuPageOutStrategy::GpuPageOutStrategy pageOutStrategy, VaoManager *vaoManager, IdString name,

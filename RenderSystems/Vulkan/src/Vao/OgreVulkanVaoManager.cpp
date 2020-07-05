@@ -46,6 +46,7 @@ THE SOFTWARE.
 
 #include "OgreStringConverter.h"
 #include "OgreTimer.h"
+#include "OgreVulkanStagingTexture.h"
 
 #define TODO_implement
 #define TODO_whenImplemented_include_stagingBuffers
@@ -1091,6 +1092,61 @@ namespace Ogre
         return stagingBuffer;
     }
     //-----------------------------------------------------------------------------------
+    VulkanStagingTexture *VulkanVaoManager::createStagingTexture( PixelFormatGpu formatFamily, size_t sizeBytes )
+    {
+        sizeBytes = std::max<size_t>( sizeBytes, 4u * 1024u * 1024u );
+
+        size_t bufferOffset = 0;
+        // allocateVbo( sizeBytes, 4u, BT_DYNAMIC_PERSISTENT, vboIdx, bufferOffset );
+
+        Vbo newVbo;
+        VboFlag vboFlag = CPU_ACCESSIBLE_PERSISTENT;
+
+        VkBufferCreateInfo bufferCi;
+        makeVkStruct( bufferCi, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO );
+        bufferCi.size = sizeBytes;
+        bufferCi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                         VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+                         VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        VkResult result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
+        checkVkResult( result, "vkCreateBuffer" );
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements( mDevice->mDevice, newVbo.vkBuffer, &memRequirements );
+
+        VkMemoryAllocateInfo memAllocInfo;
+        makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
+        memAllocInfo.allocationSize = memRequirements.size;
+        memAllocInfo.memoryTypeIndex = mBestVkMemoryTypeIndex[vboFlag];
+
+        result = vkAllocateMemory( mDevice->mDevice, &memAllocInfo, NULL, &newVbo.vboName );
+        checkVkResult( result, "vkAllocateMemory" );
+
+        // TODO use one large buffer and multiple offsets
+        VkDeviceSize offset = 0;
+        offset = alignMemory( offset, memRequirements.alignment );
+
+        result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, offset );
+        checkVkResult( result, "vkBindBufferMemory" );
+
+        // const VboFlag vboFlag = CPU_ACCESSIBLE_PERSISTENT;
+        // Vbo &vbo = mVbos[vboFlag][vboIdx];
+        // VulkanBufferInterface *bufferInterface =
+        //     new VulkanBufferInterface( vboIdx, vbo.vkBuffer, vbo.dynamicBuffer );
+
+        newVbo.dynamicBuffer = 0;
+        // VulkanDynamicBuffer *dynamicBuffer =
+        //     new VulkanDynamicBuffer( bufferName, sizeBytes, this,
+        //                               mArbBufferStorage ? BT_DYNAMIC_PERSISTENT : BT_DYNAMIC_DEFAULT );
+        VulkanStagingTexture *retVal = OGRE_NEW VulkanStagingTexture(
+            this, PixelFormatGpuUtils::getFamily( formatFamily ), sizeBytes, newVbo.vboName,
+            newVbo.vkBuffer, newVbo.dynamicBuffer );
+
+        return retVal;
+    }
+    //-----------------------------------------------------------------------------------
     AsyncTicketPtr VulkanVaoManager::createAsyncTicket( BufferPacked *creator,
                                                         StagingBuffer *stagingBuffer,
                                                         size_t elementStart, size_t elementCount )
@@ -1307,6 +1363,8 @@ namespace Ogre
 
         mFrameCount += mDynamicBufferMultiplier;
     }
+
+    
 
     //-----------------------------------------------------------------------------------
     VulkanVaoManager::VboFlag VulkanVaoManager::bufferTypeToVboFlag( BufferType bufferType )

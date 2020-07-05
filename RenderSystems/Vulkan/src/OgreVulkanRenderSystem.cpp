@@ -59,9 +59,13 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 #include "OgreVulkanDescriptorPool.h"
 #include "OgreVulkanDescriptorSet.h"
+#include "OgreVulkanDescriptorSetTexture.h"
+
 #include "OgreVulkanHardwareIndexBuffer.h"
 #include "OgreVulkanHardwareVertexBuffer.h"
+#include "OgreVulkanTextureGpu.h"
 #include "OgreVulkanUtils2.h"
+#include "Vao/OgreVulkanUavBufferPacked.h"
 #include "Windowing/win32/OgreVulkanWin32Window.h"
 
 #define TODO_check_layers_exist
@@ -433,7 +437,7 @@ namespace Ogre
             VulkanVaoManager *vaoManager = OGRE_NEW VulkanVaoManager( dynBufferMultiplier, mDevice );
             mVaoManager = vaoManager;
             mHardwareBufferManager = OGRE_NEW v1::VulkanHardwareBufferManager( mDevice, mVaoManager );
-            mTextureGpuManager = OGRE_NEW VulkanTextureGpuManager( mVaoManager, this );
+            mTextureGpuManager = OGRE_NEW VulkanTextureGpuManager( mVaoManager, this, mDevice );
 
             mActiveDevice->mVaoManager = vaoManager;
             mActiveDevice->initQueues();
@@ -517,6 +521,71 @@ namespace Ogre
         if( defaultLog )
         {
             defaultLog->logMessage( String( " _setTextures DescriptorSetTexture2 " ) );
+        }
+
+        VulkanDescriptorSetTexture *vulkanSet =
+            reinterpret_cast<VulkanDescriptorSetTexture *>( set->mRsData );
+
+        // Bind textures
+        {
+            FastArray<VulkanTexRegion>::const_iterator itor = vulkanSet->textures.begin();
+            FastArray<VulkanTexRegion>::const_iterator end = vulkanSet->textures.end();
+
+            while( itor != end )
+            {
+                Range range = itor->range;
+                range.location += slotStart;
+
+                switch( itor->shaderType )
+                {
+                case VertexShader:
+                    [mActiveRenderEncoder setVertexTextures:itor->textures withRange:range];
+                    break;
+                case PixelShader:
+                    [mActiveRenderEncoder setFragmentTextures:itor->textures withRange:range];
+                    break;
+                case GeometryShader:
+                case HullShader:
+                case DomainShader:
+                case NumShaderTypes:
+                    break;
+                }
+
+                ++itor;
+            }
+        }
+
+        // Bind buffers
+        {
+            FastArray<VulkanBufferRegion>::const_iterator itor = vulkanSet->buffers.begin();
+            FastArray<VulkanBufferRegion>::const_iterator end = vulkanSet->buffers.end();
+
+            while( itor != end )
+            {
+                Range range = itor->range;
+                range.location += slotStart + OGRE_VULKAN_TEX_SLOT_START;
+
+                switch( itor->shaderType )
+                {
+                case VertexShader:
+                    [mActiveRenderEncoder setVertexBuffers:itor->buffers
+                                                   offsets:itor->offsets
+                                                 withRange:range];
+                    break;
+                case PixelShader:
+                    [mActiveRenderEncoder setFragmentBuffers:itor->buffers
+                                                     offsets:itor->offsets
+                                                   withRange:range];
+                    break;
+                case GeometryShader:
+                case HullShader:
+                case DomainShader:
+                case NumShaderTypes:
+                    break;
+                }
+
+                ++itor;
+            }
         }
     }
     //-------------------------------------------------------------------------
@@ -2104,7 +2173,223 @@ namespace Ogre
     void VulkanRenderSystem::_hlmsSamplerblockDestroyed( HlmsSamplerblock *block )
     {
     }
+    //-------------------------------------------------------------------------
+    template <typename TDescriptorSetTexture, typename TTexSlot, typename TBufferPacked>
+    void VulkanRenderSystem::_descriptorSetTextureCreated( TDescriptorSetTexture *newSet,
+                                                          const FastArray<TTexSlot> &texContainer,
+                                                          uint16 *shaderTypeTexCount )
+    {
+        VulkanDescriptorSetTexture *vulkanSet = new VulkanDescriptorSetTexture();
 
+        vulkanSet->numTextureViews = 0;
+
+        size_t numBuffers = 0;
+        size_t numTextures = 0;
+
+        size_t numBufferRanges = 0;
+        size_t numTextureRanges = 0;
+
+        bool needsNewTexRange = true;
+        bool needsNewBufferRange = true;
+
+        ShaderType shaderType = VertexShader;
+        size_t numProcessedSlots = 0;
+
+        typename FastArray<TTexSlot>::const_iterator itor = texContainer.begin();
+        typename FastArray<TTexSlot>::const_iterator end = texContainer.end();
+
+        while( itor != end )
+        {
+            if( shaderTypeTexCount )
+            {
+                // We need to break the ranges if we crossed stages
+                while( shaderType <= PixelShader && numProcessedSlots >= shaderTypeTexCount[shaderType] )
+                {
+                    numProcessedSlots = 0;
+                    shaderType = static_cast<ShaderType>( shaderType + 1u );
+                    needsNewTexRange = true;
+                    needsNewBufferRange = true;
+                }
+            }
+
+            if( itor->isTexture() )
+            {
+                needsNewBufferRange = true;
+                if( needsNewTexRange )
+                {
+                    ++numTextureRanges;
+                    needsNewTexRange = false;
+                }
+
+                const typename TDescriptorSetTexture::TextureSlot &texSlot = itor->getTexture();
+                if( texSlot.needsDifferentView() )
+                    ++vulkanSet->numTextureViews;
+                ++numTextures;
+            }
+            else
+            {
+                needsNewTexRange = true;
+                if( needsNewBufferRange )
+                {
+                    ++numBufferRanges;
+                    needsNewBufferRange = false;
+                }
+
+                ++numBuffers;
+            }
+            ++numProcessedSlots;
+            ++itor;
+        }
+
+        // Create two contiguous arrays of texture and buffers, but we'll split
+        // it into regions as a buffer could be in the middle of two textures.
+        VkImage *textures = 0;
+        VkBuffer *buffers = 0;
+        uint32 *offsets = 0;
+
+        if( vulkanSet->numTextureViews > 0 )
+        {
+            // Create a third array to hold the strong reference
+            // to the reinterpreted versions of textures.
+            // Must be init to 0 before ARC sees it.
+            void *textureViews = OGRE_MALLOC_SIMD(
+                sizeof( VkImageView * ) * vulkanSet->numTextureViews, MEMCATEGORY_RENDERSYS );
+            memset( textureViews, 0, sizeof( VkImageView * ) * vulkanSet->numTextureViews );
+            vulkanSet->textureViews = (VkImageView *)textureViews;
+        }
+        if( numTextures > 0 )
+        {
+            textures = (VkImage *)OGRE_MALLOC_SIMD(
+                sizeof( VkImage * ) * numTextures, MEMCATEGORY_RENDERSYS );
+        }
+        if( numBuffers > 0 )
+        {
+            buffers = (VkBuffer *)OGRE_MALLOC_SIMD(
+                sizeof( VkBuffer * ) * numBuffers, MEMCATEGORY_RENDERSYS );
+            offsets = (uint32 *)OGRE_MALLOC_SIMD( sizeof( uint32 ) * numBuffers,
+                                                      MEMCATEGORY_RENDERSYS );
+        }
+
+        vulkanSet->textures.reserve( numTextureRanges );
+        vulkanSet->buffers.reserve( numBufferRanges );
+
+        needsNewTexRange = true;
+        needsNewBufferRange = true;
+
+        shaderType = VertexShader;
+        numProcessedSlots = 0;
+
+        size_t texViewIndex = 0;
+
+        itor = texContainer.begin();
+        end = texContainer.end();
+
+        while( itor != end )
+        {
+            if( shaderTypeTexCount )
+            {
+                // We need to break the ranges if we crossed stages
+                while( shaderType <= PixelShader && numProcessedSlots >= shaderTypeTexCount[shaderType] )
+                {
+                    numProcessedSlots = 0;
+                    shaderType = static_cast<ShaderType>( shaderType + 1u );
+                    needsNewTexRange = true;
+                    needsNewBufferRange = true;
+                }
+            }
+
+            if( itor->isTexture() )
+            {
+                needsNewBufferRange = true;
+                if( needsNewTexRange )
+                {
+                    vulkanSet->textures.push_back( VulkanTexRegion() );
+                    VulkanTexRegion &texRegion = vulkanSet->textures.back();
+                    texRegion.textures = textures;
+                    texRegion.shaderType = shaderType;
+                    texRegion.range.location = itor - texContainer.begin();
+                    texRegion.range.length = 0;
+                    needsNewTexRange = false;
+                }
+
+                const typename TDescriptorSetTexture::TextureSlot &texSlot = itor->getTexture();
+
+                assert( dynamic_cast<VulkanTextureGpu *>( texSlot.texture ) );
+                VulkanTextureGpu *vulkanTex = static_cast<VulkanTextureGpu *>( texSlot.texture );
+                VkImage textureHandle = vulkanTex->getDisplayTextureName();
+
+                if( texSlot.needsDifferentView() )
+                {
+                    vulkanSet->textureViews[texViewIndex] = vulkanTex->getView( texSlot );
+                    textureHandle = vulkanSet->textureViews[texViewIndex];
+                    ++texViewIndex;
+                }
+
+                VulkanTexRegion &texRegion = vulkanSet->textures.back();
+                *textures = textureHandle;
+                ++texRegion.range.length;
+
+                ++textures;
+            }
+            else
+            {
+                needsNewTexRange = true;
+                if( needsNewBufferRange )
+                {
+                    vulkanSet->buffers.push_back( VulkanBufferRegion() );
+                    VulkanBufferRegion &bufferRegion = vulkanSet->buffers.back();
+                    bufferRegion.buffers = buffers;
+                    bufferRegion.offsets = offsets;
+                    bufferRegion.shaderType = shaderType;
+                    bufferRegion.range.location = itor - texContainer.begin();
+                    bufferRegion.range.length = 0;
+                    needsNewBufferRange = false;
+                }
+
+                const typename TDescriptorSetTexture::BufferSlot &bufferSlot = itor->getBuffer();
+
+                assert( dynamic_cast<TBufferPacked *>( bufferSlot.buffer ) );
+                TBufferPacked *metalBuf = static_cast<TBufferPacked *>( bufferSlot.buffer );
+
+                VulkanBufferRegion &bufferRegion = vulkanSet->buffers.back();
+                metalBuf->bindBufferForDescriptor( buffers, offsets, bufferSlot.offset );
+                ++bufferRegion.range.length;
+
+                ++buffers;
+                ++offsets;
+            }
+            ++numProcessedSlots;
+            ++itor;
+        }
+
+        newSet->mRsData = vulkanSet;
+    }
+    //-------------------------------------------------------------------------
+    void VulkanRenderSystem::destroyVulkanDescriptorSetTexture( VulkanDescriptorSetTexture *vulkanSet )
+    {
+        const size_t numTextureViews = vulkanSet->numTextureViews;
+        for( size_t i = 0; i < numTextureViews; ++i )
+            vulkanSet->textureViews[i] = 0;  // Let ARC free these pointers
+
+        if( numTextureViews )
+        {
+            OGRE_FREE_SIMD( vulkanSet->textureViews, MEMCATEGORY_RENDERSYS );
+            vulkanSet->textureViews = 0;
+        }
+
+        if( !vulkanSet->textures.empty() )
+        {
+            VulkanTexRegion &texRegion = vulkanSet->textures.front();
+            OGRE_FREE_SIMD( texRegion.textures, MEMCATEGORY_RENDERSYS );
+        }
+
+        if( !vulkanSet->buffers.empty() )
+        {
+            VulkanBufferRegion &bufferRegion = vulkanSet->buffers.front();
+            OGRE_FREE_SIMD( bufferRegion.buffers, MEMCATEGORY_RENDERSYS );
+        }
+    }
+    //-------------------------------------------------------------------------
     void VulkanRenderSystem::_descriptorSetTextureCreated( DescriptorSetTexture *newSet )
     {
         Log *defaultLog = LogManager::getSingleton().getDefaultLog();
@@ -2125,10 +2410,23 @@ namespace Ogre
         {
             defaultLog->logMessage( String( " _descriptorSetTexture2Created " ) );
         }
+
+        _descriptorSetTextureCreated<DescriptorSetTexture2, DescriptorSetTexture2::Slot,
+                                     VulkanTexBufferPacked>( newSet, newSet->mTextures,
+                                                            newSet->mShaderTypeTexCount );
     }
 
     void VulkanRenderSystem::_descriptorSetTexture2Destroyed( DescriptorSetTexture2 *set )
     {
+        assert( set->mRsData );
+
+        VulkanDescriptorSetTexture *metalSet =
+            reinterpret_cast<VulkanDescriptorSetTexture *>( set->mRsData );
+
+        destroyVulkanDescriptorSetTexture( metalSet );
+        delete metalSet;
+
+        set->mRsData = 0;
     }
 
     void VulkanRenderSystem::_descriptorSetSamplerCreated( DescriptorSetSampler *newSet )
@@ -2151,9 +2449,21 @@ namespace Ogre
         {
             defaultLog->logMessage( String( " _descriptorSetUavCreated " ) );
         }
+
+        _descriptorSetTextureCreated<DescriptorSetUav, DescriptorSetUav::Slot, VulkanUavBufferPacked>(
+            newSet, newSet->mUavs, 0 );
     }
 
     void VulkanRenderSystem::_descriptorSetUavDestroyed( DescriptorSetUav *set )
     {
+        assert( set->mRsData );
+
+        VulkanDescriptorSetTexture *metalSet =
+            reinterpret_cast<VulkanDescriptorSetTexture *>( set->mRsData );
+
+        destroyVulkanDescriptorSetTexture( metalSet );
+        delete metalSet;
+
+        set->mRsData = 0;
     }
 }  // namespace Ogre

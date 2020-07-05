@@ -37,6 +37,7 @@ THE SOFTWARE.
 
 namespace Ogre
 {
+    class VulkanStagingTexture;
     class _OgreVulkanExport VulkanVaoManager : public VaoManager
     {
     public:
@@ -307,6 +308,7 @@ namespace Ogre
         virtual void waitForSpecificFrameToFinish( uint32 frameCount );
         virtual bool isFrameFinished( uint32 frameCount );
         void _notifyDeviceStalled();
+        VulkanStagingTexture *createStagingTexture( PixelFormatGpu formatFamily, size_t sizeBytes );
 
         /// @see StagingBuffer::mergeContiguousBlocks
         static void mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks );

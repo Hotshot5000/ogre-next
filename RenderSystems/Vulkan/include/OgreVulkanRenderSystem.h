@@ -39,6 +39,8 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 namespace Ogre
 {
+    struct VulkanDescriptorSetTexture;
+
     namespace v1
     {
         class HardwareBufferManager;
@@ -191,9 +193,10 @@ namespace Ogre
         virtual void _dispatch( const HlmsComputePso &pso );
 
         virtual void _setVertexArrayObject( const VertexArrayObject *vao );
-        void flushDescriptorState( VkPipelineBindPoint pipeline_bind_point, const VulkanConstBufferPacked &constBuffer, const size_t bindOffset, const size_t bytesToWrite,
-            const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type
-                &shaderBindings );
+        void flushDescriptorState(
+            VkPipelineBindPoint pipeline_bind_point, const VulkanConstBufferPacked &constBuffer,
+            const size_t bindOffset, const size_t bytesToWrite,
+            const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &shaderBindings );
 
         virtual void _render( const CbDrawCallIndexed *cmd );
         virtual void _render( const CbDrawCallStrip *cmd );
@@ -272,8 +275,15 @@ namespace Ogre
         virtual void _descriptorSetUavCreated( DescriptorSetUav *newSet ) override;
         virtual void _descriptorSetUavDestroyed( DescriptorSetUav *set ) override;
 
-        VulkanDevice *getVulkanDevice() const { return mDevice;  }
+        VulkanDevice *getVulkanDevice() const { return mDevice; }
         void _notifyDeviceStalled();
+
+    protected:
+        template <typename TDescriptorSetTexture, typename TTexSlot, typename TBufferPacked>
+        void _descriptorSetTextureCreated( TDescriptorSetTexture *newSet,
+                                           const FastArray<TTexSlot> &texContainer,
+                                           uint16 *shaderTypeTexCount );
+        void destroyVulkanDescriptorSetTexture( VulkanDescriptorSetTexture *metalSet );
     };
 }  // namespace Ogre
 

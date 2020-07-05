@@ -29,6 +29,8 @@ THE SOFTWARE.
 #ifndef _OgreVulkanTextureGpu_H_
 #define _OgreVulkanTextureGpu_H_
 
+#include "OgreDescriptorSetTexture.h"
+#include "OgreDescriptorSetUav.h"
 #include "OgreVulkanPrerequisites.h"
 
 #include "OgreTextureGpu.h"
@@ -49,6 +51,14 @@ namespace Ogre
     class _OgreVulkanExport VulkanTextureGpu : public TextureGpu
     {
     protected:
+        /// This will not be owned by us if hasAutomaticBatching is true.
+        /// It will also not be owned by us if we're not in GpuResidency::Resident
+        /// This will always point to:
+        ///     * A GL texture owned by us.
+        ///     * A 4x4 dummy texture (now owned by us).
+        ///     * A 64x64 mipmapped texture of us (but now owned by us).
+        ///     * A GL texture not owned by us, but contains the final information.
+        VkImageView mDisplayTextureName;
         /// When we're transitioning to GpuResidency::Resident but we're not there yet,
         /// we will be either displaying a 4x4 dummy texture or a 64x64 one. However
         /// we reserve a spot to a final place will already be there for us once the
@@ -76,6 +86,8 @@ namespace Ogre
                           TextureGpuManager *textureManager );
         virtual ~VulkanTextureGpu();
 
+        VkImageView getDisplayTextureName( void ) const { return mDisplayTextureName; }
+
         /// Always returns the internal handle that belongs to this texture.
         /// Note that for TextureFlags::AutomaticBatching textures, this will be the
         /// handle of a 2D Array texture pool.
@@ -99,6 +111,11 @@ namespace Ogre
         virtual void getSubsampleLocations( vector<Vector2>::type locations );
         virtual void notifyDataIsReady( void );
 
+        virtual void setTextureType( TextureTypes::TextureTypes textureType );
+
+        virtual void copyTo( TextureGpu *dst, const TextureBox &dstBox, uint8 dstMipLevel,
+                             const TextureBox &srcBox, uint8 srcMipLevel );
+
         virtual void _autogenerateMipmaps( void );
         virtual void _setToDisplayDummyTexture( void );
 
@@ -107,6 +124,16 @@ namespace Ogre
         VkImageType getVulkanTextureType( void ) const;
 
         VkImageViewType getVulkanTextureViewType( void ) const;
+
+        // Returns the image view for this complete image.
+        VkImageView getView();
+
+        VkImageView getView( PixelFormatGpu pixelFormat, uint8 mipLevel, uint8 numMipmaps,
+                             uint16 arraySlice, bool cubemapsAs2DArrays, bool forUav );
+        VkImageView getView( DescriptorSetTexture2::TextureSlot texSlot );
+        VkImageView getView( DescriptorSetUav::TextureSlot texSlot );
+
+        void destroyView( VkImageView imageView );
     };
 
     class _OgreVulkanExport VulkanTextureGpuRenderTarget : public VulkanTextureGpu
