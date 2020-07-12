@@ -35,6 +35,7 @@ Copyright (c) 2000-present Torus Knot Software Ltd
 
 #include "OgreBlendMode.h"
 #include "OgreHlmsPso.h"
+#include "OgreHlmsSamplerblock.h"
 #include "OgrePixelFormatGpu.h"
 #include "OgreTextureGpu.h"
 
@@ -53,6 +54,12 @@ namespace Ogre
 
         static VkBlendFactor get( SceneBlendFactor blendFactor );
         static VkBlendOp get( SceneBlendOperation blendOp );
+
+        static VkFormat get( VertexElementType vertexElemType );
+
+        static VkFilter get( FilterOptions filter );
+        static VkSamplerMipmapMode getMipFilter( FilterOptions filter );
+        static VkSamplerAddressMode get( TextureAddressingMode mode );
 
         static VkImageViewType get( TextureTypes::TextureTypes textureType );
         static VkFormat get( PixelFormatGpu pf );

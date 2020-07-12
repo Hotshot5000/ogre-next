@@ -40,14 +40,14 @@ namespace Ogre
     };
     struct VulkanTexRegion
     {
-        VkImage *textures;
+        VkImageView *textures;
         Range range;
         ShaderType shaderType;
     };
     struct VulkanBufferRegion
     {
         VkBuffer *buffers;
-        uint32 *offsets;
+        VkDeviceSize *offsets;
         Range range;
         ShaderType shaderType;
     };

@@ -115,7 +115,7 @@ namespace Ogre
         /// Creates a dummy VkRenderPass for use in PSO creation
         VkRenderPass getVkRenderPass( HlmsPassPso passPso, uint8 &outMrtCount );
 
-        void bindDescriptorSet();
+        void bindDescriptorSet() const;
 
     public:
         VulkanRenderSystem();

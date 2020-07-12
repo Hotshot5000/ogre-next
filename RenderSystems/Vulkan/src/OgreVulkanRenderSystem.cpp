@@ -526,6 +526,8 @@ namespace Ogre
         VulkanDescriptorSetTexture *vulkanSet =
             reinterpret_cast<VulkanDescriptorSetTexture *>( set->mRsData );
 
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+
         // Bind textures
         {
             FastArray<VulkanTexRegion>::const_iterator itor = vulkanSet->textures.begin();
@@ -560,6 +562,9 @@ namespace Ogre
             FastArray<VulkanBufferRegion>::const_iterator itor = vulkanSet->buffers.begin();
             FastArray<VulkanBufferRegion>::const_iterator end = vulkanSet->buffers.end();
 
+            VkDeviceSize offsets[15];
+            memset( offsets, 0, sizeof( offsets ) );
+
             while( itor != end )
             {
                 Range range = itor->range;
@@ -568,14 +573,18 @@ namespace Ogre
                 switch( itor->shaderType )
                 {
                 case VertexShader:
-                    [mActiveRenderEncoder setVertexBuffers:itor->buffers
-                                                   offsets:itor->offsets
-                                                 withRange:range];
+                    vkCmdBindVertexBuffers( cmdBuffer, range.location, range.length, itor->buffers,
+                                            itor->offsets );
+                    // [mActiveRenderEncoder setVertexBuffers:itor->buffers
+                    //                                offsets:itor->offsets
+                    //                              withRange:range];
                     break;
                 case PixelShader:
-                    [mActiveRenderEncoder setFragmentBuffers:itor->buffers
-                                                     offsets:itor->offsets
-                                                   withRange:range];
+                    vkCmdBindVertexBuffers( cmdBuffer, range.location, range.length, itor->buffers,
+                                            itor->offsets );
+                    // [mActiveRenderEncoder setFragmentBuffers:itor->buffers
+                    //                                  offsets:itor->offsets
+                    //                                withRange:range];
                     break;
                 case GeometryShader:
                 case HullShader:
@@ -1018,7 +1027,7 @@ namespace Ogre
         // }
     }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::bindDescriptorSet()
+    void VulkanRenderSystem::bindDescriptorSet() const
     {
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
 
@@ -2125,7 +2134,7 @@ namespace Ogre
     {
         assert( pso->rsData );
 
-        VulkanHlmsPso *vulkanPso = reinterpret_cast<VulkanHlmsPso *>( pso->rsData );
+        VulkanHlmsPso *vulkanPso = static_cast<VulkanHlmsPso *>( pso->rsData );
 
         //        removeDepthStencilState( pso );
 
@@ -2168,10 +2177,42 @@ namespace Ogre
         {
             defaultLog->logMessage( String( " _hlmsSamplerblockCreated " ) );
         }
-    }
 
+        VkSamplerCreateInfo samplerDescriptor;
+        makeVkStruct( samplerDescriptor, VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO );
+        samplerDescriptor.minFilter = VulkanMappings::get( newBlock->mMinFilter );
+        samplerDescriptor.magFilter = VulkanMappings::get( newBlock->mMagFilter );
+        samplerDescriptor.mipmapMode = VulkanMappings::getMipFilter( newBlock->mMipFilter );
+        samplerDescriptor.mipLodBias = newBlock->mMipLodBias;
+        samplerDescriptor.anisotropyEnable = newBlock->mMaxAnisotropy > 0.0f ? VK_TRUE : VK_FALSE;
+        float maxAllowedAnisotropy = mActiveDevice->mDeviceProperties.limits.maxSamplerAnisotropy;
+        samplerDescriptor.maxAnisotropy = newBlock->mMaxAnisotropy > maxAllowedAnisotropy ? 
+                                            maxAllowedAnisotropy : newBlock->mMaxAnisotropy;
+        samplerDescriptor.addressModeU = VulkanMappings::get( newBlock->mU );
+        samplerDescriptor.addressModeV = VulkanMappings::get( newBlock->mV );
+        samplerDescriptor.addressModeW = VulkanMappings::get( newBlock->mW );
+        samplerDescriptor.unnormalizedCoordinates = VK_FALSE;
+        samplerDescriptor.minLod = newBlock->mMinLod;
+        samplerDescriptor.maxLod = newBlock->mMaxLod;
+
+        if( newBlock->mCompareFunction != NUM_COMPARE_FUNCTIONS )
+        {
+            samplerDescriptor.compareEnable = VK_TRUE;
+            samplerDescriptor.compareOp = VulkanMappings::get( newBlock->mCompareFunction );
+        }
+
+        VkSampler textureSampler;
+        VkResult result = vkCreateSampler( mDevice->mDevice, &samplerDescriptor, 0, &textureSampler );
+        checkVkResult( result, "vkCreateSampler" );
+
+        newBlock->mRsData = textureSampler;
+    }
+    //-------------------------------------------------------------------------
     void VulkanRenderSystem::_hlmsSamplerblockDestroyed( HlmsSamplerblock *block )
     {
+        assert( block->mRsData );
+        VkSampler textureSampler = static_cast<VkSampler>(block->mRsData);
+        vkDestroySampler( mDevice->mDevice, textureSampler, 0 );
     }
     //-------------------------------------------------------------------------
     template <typename TDescriptorSetTexture, typename TTexSlot, typename TBufferPacked>
@@ -2243,9 +2284,9 @@ namespace Ogre
 
         // Create two contiguous arrays of texture and buffers, but we'll split
         // it into regions as a buffer could be in the middle of two textures.
-        VkImage *textures = 0;
+        VkImageView *textures = 0;
         VkBuffer *buffers = 0;
-        uint32 *offsets = 0;
+        VkDeviceSize *offsets = 0;
 
         if( vulkanSet->numTextureViews > 0 )
         {
@@ -2259,14 +2300,14 @@ namespace Ogre
         }
         if( numTextures > 0 )
         {
-            textures = (VkImage *)OGRE_MALLOC_SIMD(
-                sizeof( VkImage * ) * numTextures, MEMCATEGORY_RENDERSYS );
+            textures = (VkImageView *)OGRE_MALLOC_SIMD( sizeof( VkImageView * ) * numTextures,
+                                                        MEMCATEGORY_RENDERSYS );
         }
         if( numBuffers > 0 )
         {
             buffers = (VkBuffer *)OGRE_MALLOC_SIMD(
                 sizeof( VkBuffer * ) * numBuffers, MEMCATEGORY_RENDERSYS );
-            offsets = (uint32 *)OGRE_MALLOC_SIMD( sizeof( uint32 ) * numBuffers,
+            offsets = (VkDeviceSize *)OGRE_MALLOC_SIMD( sizeof( VkDeviceSize ) * numBuffers,
                                                       MEMCATEGORY_RENDERSYS );
         }
 
@@ -2316,7 +2357,7 @@ namespace Ogre
 
                 assert( dynamic_cast<VulkanTextureGpu *>( texSlot.texture ) );
                 VulkanTextureGpu *vulkanTex = static_cast<VulkanTextureGpu *>( texSlot.texture );
-                VkImage textureHandle = vulkanTex->getDisplayTextureName();
+                VkImageView textureHandle = vulkanTex->getDisplayTextureName();
 
                 if( texSlot.needsDifferentView() )
                 {
@@ -2349,10 +2390,10 @@ namespace Ogre
                 const typename TDescriptorSetTexture::BufferSlot &bufferSlot = itor->getBuffer();
 
                 assert( dynamic_cast<TBufferPacked *>( bufferSlot.buffer ) );
-                TBufferPacked *metalBuf = static_cast<TBufferPacked *>( bufferSlot.buffer );
+                TBufferPacked *vulkanBuf = static_cast<TBufferPacked *>( bufferSlot.buffer );
 
                 VulkanBufferRegion &bufferRegion = vulkanSet->buffers.back();
-                metalBuf->bindBufferForDescriptor( buffers, offsets, bufferSlot.offset );
+                vulkanBuf->bindBufferForDescriptor( buffers, offsets, bufferSlot.offset );
                 ++bufferRegion.range.length;
 
                 ++buffers;

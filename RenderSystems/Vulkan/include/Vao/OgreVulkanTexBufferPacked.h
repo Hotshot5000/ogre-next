@@ -55,6 +55,9 @@ namespace Ogre
         virtual void bindBufferHS( uint16 slot, size_t offset = 0, size_t sizeBytes = 0 ) {}
         virtual void bindBufferCS( uint16 slot, size_t offset = 0, size_t sizeBytes = 0 );
 
+        void bindBufferForDescriptor( VkBuffer *buffers, VkDeviceSize *offsets,
+                                      size_t offset );
+
         // Used to check if it makes sense to update VkWriteDescriptorSet with this buffer info.
         bool isDirty() const { return mDirty; }
 

@@ -148,6 +148,84 @@ namespace Ogre
         return VK_BLEND_OP_ADD;
     }
     //-----------------------------------------------------------------------------------
+    VkFormat VulkanMappings::get( VertexElementType vertexElemType )
+    {
+        switch( vertexElemType ) {
+        case VET_FLOAT1:            return VK_FORMAT_R32_SFLOAT;
+        case VET_FLOAT2:            return VK_FORMAT_R32G32_SFLOAT;
+        case VET_FLOAT3:            return VK_FORMAT_R32G32B32_SFLOAT;
+        case VET_FLOAT4:            return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case VET_COLOUR:
+        case VET_COLOUR_ARGB:
+        case VET_COLOUR_ABGR:
+            return VK_FORMAT_R8G8B8A8_SNORM;
+        case VET_SHORT2:            return VK_FORMAT_R16G16_SINT;
+        case VET_SHORT4:            return VK_FORMAT_R16G16B16A16_SINT;
+        case VET_UBYTE4:            return VK_FORMAT_R8G8B8A8_UINT;
+        case VET_USHORT2:           return VK_FORMAT_R16G16_SINT;
+        case VET_USHORT4:           return VK_FORMAT_R16G16B16A16_SINT;
+        case VET_INT1:              return VK_FORMAT_R32_SINT;
+        case VET_INT2:              return VK_FORMAT_R32G32_SINT;
+        case VET_INT3:              return VK_FORMAT_R32G32B32_SINT;
+        case VET_INT4:              return VK_FORMAT_R32G32B32A32_SINT;
+        case VET_UINT1:             return VK_FORMAT_R32_UINT;
+        case VET_UINT2:             return VK_FORMAT_R32G32_UINT;
+        case VET_UINT3:             return VK_FORMAT_R32G32B32_UINT;
+        case VET_UINT4:             return VK_FORMAT_R32G32B32A32_SINT;
+        case VET_BYTE4:             return VK_FORMAT_R8G8B8A8_SINT;
+        case VET_BYTE4_SNORM:       return VK_FORMAT_R8G8B8A8_SNORM;
+        case VET_UBYTE4_NORM:       return VK_FORMAT_R8G8B8A8_UNORM;
+        case VET_SHORT2_SNORM:      return VK_FORMAT_R16G16_SNORM;
+        case VET_SHORT4_SNORM:      return VK_FORMAT_R16G16B16A16_SNORM;
+        case VET_USHORT2_NORM:      return VK_FORMAT_R16G16_UNORM;
+        case VET_USHORT4_NORM:      return VK_FORMAT_R16G16B16A16_UNORM;
+        case VET_HALF2:             return VK_FORMAT_R16G16_SFLOAT;
+        case VET_HALF4:             return VK_FORMAT_R16G16B16A16_SFLOAT;
+        case VET_DOUBLE1:
+        case VET_DOUBLE2:
+        case VET_DOUBLE3:
+        case VET_DOUBLE4:
+        case VET_USHORT1_DEPRECATED:
+        case VET_USHORT3_DEPRECATED:
+        default:
+            return VK_FORMAT_UNDEFINED;
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    VkFilter VulkanMappings::get( FilterOptions filter )
+    {
+        switch( filter ) {
+        case FO_NONE:                   return VK_FILTER_NEAREST;
+        case FO_POINT:                  return VK_FILTER_NEAREST;
+        case FO_LINEAR:                 return VK_FILTER_LINEAR;
+        case FO_ANISOTROPIC:            return VK_FILTER_LINEAR;
+        default:                        return VK_FILTER_NEAREST;
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    VkSamplerMipmapMode VulkanMappings::getMipFilter( FilterOptions filter )
+    {
+        switch( filter ) {
+        case FO_NONE:                   return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        case FO_POINT:                  return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        case FO_LINEAR:                 return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        case FO_ANISOTROPIC:            return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        default:                        return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    VkSamplerAddressMode VulkanMappings::get( TextureAddressingMode mode )
+    {
+        switch( mode ) {
+        case TAM_WRAP:                  return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        case TAM_MIRROR:                return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+        case TAM_CLAMP:                 return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        case TAM_BORDER:                return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        case TAM_UNKNOWN:               return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        default:                        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        }
+    }
+    //-----------------------------------------------------------------------------------
     VkImageViewType VulkanMappings::get( TextureTypes::TextureTypes textureType )
     {
         switch( textureType )
