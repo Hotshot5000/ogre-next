@@ -60,6 +60,12 @@ namespace Ogre
         QueueFamily mFamily;
 
         uint32 mFamilyIdx;
+
+        uint32 getFamilyIdx() const
+        {
+            return mFamilyIdx;
+        }
+
         uint32 mQueueIdx;
 
         VkQueue mQueue;

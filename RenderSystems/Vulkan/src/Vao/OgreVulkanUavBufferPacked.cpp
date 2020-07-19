@@ -45,6 +45,17 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     VulkanUavBufferPacked::~VulkanUavBufferPacked() {}
     //-----------------------------------------------------------------------------------
+    void VulkanUavBufferPacked::bindBufferForDescriptor( VkBuffer*buffers, VkDeviceSize *offsets,
+        size_t offset )
+    {
+        assert( dynamic_cast<VulkanBufferInterface *>( mBufferInterface ) );
+        VulkanBufferInterface *bufferInterface =
+            static_cast<VulkanBufferInterface *>( mBufferInterface );
+
+        *buffers = bufferInterface->getVboName();
+        *offsets = mFinalBufferStart * mBytesPerElement + offset;
+    }
+    //-----------------------------------------------------------------------------------
     TexBufferPacked *VulkanUavBufferPacked::getAsTexBufferImpl( PixelFormatGpu pixelFormat )
     {
         assert( dynamic_cast<VulkanBufferInterface *>( mBufferInterface ) );

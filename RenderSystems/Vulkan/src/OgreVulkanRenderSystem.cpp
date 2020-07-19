@@ -157,7 +157,8 @@ namespace Ogre
         mVpChanged( false ),
         CreateDebugReportCallback( 0 ),
         DestroyDebugReportCallback( 0 ),
-        mDebugReportCallback( 0 )
+        mDebugReportCallback( 0 ),
+        mCurrentDescriptorSetTexture( 0 )
     {
     }
     //-------------------------------------------------------------------------
@@ -346,6 +347,7 @@ namespace Ogre
         rsc->setCapability( RSC_POINT_EXTENDED_PARAMETERS );
         rsc->setCapability( RSC_TEXTURE_2D_ARRAY );
         rsc->setCapability( RSC_CONST_BUFFER_SLOTS_IN_SHADER );
+        rsc->setCapability( RSC_SEPARATE_SAMPLERS_FROM_TEXTURES );
         rsc->setMaxPointSize( 256 );
 
         rsc->setMaximumResolutions( 16384, 4096, 16384 );
@@ -513,6 +515,43 @@ namespace Ogre
         {
             defaultLog->logMessage( String( " _setTextures DescriptorSetTexture " ) );
         }
+
+        uint32 texUnit = slotStart + 8;
+        FastArray<const TextureGpu *>::const_iterator itor = set->mTextures.begin();
+
+        // for( size_t i=0u; i<NumShaderTypes; ++i )
+        for( size_t i = 0u; i < PixelShader + 1u; ++i )
+        {
+            const size_t numTexturesUsed = set->mShaderTypeTexCount[i];
+            for( size_t j = 0u; j < numTexturesUsed; ++j )
+            {
+                const VulkanTextureGpu *vulkanTex = static_cast<const VulkanTextureGpu *>( *itor );
+                VkImageView vulkanTexture = 0;
+
+                if( vulkanTex )
+                {
+                    vulkanTexture = vulkanTex->getDisplayTextureName();
+
+                    if( ( texUnit - slotStart ) == hazardousTexIdx &&
+                        mCurrentRenderPassDescriptor->hasAttachment( set->mTextures[hazardousTexIdx] ) )
+                    {
+                        vulkanTexture = 0;
+                    }
+                }
+
+                if( vulkanTexture )
+                {
+                    VkDescriptorImageInfo imageInfo;
+                    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    imageInfo.imageView = vulkanTexture;
+                    imageInfo.sampler = 0;
+                    mImageInfo[texUnit][0] = imageInfo;
+                }
+
+                ++texUnit;
+                ++itor;
+            }
+        }
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setTextures( uint32 slotStart, const DescriptorSetTexture2 *set )
@@ -526,10 +565,13 @@ namespace Ogre
         VulkanDescriptorSetTexture *vulkanSet =
             reinterpret_cast<VulkanDescriptorSetTexture *>( set->mRsData );
 
+        mCurrentDescriptorSetTexture = vulkanSet;
+
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
 
         // Bind textures
         {
+            uint32 pos = OGRE_VULKAN_TEX_SLOT_START;
             FastArray<VulkanTexRegion>::const_iterator itor = vulkanSet->textures.begin();
             FastArray<VulkanTexRegion>::const_iterator end = vulkanSet->textures.end();
 
@@ -538,27 +580,29 @@ namespace Ogre
                 Range range = itor->range;
                 range.location += slotStart;
 
-                switch( itor->shaderType )
-                {
-                case VertexShader:
-                    [mActiveRenderEncoder setVertexTextures:itor->textures withRange:range];
-                    break;
-                case PixelShader:
-                    [mActiveRenderEncoder setFragmentTextures:itor->textures withRange:range];
-                    break;
-                case GeometryShader:
-                case HullShader:
-                case DomainShader:
-                case NumShaderTypes:
-                    break;
-                }
+                uint32 lastPos = range.location + range.length;
 
+                VkDescriptorImageInfo imageInfo;
+                imageInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                imageInfo.imageView = *itor->textures;
+                imageInfo.sampler = 0;
+                mImageInfo[pos++][0] = imageInfo;
+                // uint32 i = 0;
+                // for( uint32 texUnit = range.location; texUnit < lastPos; ++texUnit)
+                // {
+                //     VkDescriptorImageInfo imageInfo;
+                //     imageInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                //     imageInfo.imageView = itor->textures[i++];
+                //     imageInfo.sampler = 0;
+                //     mImageInfo[texUnit][0] = imageInfo;
+                // }
                 ++itor;
             }
         }
 
         // Bind buffers
         {
+            uint32 pos = 0;
             FastArray<VulkanBufferRegion>::const_iterator itor = vulkanSet->buffers.begin();
             FastArray<VulkanBufferRegion>::const_iterator end = vulkanSet->buffers.end();
 
@@ -568,30 +612,45 @@ namespace Ogre
             while( itor != end )
             {
                 Range range = itor->range;
-                range.location += slotStart + OGRE_VULKAN_TEX_SLOT_START;
+                // range.location += slotStart + OGRE_VULKAN_TEX_SLOT_START;
 
-                switch( itor->shaderType )
-                {
-                case VertexShader:
-                    vkCmdBindVertexBuffers( cmdBuffer, range.location, range.length, itor->buffers,
-                                            itor->offsets );
-                    // [mActiveRenderEncoder setVertexBuffers:itor->buffers
-                    //                                offsets:itor->offsets
-                    //                              withRange:range];
-                    break;
-                case PixelShader:
-                    vkCmdBindVertexBuffers( cmdBuffer, range.location, range.length, itor->buffers,
-                                            itor->offsets );
-                    // [mActiveRenderEncoder setFragmentBuffers:itor->buffers
-                    //                                  offsets:itor->offsets
-                    //                                withRange:range];
-                    break;
-                case GeometryShader:
-                case HullShader:
-                case DomainShader:
-                case NumShaderTypes:
-                    break;
-                }
+                VkDescriptorBufferInfo bufferInfo;
+                bufferInfo.buffer = *itor->buffers;
+                bufferInfo.offset = range.location;
+                bufferInfo.range = range.length;
+                mBufferInfo[pos++][0] = bufferInfo;
+
+                // for( uint32 texUnit = 0; texUnit < itor->b; ++texUnit )
+                // {
+                //     VkDescriptorBufferInfo bufferInfo;
+                //     bufferInfo.buffer = itor->buffers[texUnit];
+                //     bufferInfo.offset = range.location;
+                //     bufferInfo.range = range.length;
+                //     mBufferInfo[texUnit][0] = bufferInfo;
+                // }
+
+                // switch( itor->shaderType )
+                // {
+                // case VertexShader:
+                //     vkCmdBindVertexBuffers( cmdBuffer, range.location, range.length, itor->buffers,
+                //                             itor->offsets );
+                //     // [mActiveRenderEncoder setVertexBuffers:itor->buffers
+                //     //                                offsets:itor->offsets
+                //     //                              withRange:range];
+                //     break;
+                // case PixelShader:
+                //     vkCmdBindVertexBuffers( cmdBuffer, range.location, range.length, itor->buffers,
+                //                             itor->offsets );
+                //     // [mActiveRenderEncoder setFragmentBuffers:itor->buffers
+                //     //                                  offsets:itor->offsets
+                //     //                                withRange:range];
+                //     break;
+                // case GeometryShader:
+                // case HullShader:
+                // case DomainShader:
+                // case NumShaderTypes:
+                //     break;
+                // }
 
                 ++itor;
             }
@@ -604,6 +663,53 @@ namespace Ogre
         if( defaultLog )
         {
             defaultLog->logMessage( String( " _setSamplers " ) );
+        }
+
+        VkSampler samplers[16];
+
+        FastArray<const HlmsSamplerblock *>::const_iterator itor = set->mSamplers.begin();
+
+        Range texUnitRange;
+        texUnitRange.location = slotStart;
+        // for( size_t i=0u; i<NumShaderTypes; ++i )
+        for( size_t i = 0u; i < PixelShader + 1u; ++i )
+        {
+            const uint32 numSamplersUsed = set->mShaderTypeSamplerCount[i];
+
+            if( !numSamplersUsed )
+                continue;
+
+            for( size_t j = 0; j < numSamplersUsed; ++j )
+            {
+                if( *itor )
+                    samplers[j] = static_cast<VkSampler>(( *itor )->mRsData);
+                else
+                    samplers[j] = 0;
+                ++itor;
+            }
+
+            texUnitRange.length = numSamplersUsed;
+
+            VkDescriptorImageInfo samplerInfo;
+            samplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            samplerInfo.imageView = 0;
+            samplerInfo.sampler = samplers[0];
+            mImageInfo[texUnitRange.location][0] = samplerInfo;
+            // switch( i )
+            // {
+            // case VertexShader:
+            //     [mActiveRenderEncoder setVertexSamplerStates:samplers withRange:texUnitRange];
+            //     break;
+            // case PixelShader:
+            //     [mActiveRenderEncoder setFragmentSamplerStates:samplers withRange:texUnitRange];
+            //     break;
+            // case GeometryShader:
+            // case HullShader:
+            // case DomainShader:
+            //     break;
+            // }
+
+            texUnitRange.location += numSamplersUsed;
         }
     }
     //-------------------------------------------------------------------------
@@ -673,8 +779,29 @@ namespace Ogre
         mActiveDevice->commitAndNextCommandBuffer( true );
     }
     //-------------------------------------------------------------------------
-    void VulkanRenderSystem::_setHlmsSamplerblock( uint8 texUnit, const HlmsSamplerblock *Samplerblock )
+    void VulkanRenderSystem::_setHlmsSamplerblock( uint8 texUnit, const HlmsSamplerblock *samplerblock )
     {
+        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        if( defaultLog )
+        {
+            defaultLog->logMessage( String( " * _setHlmsSamplerblock: " ) +
+                                    std::to_string( texUnit ) );
+        }
+
+        // assert( ( !samplerblock || samplerblock->mRsData ) &&
+        //         "The block must have been created via HlmsManager::getSamplerblock!" );
+        //
+        // if( !samplerblock )
+        // {
+        //     [mActiveRenderEncoder setFragmentSamplerState:0 atIndex:texUnit];
+        // }
+        // else
+        // {
+        //     __unsafe_unretained id<MTLSamplerState> sampler =
+        //         (__bridge id<MTLSamplerState>)samplerblock->mRsData;
+        //     [mActiveRenderEncoder setVertexSamplerState:sampler atIndex:texUnit];
+        //     [mActiveRenderEncoder setFragmentSamplerState:sampler atIndex:texUnit];
+        // }
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setPipelineStateObject( const HlmsPso *pso )
@@ -1027,13 +1154,14 @@ namespace Ogre
         // }
     }
     //-------------------------------------------------------------------------
+    VulkanHlmsPso *lastPso = 0;
     void VulkanRenderSystem::bindDescriptorSet() const
     {
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
 
         BindingMap<VkDescriptorBufferInfo> buffer_infos;
         BindingMap<VkBufferView> buffer_views;
-        BindingMap<VkDescriptorImageInfo> image_infos;
+        const BindingMap<VkDescriptorImageInfo> &image_infos = mImageInfo;
 
         const std::vector<VulkanConstBufferPacked *> &constBuffers = vaoManager->getConstBuffers();
         std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersIt = constBuffers.begin();
@@ -1068,8 +1196,11 @@ namespace Ogre
             }
             ++texBuffersIt;
         }
+        if( lastPso == mPso )
+            return;
 
         VulkanHlmsPso *pso = mPso;
+        lastPso = mPso;
 
         VulkanDescriptorPool *descriptorPool =
             new VulkanDescriptorPool( mDevice->mDevice, pso->descriptorLayoutSets[0] );
@@ -2383,7 +2514,7 @@ namespace Ogre
                     bufferRegion.offsets = offsets;
                     bufferRegion.shaderType = shaderType;
                     bufferRegion.range.location = itor - texContainer.begin();
-                    bufferRegion.range.length = 0;
+                    bufferRegion.range.length = VK_WHOLE_SIZE;
                     needsNewBufferRange = false;
                 }
 

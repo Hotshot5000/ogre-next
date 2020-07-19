@@ -190,7 +190,7 @@ namespace Ogre
             PixelFormatGpuUtils::getSizeBytes( width, height, depth, slices, pixelFormat, rowAlignment );
 
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
-        vaoManager->createStagingTexture( PixelFormatGpuUtils::getFamily( pixelFormat ), sizeBytes );
+        return vaoManager->createStagingTexture( PixelFormatGpuUtils::getFamily( pixelFormat ), sizeBytes );
     }
     //-----------------------------------------------------------------------------------
     void VulkanTextureGpuManager::destroyStagingTextureImpl( StagingTexture *stagingTexture )

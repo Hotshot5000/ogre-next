@@ -31,6 +31,8 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 #include "OgreVulkanPrerequisites.h"
 
+#include "OgreHeaderPrefix.h"
+
 namespace Ogre
 {
     struct Range
@@ -52,14 +54,17 @@ namespace Ogre
         ShaderType shaderType;
     };
 
-    struct _OgreExport VulkanDescriptorSetTexture
+    struct VulkanDescriptorSetTexture
     {
         FastArray<VulkanTexRegion> textures;
         FastArray<VulkanBufferRegion> buffers;
 
         VkImageView *textureViews;
+        VkSampler *textureSamplers;
         size_t numTextureViews;
     };
-}
+}  // namespace Ogre
 
-#endif // #ifndef _OgreVulkanDescriptorSetTexture_H_
+#include "OgreHeaderSuffix.h"
+
+#endif  // #ifndef _OgreVulkanDescriptorSetTexture_H_

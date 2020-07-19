@@ -296,6 +296,8 @@ namespace Ogre
         createInfo.queueCreateInfoCount = static_cast<uint32>( queueCreateInfo.size() );
         createInfo.pQueueCreateInfos = &queueCreateInfo[0];
 
+        createInfo.pEnabledFeatures = &mDeviceFeatures;
+
         VkResult result = vkCreateDevice( mPhysicalDevice, &createInfo, NULL, &mDevice );
         checkVkResult( result, "vkCreateDevice" );
 

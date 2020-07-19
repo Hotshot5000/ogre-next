@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include "OgreVulkanUtils.h"
 
 #include "OgreStringConverter.h"
+#include "OgreVulkanDevice.h"
 
 namespace Ogre
 {
@@ -203,5 +204,56 @@ namespace Ogre
         }
 
         return "SPV_REFLECT_INVALID_ERROR_CODE";
+    }
+
+    VkCommandPool sCommandPool = 0;
+
+    VkCommandBuffer beginSingleTimeCommands(VulkanDevice *device)
+    {
+        if( !sCommandPool )
+        {
+            VkCommandPoolCreateInfo cmdPoolCreateInfo;
+            makeVkStruct( cmdPoolCreateInfo, VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO );
+            cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+            cmdPoolCreateInfo.queueFamilyIndex = device->mGraphicsQueue.getFamilyIdx();
+
+            VkResult result = vkCreateCommandPool( device->mDevice, &cmdPoolCreateInfo, 0, &sCommandPool );
+            checkVkResult( result, "vkCreateCommandPool" );
+        }
+        
+
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = sCommandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers( device->mDevice, &allocInfo, &commandBuffer );
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer( commandBuffer, &beginInfo );
+
+        return commandBuffer;
+    }
+
+    void endSingleTimeCommands( VulkanDevice *device, VkCommandBuffer commandBuffer )
+    {
+        vkEndCommandBuffer( commandBuffer );
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        VkResult result = vkQueueSubmit( device->mGraphicsQueue.mQueue, 1, &submitInfo, VK_NULL_HANDLE );
+        checkVkResult( result, "vkQueueSubmit" );
+        result = vkQueueWaitIdle( device->mGraphicsQueue.mQueue );
+        checkVkResult( result, "vkQueueWaitIdle" );
+
+        vkFreeCommandBuffers( device->mDevice, sCommandPool, 1, &commandBuffer );
     }
 }  // namespace Ogre

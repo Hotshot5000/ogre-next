@@ -35,6 +35,7 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanProgram.h"
 
 #include "OgreVulkanRenderPassDescriptor.h"
+#include "OgreVulkanUtils2.h"
 #include "Vao/OgreVulkanConstBufferPacked.h"
 
 namespace Ogre
@@ -109,6 +110,11 @@ namespace Ogre
         PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback;
         PFN_vkDestroyDebugReportCallbackEXT DestroyDebugReportCallback;
         VkDebugReportCallbackEXT mDebugReportCallback;
+
+        BindingMap<VkDescriptorImageInfo> mImageInfo;
+        BindingMap<VkDescriptorBufferInfo> mBufferInfo;
+        BindingMap<VkDescriptorImageInfo> mSamplerInfo;
+        VulkanDescriptorSetTexture *mCurrentDescriptorSetTexture;
 
         void addInstanceDebugCallback( void );
 

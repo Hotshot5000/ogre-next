@@ -28,6 +28,8 @@ THE SOFTWARE.
 
 #include "OgreVulkanStagingTexture.h"
 
+
+#include "OgreVulkanUtils2.h"
 #include "OgreVulkanTextureGpu.h"
 #include "Vao/OgreVulkanVaoManager.h"
 #include "OgreVulkanDevice.h"
@@ -89,6 +91,8 @@ namespace Ogre
             vkMapMemory( device->mDevice, mDeviceMemory, mInternalBufferStart, size, 0, &mMappedPtr );
         checkVkResult( result, "vkMapMemory" );
 
+        mLastMappedPtr = mMappedPtr;
+
         VkMappedMemoryRange memRange;
         makeVkStruct( memRange, VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE );
         memRange.memory = mDeviceMemory;
@@ -126,6 +130,8 @@ namespace Ogre
 
         vkUnmapMemory( device->mDevice, mDeviceMemory );
 
+        mMappedPtr = 0;
+
         StagingTextureBufferImpl::stopMapRegion();
     }
     //-----------------------------------------------------------------------------------
@@ -162,17 +168,17 @@ namespace Ogre
         VulkanTextureGpu *dstTextureVulkan = static_cast<VulkanTextureGpu *>( dstTexture );
 
         const size_t srcOffset =
-            reinterpret_cast<uint8 *>( srcBox.data ) - reinterpret_cast<uint8 *>( mMappedPtr );
+            reinterpret_cast<uint8 *>( srcBox.data ) - reinterpret_cast<uint8 *>( mLastMappedPtr );
         const uint32 destinationSlice =
             ( dstBox ? dstBox->sliceStart : 0 ) + dstTexture->getInternalSliceStart();
         uint32 xPos = static_cast<uint32>( dstBox ? dstBox->x : 0 );
         uint32 yPos = static_cast<uint32>( dstBox ? dstBox->y : 0 );
         uint32 zPos = static_cast<uint32>( dstBox ? dstBox->z : 0 );
 
-        
 
         for( uint32 i = 0; i < srcBox.numSlices; ++i )
         {
+            VkCommandBuffer commandBuffer = beginSingleTimeCommands( device );
             VkBufferImageCopy region;
             region.bufferOffset = srcOffset + srcBox.bytesPerImage * i;
             region.bufferRowLength = bytesPerRow;
@@ -183,11 +189,45 @@ namespace Ogre
             region.imageSubresource.baseArrayLayer = 0;
             region.imageSubresource.layerCount = 1;
 
-            region.imageOffset = { xPos, yPos, zPos };
+            region.imageOffset.x = xPos;
+            region.imageOffset.y = yPos;
+            region.imageOffset.z = zPos;
             region.imageExtent = { srcBox.width, srcBox.height, srcBox.depth };
             vkCmdCopyBufferToImage( device->mGraphicsQueue.mCurrentCmdBuffer, mVboName,
                                     dstTextureVulkan->getFinalTextureName(),
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region );
+
+            endSingleTimeCommands( device, commandBuffer );
+
+            commandBuffer = beginSingleTimeCommands( device );
+
+            // The sub resource range describes the regions of the image that will be transitioned using
+            // the
+            // memory barriers below
+            VkImageSubresourceRange subresource_range = {};
+            // Image only contains color data
+            // if( PixelFormatGpuUtils::isDepth( mPixelFormat ) )
+            // {
+            //     subresource_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            //     if( PixelFormatGpuUtils::isStencil( mPixelFormat ) )
+            //         subresource_range.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            // }
+            // else
+            subresource_range.aspectMask = region.imageSubresource.aspectMask;
+            // Start at first mip level
+            subresource_range.baseMipLevel = region.imageSubresource.mipLevel;
+            // We will transition on all mip levels
+            subresource_range.levelCount = dstTextureVulkan->getNumMipmaps() - subresource_range.baseMipLevel;
+            // The 2D texture only has one layer
+            subresource_range.layerCount = region.imageSubresource.layerCount;
+
+            set_image_layout( device->mGraphicsQueue.mCurrentCmdBuffer,
+                              dstTextureVulkan->getFinalTextureName(),
+                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresource_range,
+                              VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT );
+
+            endSingleTimeCommands( device, commandBuffer );
             // [blitEncoder copyFromBuffer:mVboName
             //                sourceOffset:srcOffset + srcBox.bytesPerImage * i
             //           sourceBytesPerRow:bytesPerRow
@@ -198,5 +238,6 @@ namespace Ogre
             //            destinationLevel:mipLevel
             //           destinationOrigin:MTLOriginMake( xPos, yPos, zPos )];
         }
+
     }
 }  // namespace Ogre

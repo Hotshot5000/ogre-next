@@ -104,9 +104,11 @@
 
 @foreach( diffuse_map, n )
 	@property( diffuse_map@n_array )
-		@piece( SamplerOrigin@n )textureMapsArray[@value(diffuse_map@n_idx)]@end
+		@piece( TextureOrigin@n )textureMapsArray[@value(diffuse_map@n_idx)]@end
+		@piece( SamplerOrigin@n )samplerState[@value(diffuse_map@n_idx)]@end
 	@end @property( !diffuse_map@n_array )
-		@piece( SamplerOrigin@n )textureMaps[@value(diffuse_map@n_idx)]@end
+		@piece( TextureOrigin@n )textureMaps[@value(diffuse_map@n_idx)]@end
+		@piece( SamplerOrigin@n )samplerState[@value(diffuse_map@n_idx)]@end
 	@end
 	@property( !diffuse_map@n_reflection )
 		@property( diffuse_map@n_array )

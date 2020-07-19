@@ -105,7 +105,7 @@
 #define gl_SampleMaskIn0 gl_SampleMaskIn[0]
 
 #define outPs_colour0 outColour
-#define OGRE_Sample( tex, sampler, uv ) texture( tex, uv )
+#define OGRE_Sample( tex, sampler, uv ) texture(sampler2D(tex, sampler), uv)
 #define OGRE_SampleLevel( tex, sampler, uv, lod ) textureLod( tex, uv, lod )
 #define OGRE_SampleArray2D( tex, sampler, uv, arrayIdx ) texture( tex, vec3( uv, arrayIdx ) )
 #define OGRE_SampleArray2DLevel( tex, sampler, uv, arrayIdx, lod ) textureLod( tex, vec3( uv, arrayIdx ), lod )

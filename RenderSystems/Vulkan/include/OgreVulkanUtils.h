@@ -35,6 +35,7 @@ THE SOFTWARE.
 
 namespace Ogre
 {
+    struct VulkanDevice;
     void initUtils( VkDevice device );
 
     template <typename T>
@@ -65,6 +66,9 @@ namespace Ogre
     }
 
     String getSpirvReflectError( SpvReflectResult spirvReflectResult );
+
+    VkCommandBuffer beginSingleTimeCommands( VulkanDevice *device );
+    void endSingleTimeCommands( VulkanDevice *device, VkCommandBuffer commandBuffer );
 }  // namespace Ogre
 
 #endif  //#ifndef _OgreVulkanPrerequisites_H_

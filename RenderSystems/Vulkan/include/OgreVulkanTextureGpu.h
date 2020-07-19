@@ -71,6 +71,7 @@ namespace Ogre
         ///     4. The msaa resolved texture (hasMsaaExplicitResolves==false)
         /// This value may be a renderbuffer instead of a texture if isRenderbuffer() returns true.
         VkImage mFinalTextureName;
+        VkImageView mFinalTextureNameView;
 
         /// Only used when hasMsaaExplicitResolves() == false
         VkImage mMsaaFramebufferName;

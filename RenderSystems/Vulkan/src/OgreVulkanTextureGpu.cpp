@@ -136,6 +136,30 @@ namespace Ogre
         {
             
         }
+
+        // The sub resource range describes the regions of the image that will be transitioned using the
+        // memory barriers below
+        VkImageSubresourceRange subresource_range = {};
+        // Image only contains color data
+        if( PixelFormatGpuUtils::isDepth( mPixelFormat ) )
+        {
+            subresource_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            if( PixelFormatGpuUtils::isStencil( mPixelFormat ) )
+                subresource_range.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+        else
+            subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        // Start at first mip level
+        subresource_range.baseMipLevel = 0;
+        // We will transition on all mip levels
+        subresource_range.levelCount = mNumMipmaps;
+        // The 2D texture only has one layer
+        subresource_range.layerCount = getNumSlices();
+
+        set_image_layout( device->mGraphicsQueue.mCurrentCmdBuffer, mFinalTextureName,
+                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          subresource_range, VK_PIPELINE_STAGE_HOST_BIT,
+                          VK_PIPELINE_STAGE_TRANSFER_BIT );
     }
     //-----------------------------------------------------------------------------------
     void VulkanTextureGpu::destroyInternalResourcesImpl( void )
@@ -181,6 +205,12 @@ namespace Ogre
     {
         assert( mResidencyStatus == GpuResidency::Resident );
         assert( mFinalTextureName || mPixelFormat == PFG_NULL );
+
+        VulkanTextureGpuManager *textureManager =
+            static_cast<VulkanTextureGpuManager *>( mTextureManager );
+        VulkanDevice *device = textureManager->getDevice();
+
+        
 
         mDisplayTextureName = getView();
 
@@ -300,7 +330,16 @@ namespace Ogre
         imageViewCi.image = mFinalTextureName;
         imageViewCi.viewType = texType;
         imageViewCi.format = VulkanMappings::get( pixelFormat );
-        imageViewCi.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        if( PixelFormatGpuUtils::isDepth( mPixelFormat ) )
+        {
+            imageViewCi.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            if( PixelFormatGpuUtils::isStencil( mPixelFormat ) )
+                imageViewCi.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+        else
+            imageViewCi.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            
+        
         imageViewCi.subresourceRange.baseMipLevel = mipLevel;
         imageViewCi.subresourceRange.levelCount = numMipmaps;
         imageViewCi.subresourceRange.baseArrayLayer = arraySlice;

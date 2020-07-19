@@ -8,6 +8,8 @@ layout(std140) uniform;
 in vec4 gl_FragCoord;
 @end
 
+@pset( samplerStateBind, sampler_unit_slot_start )
+
 @property( !hlms_shadowcaster )
 layout(location = FRAG_COLOR, index = 0) out vec4 outColour;
 @end @property( hlms_shadowcaster )
@@ -32,8 +34,9 @@ layout(location = 0)in block
 @end
 
 @property( !hlms_shadowcaster )
-@property( num_array_textures )layout(binding = OGRE_VULKAN_TEX_SLOT_START+4)uniform sampler2DArray	textureMapsArray[@value( num_array_textures )];@end
-@property( num_textures )layout(binding = OGRE_VULKAN_TEX_SLOT_START+4)uniform sampler2D	textureMaps[@value( num_textures )];@end
+@property( num_array_textures )layout(binding = OGRE_VULKAN_TEX_SLOT_START+4)uniform texture2DArray	textureMapsArray[@value( num_array_textures )];@end
+@property( num_textures )layout(binding = @value(samplerStateBind)+8)uniform texture2D	textureMaps[@value( num_textures )];@end
+@property( num_samplers )layout(binding = @value(samplerStateBind))uniform sampler	samplerState[@value( num_samplers )];@end
 
 @property( diffuse )@piece( MultiplyDiffuseConst )* material.diffuse@end @end
 
@@ -56,10 +59,10 @@ void main()
 
 @property( diffuse_map )@property( diffuse_map0 )
 	//Load base image
-	outColour = texture( @insertpiece( SamplerOrigin0 ), @insertpiece( SamplerUV0 ) ).@insertpiece(diffuse_map0_tex_swizzle);@end
+	outColour = OGRE_Sample( @insertpiece( TextureOrigin0 ), @insertpiece( SamplerOrigin0 ), @insertpiece( SamplerUV0 ) ).@insertpiece(diffuse_map0_tex_swizzle);@end
 
 @foreach( diffuse_map, n, 1 )@property( diffuse_map@n )
-	vec4 topImage@n = texture( @insertpiece( SamplerOrigin@n ), @insertpiece( SamplerUV@n ) ).@insertpiece(diffuse_map@n_tex_swizzle);@end @end
+	vec4 topImage@n = OGRE_Sample( @insertpiece( TextureOrigin@n ), @insertpiece( SamplerOrigin@n ), @insertpiece( SamplerUV@n ) ).@insertpiece(diffuse_map@n_tex_swizzle);@end @end
 
 @foreach( diffuse_map, n, 1 )@property( diffuse_map@n )
 	@insertpiece( blend_mode_idx@n )@end @end
