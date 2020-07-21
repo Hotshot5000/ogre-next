@@ -165,6 +165,8 @@ namespace Ogre
 
         bool mFenceFlushed;
 
+        static const uint32 VERTEX_ATTRIBUTE_INDEX[VES_COUNT];
+
     protected:
         void determineBestMemoryTypes( void );
 
@@ -331,6 +333,8 @@ namespace Ogre
         }
 
         const uint32 *getBestVkMemoryTypeIndex() { return mBestVkMemoryTypeIndex; }
+
+        static uint32 getAttributeIndexFor( VertexElementSemantic semantic );
     };
 }  // namespace Ogre
 

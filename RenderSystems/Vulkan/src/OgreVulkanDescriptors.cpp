@@ -305,8 +305,8 @@ namespace Ogre
     }
 
     void VulkanDescriptors::generateVertexInputBindings(
-        VulkanProgram *shader, HlmsPso *newPso, VkVertexInputBindingDescription *binding_description,
-        std::vector<VkVertexInputAttributeDescription> &attribute_descriptions )
+        VulkanProgram *shader, HlmsPso *newPso, std::vector<VkVertexInputBindingDescription> &bindingDescription,
+        std::vector<VkVertexInputAttributeDescription> &attributeDescriptions )
     {
         const std::vector<uint32> &spirv = shader->getSpirv();
         if( spirv.empty() )
@@ -346,50 +346,56 @@ namespace Ogre
                          "VulkanDescriptors::generateVertexInputBindings" );
         }
 
-        
-        binding_description[0].binding = 0;
-        binding_description[0].stride = 0;  // computed below
-        binding_description[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        // bindingDescription.resize( 2, VkVertexInputBindingDescription{} );
+        //
+        // bindingDescription[0].binding = 0;
+        // bindingDescription[0].stride = 0;  // computed below
+        // bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        //
+        // bindingDescription[1].binding = 1;
+        // bindingDescription[1].stride = 0;  // computed below
+        // bindingDescription[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE; // DrawId is per instance.
 
-        binding_description[1].binding = 1;
-        binding_description[1].stride = 0;  // computed below
-        binding_description[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE; // DrawId is per instance.
-        
-        attribute_descriptions.resize(
-            inputVars.size(), VkVertexInputAttributeDescription{} );
+        // Ignore the drawId. That is declared manually.
+        // attributeDescriptions.resize(
+            // inputVars.size() - 1, VkVertexInputAttributeDescription{} );
 
         for( size_t i_var = 0; i_var < inputVars.size(); ++i_var )
         {
-            const SpvReflectInterfaceVariable &refl_var = *( inputVars[i_var] );
-            VkVertexInputAttributeDescription &attr_desc = attribute_descriptions[i_var];
-            attr_desc.location = refl_var.location;
-            if( attr_desc.location == 15 )
-                attr_desc.binding = binding_description[1].binding;
-            else
-                attr_desc.binding = binding_description[0].binding;
-            attr_desc.format = static_cast<VkFormat>( refl_var.format );
-            attr_desc.offset = 0;  // final offset computed below after sorting.
+            const SpvReflectInterfaceVariable &reflVar = *( inputVars[i_var] );
+            if( reflVar.location == 15 )
+                continue;
+            VkVertexInputAttributeDescription attrDesc;
+            attrDesc.location = reflVar.location;
+            // if( attrDesc.location == 15 )
+            //     attrDesc.binding = bindingDescription[1].binding;
+            // else
+            //     attrDesc.binding = bindingDescription[0].binding;
+            attrDesc.format = static_cast<VkFormat>( reflVar.format );
+            // attrDesc.offset = 0;  // final offset computed below after sorting.
+
+            attributeDescriptions.push_back( attrDesc );
         }
         // Sort attributes by location
         std::sort(
-            std::begin( attribute_descriptions ), std::end( attribute_descriptions ),
+            std::begin( attributeDescriptions ), std::end( attributeDescriptions ),
             []( const VkVertexInputAttributeDescription &a,
                 const VkVertexInputAttributeDescription &b ) { return a.location < b.location; } );
         // Compute final offsets of each attribute, and total vertex stride.
-        for( auto &attribute : attribute_descriptions )
-        {
-            uint32_t format_size = VulkanMappings::getFormatSize( attribute.format );
-            if( attribute.location == 15 )
-            {
-                attribute.offset = binding_description[1].stride;
-                binding_description[1].stride += format_size;
-            }
-            else
-            {
-                attribute.offset = binding_description[0].stride;
-                binding_description[0].stride += format_size;
-            }
-        }
+        // for( auto &attribute : attributeDescriptions )
+        // {
+        //     uint32_t formatSize = VulkanMappings::getFormatSize( attribute.format );
+        //     if( attribute.location == 15 )
+        //     {
+        //         attribute.offset = bindingDescription[1].stride;
+        //         bindingDescription[1].stride += formatSize;
+        //     }
+        //     else
+        //     {
+        //         attribute.offset = bindingDescription[0].stride;
+        //         bindingDescription[0].stride += formatSize;
+        //     }
+        // }
 
         spvReflectDestroyShaderModule( &module );
     }

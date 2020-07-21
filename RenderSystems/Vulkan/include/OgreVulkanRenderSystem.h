@@ -194,7 +194,7 @@ namespace Ogre
         virtual void _setComputePso( const HlmsComputePso *pso );
 
         virtual VertexElementType getColourVertexElementType( void ) const;
-        virtual void _convertProjectionMatrix( const Matrix4 &matrix, Matrix4 &dest ) {}
+        virtual void _convertProjectionMatrix( const Matrix4 &matrix, Matrix4 &dest );
 
         virtual void _dispatch( const HlmsComputePso &pso );
 
