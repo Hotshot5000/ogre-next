@@ -13,7 +13,7 @@ layout(std140) uniform;
 
 @insertpiece( Common_Matrix_DeclUnpackMatrix4x4 )
 
-layout(location = 0)in vec4 vertex;
+layout(location = 0)in vec3 vertex;
 @property( hlms_colour )layout(location = 5)in vec4 colour;@end
 
 @foreach( hlms_uv_count, n )
@@ -64,13 +64,13 @@ void main()
 	@end
 
 @property( !hlms_dual_paraboloid_mapping )
-	gl_Position = vertex * @insertpiece( worldViewProj );
+	gl_Position = vec4(vertex, 1.0) * @insertpiece( worldViewProj );
 @end
 
 @property( hlms_dual_paraboloid_mapping )
 	//Dual Paraboloid Mapping
 	gl_Position.w	= 1.0f;
-	gl_Position.xyz	= (vertex * @insertpiece( worldViewProj )).xyz;
+	gl_Position.xyz	= (vec4(vertex, 1.0) * @insertpiece( worldViewProj )).xyz;
 	float L = length( gl_Position.xyz );
 	gl_Position.z	+= 1.0f;
 	gl_Position.xy	/= gl_Position.z;
@@ -78,7 +78,7 @@ void main()
 @end
 
 @property( !hlms_shadowcaster )
-@property( hlms_colour )	outVs.colour = colour;@end
+@property( hlms_colour )	outVs.colour = vec4(1.0, 0.0, 0.0, 1.0);@end
 
 @property( texture_matrix )	mat4 textureMatrix;@end
 
