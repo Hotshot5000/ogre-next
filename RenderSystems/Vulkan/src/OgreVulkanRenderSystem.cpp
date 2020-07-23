@@ -2146,6 +2146,7 @@ namespace Ogre
                         // it->mType ); vertexDescriptor.attributes[elementIdx].bufferIndex = bufferIdx;
                         // vertexDescriptor.attributes[elementIdx].offset = accumOffset;
 
+                        locationMap[elementIdx]->format = VulkanMappings::get( it->mType );
                         locationMap[elementIdx]->binding = bufferIdx;
                         locationMap[elementIdx]->offset = accumOffset;
 

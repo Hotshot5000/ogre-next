@@ -158,7 +158,7 @@ namespace Ogre
         case VET_COLOUR:
         case VET_COLOUR_ARGB:
         case VET_COLOUR_ABGR:
-            return VK_FORMAT_R8G8B8A8_SNORM;
+            return VK_FORMAT_R8G8B8A8_UNORM;
         case VET_SHORT2:            return VK_FORMAT_R16G16_SINT;
         case VET_SHORT4:            return VK_FORMAT_R16G16B16A16_SINT;
         case VET_UBYTE4:            return VK_FORMAT_R8G8B8A8_UINT;

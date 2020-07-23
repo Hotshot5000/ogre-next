@@ -169,13 +169,13 @@ namespace Ogre
         VulkanTextureGpu *retVal = 0;
         if( textureFlags & TextureFlags::RenderToTexture )
         {
-            retVal = OGRE_NEW VulkanTextureGpuRenderTarget( pageOutStrategy, mVaoManager, name, textureFlags | TextureFlags::RequiresTextureFlipping,
+            retVal = OGRE_NEW VulkanTextureGpuRenderTarget( pageOutStrategy, mVaoManager, name, textureFlags,
                 initialType, this );
         }
         else
         {
             retVal = OGRE_NEW VulkanTextureGpu( pageOutStrategy, mVaoManager, name,
-                                                textureFlags | TextureFlags::RequiresTextureFlipping,
+                                                textureFlags,
                                                 initialType, this );
         }
 

@@ -78,7 +78,7 @@ void main()
 @end
 
 @property( !hlms_shadowcaster )
-@property( hlms_colour )	outVs.colour = vec4(1.0, 0.0, 0.0, 1.0);@end
+@property( hlms_colour )	outVs.colour = colour;@end
 
 @property( texture_matrix )	mat4 textureMatrix;@end
 

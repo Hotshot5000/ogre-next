@@ -181,7 +181,7 @@ namespace Ogre
             VkCommandBuffer commandBuffer = beginSingleTimeCommands( device );
             VkBufferImageCopy region;
             region.bufferOffset = srcOffset + srcBox.bytesPerImage * i;
-            region.bufferRowLength = bytesPerRow;
+            region.bufferRowLength = 0;
             region.bufferImageHeight = 0;
 
             region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
