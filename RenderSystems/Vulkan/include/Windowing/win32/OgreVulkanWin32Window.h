@@ -1,7 +1,10 @@
 #pragma once
 
-#include <windows.h>
 #include "OgreVulkanWindow.h"
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
+
+#include <windows.h>
 
 namespace Ogre
 {
@@ -51,3 +54,5 @@ public:
 
 
 }  // namespace Ogre
+
+#endif

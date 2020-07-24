@@ -55,8 +55,6 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanHardwareIndexBuffer.h"
 #include "OgreVulkanHardwareVertexBuffer.h"
 
-//#include "Windowing/X11/OgreVulkanXcbWindow.h"
-
 #include "OgreVulkanDescriptorPool.h"
 #include "OgreVulkanDescriptorSet.h"
 #include "OgreVulkanDescriptorSetTexture.h"
@@ -66,7 +64,12 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanTextureGpu.h"
 #include "OgreVulkanUtils2.h"
 #include "Vao/OgreVulkanUavBufferPacked.h"
-#include "Windowing/win32/OgreVulkanWin32Window.h"
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
+#    include "Windowing/win32/OgreVulkanWin32Window.h"
+#else
+#    include "Windowing/X11/OgreVulkanXcbWindow.h"
+#endif
 
 #define TODO_check_layers_exist
 
@@ -398,8 +401,13 @@ namespace Ogre
                                                      const NameValuePairList *miscParams )
     {
         FastArray<const char *> reqInstanceExtensions;
+#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
         VulkanWindow *win =
             OGRE_NEW OgreVulkanWin32Window( reqInstanceExtensions, name, width, height, fullScreen );
+#else
+		VulkanWindow *win =
+			OGRE_NEW VulkanXcbWindow( reqInstanceExtensions, name, width, height, fullScreen );
+#endif
         mWindows.insert( win );
 
         if( !mInitialized )
@@ -1181,9 +1189,9 @@ namespace Ogre
         BindingMap<VkBufferView> buffer_views;
         const BindingMap<VkDescriptorImageInfo> &image_infos = mImageInfo;
 
-        const std::vector<VulkanConstBufferPacked *> &constBuffers = vaoManager->getConstBuffers();
-        std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersIt = constBuffers.begin();
-        std::vector<VulkanConstBufferPacked *>::const_iterator constBuffersEnd = constBuffers.end();
+        const vector<VulkanConstBufferPacked *>::type &constBuffers = vaoManager->getConstBuffers();
+        vector<VulkanConstBufferPacked *>::type::const_iterator constBuffersIt = constBuffers.begin();
+        vector<VulkanConstBufferPacked *>::type::const_iterator constBuffersEnd = constBuffers.end();
 
         while( constBuffersIt != constBuffersEnd )
         {
@@ -1198,9 +1206,9 @@ namespace Ogre
             ++constBuffersIt;
         }
 
-        const std::vector<VulkanTexBufferPacked *> &texBuffers = vaoManager->getTexBuffersPacked();
-        std::vector<VulkanTexBufferPacked *>::const_iterator texBuffersIt = texBuffers.begin();
-        std::vector<VulkanTexBufferPacked *>::const_iterator texBuffersEnd = texBuffers.end();
+        const vector<VulkanTexBufferPacked *>::type &texBuffers = vaoManager->getTexBuffersPacked();
+        vector<VulkanTexBufferPacked *>::type::const_iterator texBuffersIt = texBuffers.begin();
+        vector<VulkanTexBufferPacked *>::type::const_iterator texBuffersEnd = texBuffers.end();
 
         while( texBuffersIt != texBuffersEnd )
         {

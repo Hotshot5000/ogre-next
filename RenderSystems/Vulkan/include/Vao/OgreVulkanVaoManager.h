@@ -160,8 +160,8 @@ namespace Ogre
 
         VulkanDevice *mDevice;
 
-        std::vector<VulkanConstBufferPacked *> mConstBuffers;
-        std::vector<VulkanTexBufferPacked *> mTexBuffersPacked;
+        vector<VulkanConstBufferPacked *>::type mConstBuffers;
+        vector<VulkanTexBufferPacked *>::type mTexBuffersPacked;
 
         bool mFenceFlushed;
 
@@ -316,12 +316,12 @@ namespace Ogre
         static void mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks );
 
 
-        const std::vector<VulkanConstBufferPacked *> &getConstBuffers() const
+        const vector<VulkanConstBufferPacked *>::type &getConstBuffers() const
         {
             return mConstBuffers;
         }
 
-        const std::vector<VulkanTexBufferPacked *> &getTexBuffersPacked() const
+        const vector<VulkanTexBufferPacked *>::type &getTexBuffersPacked() const
         {
             return mTexBuffersPacked;
         }

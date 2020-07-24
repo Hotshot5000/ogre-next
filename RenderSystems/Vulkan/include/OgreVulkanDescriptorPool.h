@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <vulkan/vulkan.h>
 
 #include <unordered_map>
+#include <vector>
 
 // #include "common/helpers.h"
 // #include "common/vk_common.h"
