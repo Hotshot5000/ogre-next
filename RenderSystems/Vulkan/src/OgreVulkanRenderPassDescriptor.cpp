@@ -772,6 +772,8 @@ namespace Ogre
 
                 imageBarrier[0].subresourceRange = textureVulkan->getFullSubresourceRange();
 
+                uint32 numBarriers = 1u;
+
                 if( mDepth.texture )
                 {
                     VulkanTextureGpuWindow *depthTextureVulkan =
@@ -788,6 +790,7 @@ namespace Ogre
                     imageBarrier[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
                     imageBarrier[1].subresourceRange = depthTextureVulkan->getFullSubresourceRange();
+                    ++numBarriers;
                 }
 
                 vkCmdPipelineBarrier( mQueue->mCurrentCmdBuffer,
@@ -797,7 +800,7 @@ namespace Ogre
                                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
                                           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
                                           VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                                      0u, 0u, 0, 0u, 0, 2u, imageBarrier );
+                                      0u, 0u, 0, 0u, 0, numBarriers, imageBarrier );
                 mQueue->addWindowToWaitFor( semaphore );
             }
         }
