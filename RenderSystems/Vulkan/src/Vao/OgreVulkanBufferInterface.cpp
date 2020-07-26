@@ -92,7 +92,6 @@ namespace Ogre
                 offset = mBuffer->mInternalBufferStart;
                 length = mBuffer->_getInternalNumElements() * vaoManager->getDynamicBufferMultiplier();
             }
-            
 
             mMappedPtr = mDynamicBuffer->map( offset * bytesPerElement,  //
                                               length * bytesPerElement,  //
@@ -133,11 +132,11 @@ namespace Ogre
                 ( mBuffer->mLastMappingStart + flushStartElem ) * mBuffer->mBytesPerElement,
                 flushSizeElem * mBuffer->mBytesPerElement );
 
-            // if( unmapOption == UO_UNMAP_ALL )
-            // {
+            if( unmapOption == UO_UNMAP_ALL )
+            {
                 mDynamicBuffer->unmap( mUnmapTicket );
                 mMappedPtr = 0;
-            // }
+            }
         }
     }
     //-----------------------------------------------------------------------------------

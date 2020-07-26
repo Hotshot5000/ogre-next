@@ -47,10 +47,9 @@ namespace Ogre
     protected:
         void *mMappedPtr;
 
-        uint8 *mVulkanDataPtr;
-        // VulkanBufferInterface * mBufferInterface;
-        VkDeviceMemory mDeviceMemory;
         VkBuffer mVboName;
+        VulkanDynamicBuffer *mDynamicBuffer;
+        size_t mUnmapTicket;
 
         /** How many bytes between the last fence and our current offset do we need to let
             through before we place another fence?
@@ -107,17 +106,15 @@ namespace Ogre
 
     public:
         VulkanStagingBuffer( size_t internalBufferStart, size_t sizeBytes, VaoManager *vaoManager,
-                             bool uploadOnly, VkDeviceMemory deviceMemory, VkBuffer vboName,
-                             VulkanDynamicBuffer *dynamicBuffer );        
-
+                             bool uploadOnly, VkBuffer vboName, VulkanDynamicBuffer *dynamicBuffer );
         virtual ~VulkanStagingBuffer();
 
         virtual StagingStallType uploadWillStall( size_t sizeBytes );
 
         virtual size_t _asyncDownload( BufferPacked *source, size_t srcOffset, size_t srcLength );
-        void _unmapToV1( v1::VulkanHardwareBufferCommon * hwBuffer, size_t lockStart, size_t lockSize );
-        unsigned long long _asyncDownloadV1( v1::VulkanHardwareBufferCommon *source, size_t srcOffset,
-                                             size_t srcLength );
+        void _unmapToV1( v1::VulkanHardwareBufferCommon *hwBuffer, size_t lockStart, size_t lockSize );
+        size_t _asyncDownloadV1( v1::VulkanHardwareBufferCommon *source, size_t srcOffset,
+                                 size_t srcLength );
         void _notifyDeviceStalled();
     };
 }  // namespace Ogre

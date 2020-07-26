@@ -28,7 +28,11 @@ THE SOFTWARE.
 #ifndef _OgreVulkanUtils_H_
 #define _OgreVulkanUtils_H_
 
+#include "OgreVulkanPrerequisites.h"
+
+#include "OgrePixelFormatGpu.h"
 #include "OgreString.h"
+
 #include "SPIRV-Reflect/spirv_reflect.h"
 
 #include "vulkan/vulkan_core.h"
@@ -47,28 +51,23 @@ namespace Ogre
 
     String vkResultToString( VkResult result );
 
-    void setObjectName( VkDevice device, uint64_t object,
-                                     VkDebugReportObjectTypeEXT objectType, const char *name );
+    void setObjectName( VkDevice device, uint64_t object, VkDebugReportObjectTypeEXT objectType,
+                        const char *name );
 
-    VkFormat findSupportedFormat( VkPhysicalDevice physicalDevice,
-                                  const std::vector<VkFormat> &candidates, VkImageTiling tiling,
-                                  VkFormatFeatureFlags features );
-
-    VkFormat findDepthFormat( VkPhysicalDevice physicalDevice );
+    PixelFormatGpu findSupportedFormat( VkPhysicalDevice physicalDevice,
+                                        const FastArray<PixelFormatGpu> &candidates,
+                                        VkImageTiling tiling, VkFormatFeatureFlags features );
 
     uint32_t findMemoryType( VkPhysicalDevice physicalDevice,
                              VkPhysicalDeviceMemoryProperties &memProperties, uint32_t typeFilter,
                              VkMemoryPropertyFlags properties );
 
-    inline VkDeviceSize alignMemory( size_t offset, VkDeviceSize &alignment )
+    inline VkDeviceSize alignMemory( size_t offset, const VkDeviceSize &alignment )
     {
         return ( ( offset + alignment - 1 ) / alignment ) * alignment;
     }
 
     String getSpirvReflectError( SpvReflectResult spirvReflectResult );
-
-    VkCommandBuffer beginSingleTimeCommands( VulkanDevice *device );
-    void endSingleTimeCommands( VulkanDevice *device, VkCommandBuffer commandBuffer );
 }  // namespace Ogre
 
 #endif  //#ifndef _OgreVulkanPrerequisites_H_

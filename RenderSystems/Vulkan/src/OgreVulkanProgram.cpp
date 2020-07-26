@@ -453,15 +453,17 @@ namespace Ogre
 
                 if( reflBinding.binding != OGRE_VULKAN_PARAMETER_SLOT )
                     continue;
-                
+
                 const VkDescriptorType type =
                     static_cast<VkDescriptorType>( reflBinding.descriptor_type );
                 if( type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER )
                 {
                     for( uint32 memberPos = 0; memberPos < reflBinding.block.member_count; ++memberPos )
                     {
-                        const SpvReflectBlockVariable &blockVariable = reflBinding.block.members[memberPos];
-                        GpuConstantType constantType = VulkanMappings::get( blockVariable.type_description->op );
+                        const SpvReflectBlockVariable &blockVariable =
+                            reflBinding.block.members[memberPos];
+                        GpuConstantType constantType =
+                            VulkanMappings::get( blockVariable.type_description->op );
                         if( constantType == GCT_MATRIX_4X4 )
                         {
                             const uint32_t rowCount = blockVariable.numeric.matrix.row_count;
@@ -486,10 +488,12 @@ namespace Ogre
                             else if( rowCount == 4 && columnCount == 4 )
                                 constantType = GCT_MATRIX_4X4;
                         }
-                        else if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_VECTOR )
+                        else if( blockVariable.type_description->type_flags &
+                                 SPV_REFLECT_TYPE_FLAG_VECTOR )
                         {
                             const uint32 componentCount = blockVariable.numeric.vector.component_count;
-                            if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT )
+                            if( blockVariable.type_description->type_flags &
+                                SPV_REFLECT_TYPE_FLAG_FLOAT )
                             {
                                 switch( componentCount )
                                 {
@@ -511,7 +515,8 @@ namespace Ogre
                                                  "VulkanProgram::buildConstantDefinitions" );
                                 }
                             }
-                            else if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_INT )
+                            else if( blockVariable.type_description->type_flags &
+                                     SPV_REFLECT_TYPE_FLAG_INT )
                             {
                                 switch( componentCount )
                                 {
@@ -534,14 +539,15 @@ namespace Ogre
                                 }
                             }
                         }
-                        else if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_STRUCT )
+                        else if( blockVariable.type_description->type_flags &
+                                 SPV_REFLECT_TYPE_FLAG_STRUCT )
                         {
                             continue;
                         }
 
                         GpuConstantDefinition def;
                         def.constType = constantType;
-                        def.logicalIndex = prevSize; // blockVariable.offset;
+                        def.logicalIndex = prevSize;  // blockVariable.offset;
                         // def.physicalIndex = blockVariable.offset;
                         if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_ARRAY )
                         {
@@ -606,13 +612,13 @@ namespace Ogre
                     VulkanConstantDefinitionBindingParam bindingParam;
                     bindingParam.offset = reflBinding.block.offset;
                     bindingParam.size = reflBinding.block.size;
-                    if( vp->mConstantDefsBindingParams.find( reflBinding.binding ) == vp->getConstantDefsBindingParams().end() )
+                    if( vp->mConstantDefsBindingParams.find( reflBinding.binding ) ==
+                        vp->getConstantDefsBindingParams().end() )
                     {
                         prevSize += alignMemory(
                             reflBinding.block.size,
                             mDevice->mDeviceProperties.limits.minUniformBufferOffsetAlignment );
                     }
-                    
 
                     vp->mConstantDefsBindingParams.insert(
                         unordered_map<uint32, VulkanConstantDefinitionBindingParam>::type::value_type(
@@ -640,7 +646,8 @@ namespace Ogre
                     def.logicalIndex = prevSize;
                     // if( prevBindingParam.size != 0 )
                     // {
-                    //     def.logicalIndex = alignMemory( prevBindingParam.size, mDevice->mDeviceProperties.limits.minUniformBufferOffsetAlignment );
+                    //     def.logicalIndex = alignMemory( prevBindingParam.size,
+                    //     mDevice->mDeviceProperties.limits.minUniformBufferOffsetAlignment );
                     //     prevBindingParam.offset = 0;
                     //     prevBindingParam.size = 0;
                     // }

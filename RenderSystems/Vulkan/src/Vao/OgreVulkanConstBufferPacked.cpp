@@ -57,6 +57,10 @@ namespace Ogre
         bindBuffer( slot, 0 );
     }
 
+    void VulkanConstBufferPacked::bindBufferGS( uint16 slot ) {}
+    void VulkanConstBufferPacked::bindBufferHS( uint16 slot ) {}
+    void VulkanConstBufferPacked::bindBufferDS( uint16 slot ) {}
+
     void VulkanConstBufferPacked::bindBufferCS( uint16 slot )
     {
         bindBuffer( slot, 0 );

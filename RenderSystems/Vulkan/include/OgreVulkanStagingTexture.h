@@ -39,21 +39,19 @@ namespace Ogre
 {
     class _OgreVulkanExport VulkanStagingTexture : public StagingTextureBufferImpl
     {
+        VkBuffer mVboName;
         VulkanDynamicBuffer *mDynamicBuffer;
         size_t mUnmapTicket;
-        VkDeviceMemory mDeviceMemory;
-        VkBuffer mVboName;
-        // uint8 *mDynamicBuffer;
+
         void *mMappedPtr;
         void *mLastMappedPtr;
-        
 
         virtual bool belongsToUs( const TextureBox &box );
         virtual void *RESTRICT_ALIAS_RETURN mapRegionImplRawPtr( void );
 
     public:
-        VulkanStagingTexture( VaoManager *vaoManager, PixelFormatGpu formatFamily, size_t size, 
-            VkDeviceMemory deviceMemory, VkBuffer buffer, VulkanDynamicBuffer *dynamicBuffer );
+        VulkanStagingTexture( VaoManager *vaoManager, PixelFormatGpu formatFamily, size_t size,
+                              VkBuffer vboName, VulkanDynamicBuffer *dynamicBuffer );
         virtual ~VulkanStagingTexture();
 
         void _unmapBuffer( void );

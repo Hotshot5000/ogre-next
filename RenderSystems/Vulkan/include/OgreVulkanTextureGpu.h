@@ -78,6 +78,18 @@ namespace Ogre
 
         VkDeviceMemory mTextureImageMemory;
 
+    public:
+        /// The current layout we're in. Including any internal stuff.
+        VkImageLayout mCurrLayout;
+        /// The layout we're expected to be when rendering or doing compute, rather than when doing
+        /// internal stuff (e.g. this variable won't contain VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        /// because that origins from C++ operations and are not expected by the compositor)
+        ///
+        /// When mCurrLayout != mNextLayout, it means that there is already a layout transition
+        /// that will be happening to achieve mCurrLayout = mNextLayout
+        VkImageLayout mNextLayout;
+
+    protected:
         virtual void createInternalResourcesImpl( void );
         virtual void destroyInternalResourcesImpl( void );
 
@@ -127,7 +139,7 @@ namespace Ogre
         VkImageViewType getVulkanTextureViewType( void ) const;
 
         // Returns the image view for this complete image.
-        VkImageView getView();
+        VkImageView getView(void);
 
         VkImageView getView( PixelFormatGpu pixelFormat, uint8 mipLevel, uint8 numMipmaps,
                              uint16 arraySlice, bool cubemapsAs2DArrays, bool forUav );
@@ -135,6 +147,10 @@ namespace Ogre
         VkImageView getView( DescriptorSetUav::TextureSlot texSlot );
 
         void destroyView( VkImageView imageView );
+
+        /// Returns a fresh VkImageMemoryBarrier filled with common data.
+        /// srcAccessMask, dstAccessMask, oldLayout and newLayout must be filled by caller
+        VkImageMemoryBarrier getImageMemoryBarrier(void) const;
     };
 
     class _OgreVulkanExport VulkanTextureGpuRenderTarget : public VulkanTextureGpu

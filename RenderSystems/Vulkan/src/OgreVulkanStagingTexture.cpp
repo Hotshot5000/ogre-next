@@ -28,23 +28,23 @@ THE SOFTWARE.
 
 #include "OgreVulkanStagingTexture.h"
 
-
-#include "OgreVulkanUtils2.h"
-#include "OgreVulkanTextureGpu.h"
-#include "Vao/OgreVulkanVaoManager.h"
 #include "OgreVulkanDevice.h"
+#include "OgreVulkanTextureGpu.h"
 #include "OgreVulkanUtils.h"
+#include "Vao/OgreVulkanDynamicBuffer.h"
+#include "Vao/OgreVulkanVaoManager.h"
+
+#define TODO_deallocate_StagingBufferVbo  // Cannot be destructor
 
 namespace Ogre
 {
     VulkanStagingTexture::VulkanStagingTexture( VaoManager *vaoManager, PixelFormatGpu formatFamily,
-                                                size_t size, VkDeviceMemory deviceMemory,
-                                                VkBuffer buffer, VulkanDynamicBuffer *dynamicBuffer ) :
+                                                size_t size, VkBuffer vboName,
+                                                VulkanDynamicBuffer *dynamicBuffer ) :
         StagingTextureBufferImpl( vaoManager, formatFamily, size, 0, 0 ),
-        mDeviceMemory( deviceMemory ),
-        mVboName( buffer ),
-        // mDynamicBuffer( (uint8 *)OGRE_MALLOC_SIMD( size, MEMCATEGORY_RENDERSYS ) ),
+        mVboName( vboName ),
         mDynamicBuffer( dynamicBuffer ),
+        mUnmapTicket( std::numeric_limits<size_t>::max() ),
         mMappedPtr( 0 ),
         mLastMappedPtr( 0 )
     {
@@ -55,10 +55,7 @@ namespace Ogre
     VulkanStagingTexture::~VulkanStagingTexture()
     {
         if( mDynamicBuffer )
-        {
-            // OGRE_FREE_SIMD( mDynamicBuffer, MEMCATEGORY_RENDERSYS );
             mDynamicBuffer = 0;
-        }
         mMappedPtr = 0;
     }
     //-----------------------------------------------------------------------------------
@@ -73,62 +70,25 @@ namespace Ogre
         return static_cast<uint8 *>( mMappedPtr ) + mCurrentOffset;
     }
     //-----------------------------------------------------------------------------------
-    void VulkanStagingTexture::_unmapBuffer()
-    {
-        mMappedPtr = 0;
-    }
+    void VulkanStagingTexture::_unmapBuffer() { mMappedPtr = 0; }
     //-----------------------------------------------------------------------------------
     void VulkanStagingTexture::startMapRegion()
     {
         StagingTextureBufferImpl::startMapRegion();
 
-        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
-        VulkanDevice *device = vaoManager->getDevice();
-
-        VkDeviceSize size = alignMemory( mSize, device->mDeviceProperties.limits.nonCoherentAtomSize );
-
-        VkResult result =
-            vkMapMemory( device->mDevice, mDeviceMemory, mInternalBufferStart, size, 0, &mMappedPtr );
-        checkVkResult( result, "vkMapMemory" );
-
+        OGRE_ASSERT_MEDIUM( mUnmapTicket == std::numeric_limits<size_t>::max() &&
+                            "VulkanStagingTexture still mapped!" );
+        mMappedPtr = mDynamicBuffer->map( mInternalBufferStart, mSize, mUnmapTicket );
         mLastMappedPtr = mMappedPtr;
-
-        VkMappedMemoryRange memRange;
-        makeVkStruct( memRange, VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE );
-        memRange.memory = mDeviceMemory;
-        memRange.offset = mInternalBufferStart;
-        memRange.size = size;
-        result = vkInvalidateMappedMemoryRanges( device->mDevice, 1, &memRange );
-        checkVkResult( result, "vkInvalidateMappedMemoryRanges" );
-
-        // mMappedPtr =
-        //     mBufferInterface->map( mInternalBufferStart + mMappingStart, sizeBytes,
-        //     MappingState::MS_UNMAPPED );
-
-        // mMappedPtr = mVulkanDataPtr + mInternalBufferStart + mMappingStart;
-
     }
     //-----------------------------------------------------------------------------------
     void VulkanStagingTexture::stopMapRegion()
     {
-        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
-        VulkanDevice *device = vaoManager->getDevice();
+        OGRE_ASSERT_MEDIUM( mUnmapTicket != std::numeric_limits<size_t>::max() &&
+                            "VulkanStagingTexture already unmapped!" );
 
-        VkCommandBuffer cmdBuffer = device->mGraphicsQueue.mCurrentCmdBuffer;
-
-        VkDeviceSize size = alignMemory( mSize, device->mDeviceProperties.limits.nonCoherentAtomSize );
-
-        // vkBindBufferMemory( device->mDevice, mVboName, mDeviceMemory, 0 );
-
-        VkMappedMemoryRange memRange;
-        makeVkStruct( memRange, VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE );
-        memRange.memory = mDeviceMemory;
-        memRange.offset = mInternalBufferStart;
-        memRange.size = size;
-        VkResult result = vkFlushMappedMemoryRanges( device->mDevice, 1, &memRange );
-        checkVkResult( result, "VkMappedMemoryRange" );
-
-        vkUnmapMemory( device->mDevice, mDeviceMemory );
+        mDynamicBuffer->flush( mUnmapTicket, mInternalBufferStart, mSize );
+        mDynamicBuffer->unmap( mUnmapTicket );
 
         mMappedPtr = 0;
 
@@ -144,6 +104,8 @@ namespace Ogre
 
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
         VulkanDevice *device = vaoManager->getDevice();
+
+        device->mGraphicsQueue.getCopyEncoder( 0, dstTexture, false );
 
         size_t bytesPerRow = srcBox.bytesPerRow;
         size_t bytesPerImage = srcBox.bytesPerImage;
@@ -171,14 +133,13 @@ namespace Ogre
             reinterpret_cast<uint8 *>( srcBox.data ) - reinterpret_cast<uint8 *>( mLastMappedPtr );
         const uint32 destinationSlice =
             ( dstBox ? dstBox->sliceStart : 0 ) + dstTexture->getInternalSliceStart();
+        const uint32 numSlices = ( dstBox ? dstBox->numSlices : dstTexture->getNumSlices() );
         uint32 xPos = static_cast<uint32>( dstBox ? dstBox->x : 0 );
         uint32 yPos = static_cast<uint32>( dstBox ? dstBox->y : 0 );
         uint32 zPos = static_cast<uint32>( dstBox ? dstBox->z : 0 );
 
-
         for( uint32 i = 0; i < srcBox.numSlices; ++i )
         {
-            VkCommandBuffer commandBuffer = beginSingleTimeCommands( device );
             VkBufferImageCopy region;
             region.bufferOffset = srcOffset + srcBox.bytesPerImage * i;
             region.bufferRowLength = 0;
@@ -186,58 +147,19 @@ namespace Ogre
 
             region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             region.imageSubresource.mipLevel = mipLevel;
-            region.imageSubresource.baseArrayLayer = 0;
-            region.imageSubresource.layerCount = 1;
+            region.imageSubresource.baseArrayLayer = destinationSlice;
+            region.imageSubresource.layerCount = numSlices;
 
-            region.imageOffset.x = xPos;
-            region.imageOffset.y = yPos;
-            region.imageOffset.z = zPos;
-            region.imageExtent = { srcBox.width, srcBox.height, srcBox.depth };
+            region.imageOffset.x = static_cast<int32_t>( xPos );
+            region.imageOffset.y = static_cast<int32_t>( yPos );
+            region.imageOffset.z = static_cast<int32_t>( zPos );
+            region.imageExtent.width = srcBox.width;
+            region.imageExtent.height = srcBox.height;
+            region.imageExtent.depth = srcBox.depth;
+
             vkCmdCopyBufferToImage( device->mGraphicsQueue.mCurrentCmdBuffer, mVboName,
                                     dstTextureVulkan->getFinalTextureName(),
-                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region );
-
-            endSingleTimeCommands( device, commandBuffer );
-
-            commandBuffer = beginSingleTimeCommands( device );
-
-            // The sub resource range describes the regions of the image that will be transitioned using
-            // the
-            // memory barriers below
-            VkImageSubresourceRange subresource_range = {};
-            // Image only contains color data
-            // if( PixelFormatGpuUtils::isDepth( mPixelFormat ) )
-            // {
-            //     subresource_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-            //     if( PixelFormatGpuUtils::isStencil( mPixelFormat ) )
-            //         subresource_range.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-            // }
-            // else
-            subresource_range.aspectMask = region.imageSubresource.aspectMask;
-            // Start at first mip level
-            subresource_range.baseMipLevel = region.imageSubresource.mipLevel;
-            // We will transition on all mip levels
-            subresource_range.levelCount = dstTextureVulkan->getNumMipmaps() - subresource_range.baseMipLevel;
-            // The 2D texture only has one layer
-            subresource_range.layerCount = region.imageSubresource.layerCount;
-
-            set_image_layout( device->mGraphicsQueue.mCurrentCmdBuffer,
-                              dstTextureVulkan->getFinalTextureName(),
-                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresource_range,
-                              VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT );
-
-            endSingleTimeCommands( device, commandBuffer );
-            // [blitEncoder copyFromBuffer:mVboName
-            //                sourceOffset:srcOffset + srcBox.bytesPerImage * i
-            //           sourceBytesPerRow:bytesPerRow
-            //         sourceBytesPerImage:bytesPerImage
-            //                  sourceSize:MTLSizeMake( srcBox.width, srcBox.height, srcBox.depth )
-            //                   toTexture:dstTextureVulkan->getFinalTextureName()
-            //            destinationSlice:destinationSlice + i
-            //            destinationLevel:mipLevel
-            //           destinationOrigin:MTLOriginMake( xPos, yPos, zPos )];
+                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &region );
         }
-
     }
 }  // namespace Ogre

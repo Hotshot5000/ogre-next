@@ -35,7 +35,6 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanProgram.h"
 
 #include "OgreVulkanRenderPassDescriptor.h"
-#include "OgreVulkanUtils2.h"
 #include "Vao/OgreVulkanConstBufferPacked.h"
 
 namespace Ogre
@@ -111,9 +110,11 @@ namespace Ogre
         PFN_vkDestroyDebugReportCallbackEXT DestroyDebugReportCallback;
         VkDebugReportCallbackEXT mDebugReportCallback;
 
+#if VULKAN_HOTSHOT_DISABLED
         BindingMap<VkDescriptorImageInfo> mImageInfo;
         BindingMap<VkDescriptorBufferInfo> mBufferInfo;
         BindingMap<VkDescriptorImageInfo> mSamplerInfo;
+#endif
         VulkanDescriptorSetTexture *mCurrentDescriptorSetTexture;
 
         void addInstanceDebugCallback( void );
@@ -194,7 +195,6 @@ namespace Ogre
         virtual void _setComputePso( const HlmsComputePso *pso );
 
         virtual VertexElementType getColourVertexElementType( void ) const;
-        virtual void _convertProjectionMatrix( const Matrix4 &matrix, Matrix4 &dest );
 
         virtual void _dispatch( const HlmsComputePso &pso );
 

@@ -30,6 +30,7 @@ THE SOFTWARE.
 
 #include "OgreStringConverter.h"
 #include "OgreVulkanDevice.h"
+#include "OgreVulkanMappings.h"
 
 namespace Ogre
 {
@@ -92,8 +93,8 @@ namespace Ogre
             (PFN_vkCmdDebugMarkerInsertEXT)vkGetDeviceProcAddr( device, "vkCmdDebugMarkerInsertEXT" );
     }
 
-    void setObjectName( VkDevice device, uint64_t object,
-                                     VkDebugReportObjectTypeEXT objectType, const char *name )
+    void setObjectName( VkDevice device, uint64_t object, VkDebugReportObjectTypeEXT objectType,
+                        const char *name )
     {
         // Check for a valid function pointer
         if( pfnDebugMarkerSetObjectName )
@@ -107,41 +108,37 @@ namespace Ogre
         }
     }
 
-    VkFormat findSupportedFormat( VkPhysicalDevice physicalDevice, const std::vector<VkFormat> &candidates, VkImageTiling tiling,
-                                  VkFormatFeatureFlags features )
+    PixelFormatGpu findSupportedFormat( VkPhysicalDevice physicalDevice,
+                                        const FastArray<PixelFormatGpu> &candidates,
+                                        VkImageTiling tiling, VkFormatFeatureFlags features )
     {
-        for( VkFormat format : candidates )
+        FastArray<PixelFormatGpu>::const_iterator itor = candidates.begin();
+        FastArray<PixelFormatGpu>::const_iterator endt = candidates.end();
+
+        while( itor != endt )
         {
+            const VkFormat format = VulkanMappings::get( *itor );
             VkFormatProperties props;
             vkGetPhysicalDeviceFormatProperties( physicalDevice, format, &props );
 
             if( tiling == VK_IMAGE_TILING_LINEAR &&
                 ( props.linearTilingFeatures & features ) == features )
             {
-                return format;
+                return *itor;
             }
             else if( tiling == VK_IMAGE_TILING_OPTIMAL &&
                      ( props.optimalTilingFeatures & features ) == features )
             {
-                return format;
+                return *itor;
             }
+
+            ++itor;
         }
 
-        throw std::runtime_error( "failed to find supported format!" );
+        OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR, "failed to find supported format!",
+                     "findSupportedFormat" );
     }
-
-    VkFormat findDepthFormat( VkPhysicalDevice physicalDevice )
-    {
-        return findSupportedFormat(
-            physicalDevice,
-            {
-                VK_FORMAT_D24_UNORM_S8_UINT,
-                VK_FORMAT_D32_SFLOAT_S8_UINT,
-                VK_FORMAT_D32_SFLOAT
-            },
-            VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT );
-    }
-
+    //-------------------------------------------------------------------------
     uint32_t findMemoryType( VkPhysicalDevice physicalDevice,
                              VkPhysicalDeviceMemoryProperties &memProperties, uint32_t typeFilter,
                              VkMemoryPropertyFlags properties )
@@ -155,9 +152,9 @@ namespace Ogre
             }
         }
 
-        throw std::runtime_error( "failed to find suitable memory type!" );
+        OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR, "failed to find suitable memory type!",
+                     "findMemoryType" );
     }
-
     //-------------------------------------------------------------------------
     String getSpirvReflectError( SpvReflectResult spirvReflectResult )
     {
@@ -201,59 +198,12 @@ namespace Ogre
             return "SPV_REFLECT_RESULT_ERROR_SPIRV_UNEXPECTED_BLOCK_DATA";
         case SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_BLOCK_MEMBER_REFERENCE:
             return "SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_BLOCK_MEMBER_REFERENCE";
+            /*case SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_ENTRY_POINT:
+                return "SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_ENTRY_POINT";
+            case SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_EXECUTION_MODE:
+                return "SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_EXECUTION_MODE";*/
         }
 
         return "SPV_REFLECT_INVALID_ERROR_CODE";
-    }
-
-    VkCommandPool sCommandPool = 0;
-
-    VkCommandBuffer beginSingleTimeCommands(VulkanDevice *device)
-    {
-        if( !sCommandPool )
-        {
-            VkCommandPoolCreateInfo cmdPoolCreateInfo;
-            makeVkStruct( cmdPoolCreateInfo, VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO );
-            cmdPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-            cmdPoolCreateInfo.queueFamilyIndex = device->mGraphicsQueue.getFamilyIdx();
-
-            VkResult result = vkCreateCommandPool( device->mDevice, &cmdPoolCreateInfo, 0, &sCommandPool );
-            checkVkResult( result, "vkCreateCommandPool" );
-        }
-        
-
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = sCommandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers( device->mDevice, &allocInfo, &commandBuffer );
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer( commandBuffer, &beginInfo );
-
-        return commandBuffer;
-    }
-
-    void endSingleTimeCommands( VulkanDevice *device, VkCommandBuffer commandBuffer )
-    {
-        vkEndCommandBuffer( commandBuffer );
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-
-        VkResult result = vkQueueSubmit( device->mGraphicsQueue.mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-        checkVkResult( result, "vkQueueSubmit" );
-        result = vkQueueWaitIdle( device->mGraphicsQueue.mQueue );
-        checkVkResult( result, "vkQueueWaitIdle" );
-
-        vkFreeCommandBuffers( device->mDevice, sCommandPool, 1, &commandBuffer );
     }
 }  // namespace Ogre

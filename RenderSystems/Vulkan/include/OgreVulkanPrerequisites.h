@@ -73,8 +73,9 @@ namespace Ogre
     class VulkanProgram;
     class VulkanProgramFactory;
     class VulkanQueue;
-    class VulkanStagingBuffer;
     class VulkanRenderSystem;
+    class VulkanStagingBuffer;
+    class VulkanTextureGpu;
     class VulkanVaoManager;
     class VulkanWindow;
     class VulkanDiscardBuffer;

@@ -46,12 +46,12 @@ namespace Ogre
                                  VaoManager *vaoManager, BufferInterface *bufferInterface );
         ~VulkanConstBufferPacked();
 
-        void bindBufferVS( uint16 slot ) override;
-        void bindBufferPS( uint16 slot ) override;
-        virtual void bindBufferGS( uint16 slot ) {}
-        virtual void bindBufferHS( uint16 slot ) {}
-        virtual void bindBufferDS( uint16 slot ) {}
-        void bindBufferCS( uint16 slot ) override;
+        virtual void bindBufferVS( uint16 slot );
+        virtual void bindBufferPS( uint16 slot );
+        virtual void bindBufferGS( uint16 slot );
+        virtual void bindBufferHS( uint16 slot );
+        virtual void bindBufferDS( uint16 slot );
+        virtual void bindBufferCS( uint16 slot );
 
         void bindBuffer( uint16 slot, uint32 offsetBytes );
 
