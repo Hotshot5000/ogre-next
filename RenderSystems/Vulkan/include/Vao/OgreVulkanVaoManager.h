@@ -160,10 +160,14 @@ namespace Ogre
 
         VulkanDevice *mDevice;
 
+#ifndef VULKAN_HOTSHOT_WILL_REMOVE
         vector<VulkanConstBufferPacked *>::type mConstBuffers;
         vector<VulkanTexBufferPacked *>::type mTexBuffersPacked;
+#endif
 
         bool mFenceFlushed;
+        bool mSupportsCoherentMemory;
+        bool mSupportsNonCoherentMemory;
 
         static const uint32 VERTEX_ATTRIBUTE_INDEX[VES_COUNT];
 
@@ -253,7 +257,8 @@ namespace Ogre
 
         virtual void destroyVertexArrayObjectImpl( VertexArrayObject *vao );
 
-        static VboFlag bufferTypeToVboFlag( BufferType bufferType );
+        VboFlag bufferTypeToVboFlag( BufferType bufferType ) const;
+        bool isVboFlagCoherent( VboFlag vboFlag ) const;
 
         virtual void switchVboPoolIndexImpl( size_t oldPoolIdx, size_t newPoolIdx,
                                              BufferPacked *buffer );
@@ -314,7 +319,6 @@ namespace Ogre
 
         /// @see StagingBuffer::mergeContiguousBlocks
         static void mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks );
-
 
         const vector<VulkanConstBufferPacked *>::type &getConstBuffers() const
         {

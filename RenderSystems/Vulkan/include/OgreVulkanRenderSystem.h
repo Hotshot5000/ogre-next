@@ -35,7 +35,10 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanProgram.h"
 
 #include "OgreVulkanRenderPassDescriptor.h"
+#include "OgreVulkanUtils2.h"
 #include "Vao/OgreVulkanConstBufferPacked.h"
+
+#define VULKAN_HOTSHOT_DISABLED 1
 
 namespace Ogre
 {

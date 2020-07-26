@@ -833,18 +833,6 @@ namespace Ogre
     {
         return VET_COLOUR_ARGB;
     }
-    void VulkanRenderSystem::_convertProjectionMatrix( const Matrix4 &matrix, Matrix4 &dest )
-    {
-        if( !mReverseDepth )
-        {
-            // no any conversion request for OpenGL
-            dest = matrix;
-        }
-        else
-        {
-            RenderSystem::_convertProjectionMatrix( matrix, dest );
-        }
-    }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_dispatch( const HlmsComputePso &pso )
     {

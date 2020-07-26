@@ -139,6 +139,16 @@ namespace Ogre
                      "findSupportedFormat" );
     }
     //-------------------------------------------------------------------------
+    PixelFormatGpu findDepthFormat( VkPhysicalDevice physicalDevice )
+    {
+        FastArray<PixelFormatGpu> candidates;
+        candidates.push_back( PFG_D32_FLOAT_S8X24_UINT );
+        return findSupportedFormat(
+            physicalDevice,
+            candidates,
+            VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT );
+    }
+    //-------------------------------------------------------------------------
     uint32_t findMemoryType( VkPhysicalDevice physicalDevice,
                              VkPhysicalDeviceMemoryProperties &memProperties, uint32_t typeFilter,
                              VkMemoryPropertyFlags properties )
