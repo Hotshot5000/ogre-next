@@ -202,10 +202,6 @@ namespace Ogre
         virtual void _dispatch( const HlmsComputePso &pso );
 
         virtual void _setVertexArrayObject( const VertexArrayObject *vao );
-        void flushDescriptorState(
-            VkPipelineBindPoint pipeline_bind_point, const VulkanConstBufferPacked &constBuffer,
-            const size_t bindOffset, const size_t bytesToWrite,
-            const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &shaderBindings );
 
         virtual void _render( const CbDrawCallIndexed *cmd );
         virtual void _render( const CbDrawCallStrip *cmd );
