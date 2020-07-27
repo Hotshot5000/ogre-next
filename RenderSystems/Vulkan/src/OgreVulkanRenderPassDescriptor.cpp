@@ -42,6 +42,10 @@ THE SOFTWARE.
 
 //#include <execinfo.h>  //backtrace
 
+#define TODO_cannotInterruptRendering_is_wrong
+
+//#include <execinfo.h>  //backtrace
+
 namespace Ogre
 {
     VulkanRenderPassDescriptor::VulkanRenderPassDescriptor( VulkanQueue *graphicsQueue,
@@ -234,7 +238,8 @@ namespace Ogre
                                                                    bool resolveTex )
     {
         attachment.format = VulkanMappings::get( colour.texture->getPixelFormat() );
-        attachment.samples = static_cast<VkSampleCountFlagBits>( colour.texture->getMsaa() );
+        attachment.samples = static_cast<VkSampleCountFlagBits>(
+            colour.texture->getSampleDescription().getColourSamples() );
         attachment.loadOp = get( colour.loadAction );
         attachment.storeOp = get( colour.storeAction );
         attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -299,7 +304,8 @@ namespace Ogre
     VkImageView VulkanRenderPassDescriptor::setupDepthAttachment( VkAttachmentDescription &attachment )
     {
         attachment.format = VulkanMappings::get( mDepth.texture->getPixelFormat() );
-        attachment.samples = static_cast<VkSampleCountFlagBits>( mDepth.texture->getMsaa() );
+        attachment.samples = static_cast<VkSampleCountFlagBits>(
+            mDepth.texture->getSampleDescription().getColourSamples() );
         attachment.loadOp = get( mDepth.loadAction );
         attachment.storeOp = get( mDepth.storeAction );
         if( mStencil.texture )
@@ -414,7 +420,7 @@ namespace Ogre
             VkImage texName = 0;
             VkImage resolveTexName = 0;
 
-            if( mColour[i].texture->getMsaa() > 1u )
+            if( mColour[i].texture->getSampleDescription().isMultisample() )
             {
                 VulkanTextureGpu *resolveTexture = 0;
                 if( mColour[i].resolveTexture )
@@ -552,12 +558,13 @@ namespace Ogre
         mNumImageViews = 0u;
     }
 
-    bool VulkanRenderPassDescriptor::cannotInterruptRendering() const { return false; }
+    TODO_cannotInterruptRendering_is_wrong;
 
     uint32 VulkanRenderPassDescriptor::checkForClearActions( VulkanRenderPassDescriptor *other ) const
     {
         return 0;
     }
+    bool VulkanRenderPassDescriptor::cannotInterruptRendering() const { return false; }
 
     //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::notifySwapchainCreated( VulkanWindow *window )

@@ -30,7 +30,8 @@ THE SOFTWARE.
 
 #include "OgreVulkanPrerequisites.h"
 
-#include "vulkan/vulkan_core.h"
+struct VkDescriptorSetLayoutBinding;
+struct DescriptorSetLayoutBindingArray;
 
 namespace Ogre
 {
@@ -65,9 +66,9 @@ namespace Ogre
         /// This operation can cause gaps to appear in the bindings.
         static void optimizeDescriptorSets( DescriptorSetLayoutBindingArray &sets );
 
-        static VkPipelineLayout generateVkDescriptorSets( const DescriptorSetLayoutBindingArray &bindingSets,
-                                                          DescriptorSetLayoutArray &sets );
-
+        static VkPipelineLayout generateVkDescriptorSets(
+            const DescriptorSetLayoutBindingArray &bindingSets, DescriptorSetLayoutArray &sets );
+        
         static void generateVertexInputBindings(
             VulkanProgram *shader, HlmsPso *newPso,
             std::vector<VkVertexInputBindingDescription> &bindingDescription,

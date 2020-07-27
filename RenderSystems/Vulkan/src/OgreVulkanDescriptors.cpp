@@ -33,6 +33,7 @@ THE SOFTWARE.
 
 #include "OgreException.h"
 #include "OgreLwString.h"
+#include "OgreStringConverter.h"
 #include "OgreVulkanMappings.h"
 
 #include "SPIRV-Reflect/spirv_reflect.h"
@@ -85,7 +86,8 @@ namespace Ogre
         return retVal;
     }
     //-------------------------------------------------------------------------
-    void VulkanDescriptors::mergeDescriptorSets( DescriptorSetLayoutBindingArray &a, const String &shaderB,
+    void VulkanDescriptors::mergeDescriptorSets( DescriptorSetLayoutBindingArray &a,
+                                                 const String &shaderB,
                                                  const DescriptorSetLayoutBindingArray &b )
     {
         if( !canMergeDescriptorSets( a, b ) )
@@ -112,14 +114,14 @@ namespace Ogre
                 const size_t minBindings = std::min( a[i].size(), b[i].size() );
 
                 defaultLog->logMessage( String( "BEFORE MERGING" ) );
-                
+
                 for( size_t j = 0u; j < minBindings; ++j )
                 {
                     if( defaultLog )
                     {
-                        defaultLog->logMessage( String( " * j " ) + std::to_string( j ) +
-                                                " binding: " + 
-                                                std::to_string( a[i][j].binding ) );
+                        defaultLog->logMessage(
+                            String( " * j " ) + StringConverter::toString( j ) +
+                            " binding: " + StringConverter::toString( a[i][j].binding ) );
                     }
                 }
                 for( size_t j = 0u; j < minBindings; ++j )
@@ -129,8 +131,8 @@ namespace Ogre
                     if( a[i][j].binding == j && b[i][j].binding == j && a[i][j].descriptorCount > 0 &&
                         b[i][j].descriptorCount > 0 )
                     {
-                        a[i][j].stageFlags |= b[i][j].stageFlags;
-                    }
+                    a[i][j].stageFlags |= b[i][j].stageFlags;
+                }
                     else if( a[i][j].descriptorCount == 0 && b[i][j].descriptorCount > 0 )
                     {
                         // We have a descriptor in the new set that does not exist in the original set.
@@ -140,7 +142,8 @@ namespace Ogre
                         a[i][j].stageFlags = b[i][j].stageFlags;
                         a[i][j].pImmutableSamplers = b[i][j].pImmutableSamplers;
                     }
-                        
+                }
+
                 }
 
                 a[i].appendPOD( b[i].begin() + minBindings, b[i].end() );
@@ -150,9 +153,10 @@ namespace Ogre
                 {
                     if( defaultLog )
                     {
-                        defaultLog->logMessage( String( " * j " ) + std::to_string( j ) +
-                                                " binding: " + std::to_string( a[i][j].binding ) );
-                    }
+                        defaultLog->logMessage(
+                            String( " * j " ) + StringConverter::toString( j ) +
+                            " binding: " + StringConverter::toString( a[i][j].binding ) );
+            }
                 }
             }
             // else
@@ -285,7 +289,6 @@ namespace Ogre
     VkPipelineLayout VulkanDescriptors::generateVkDescriptorSets(
         const DescriptorSetLayoutBindingArray &bindingSets, DescriptorSetLayoutArray &sets )
     {
-
         VulkanGpuProgramManager *vulkanProgramManager =
             static_cast<VulkanGpuProgramManager *>( VulkanGpuProgramManager::getSingletonPtr() );
 

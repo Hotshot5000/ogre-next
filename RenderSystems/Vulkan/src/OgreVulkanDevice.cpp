@@ -177,7 +177,6 @@ namespace Ogre
         mPhysicalDevice = pd[0];
 
         vkGetPhysicalDeviceMemoryProperties( mPhysicalDevice, &mDeviceMemoryProperties );
-
         vkGetPhysicalDeviceFeatures( mPhysicalDevice, &mDeviceFeatures );
     }
     //-------------------------------------------------------------------------

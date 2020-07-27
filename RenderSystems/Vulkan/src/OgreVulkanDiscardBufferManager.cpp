@@ -28,8 +28,6 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 #include "OgreVulkanDiscardBufferManager.h"
 
-
-
 #include "OgreStringConverter.h"
 #include "OgreVulkanDevice.h"
 #include "OgreVulkanUtils.h"
@@ -49,10 +47,7 @@ Ogre::VulkanDiscardBufferManager::VulkanDiscardBufferManager( VulkanDevice *devi
     makeVkStruct( bufferCi, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO );
     bufferCi.size = defaultCapacity;
     bufferCi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                     VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                     VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     VkResult result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &mBuffer );
     checkVkResult( result, "vkCreateBuffer" );
 
@@ -110,10 +105,7 @@ void Ogre::VulkanDiscardBufferManager::growToFit( size_t extraBytes,
     makeVkStruct( bufferCi, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO );
     bufferCi.size = newCapacity;
     bufferCi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                     VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                     VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;;
     VkResult result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &mBuffer );
     checkVkResult( result, "vkCreateBuffer" );
 
@@ -133,6 +125,8 @@ void Ogre::VulkanDiscardBufferManager::growToFit( size_t extraBytes,
 
     result = vkBindBufferMemory( mDevice->mDevice, mBuffer, mDeviceMemory, offset );
     checkVkResult( result, "vkBindBufferMemory" );
+
+    mDevice->mGraphicsQueue.getCopyEncoderV1Buffer( false );
 
     {
         // Update our buffers so they point to the new buffer, copy their blocks in use from old
@@ -155,11 +149,6 @@ void Ogre::VulkanDiscardBufferManager::growToFit( size_t extraBytes,
                 region.size = alignToNextMultiple( ( *itor )->getBlockSize(), 4u );
                 vkCmdCopyBuffer( mDevice->mGraphicsQueue.mCurrentCmdBuffer, oldBuffer, mBuffer, 1u,
                                  &region );
-                // [blitEncoder copyFromBuffer:oldBuffer
-                //                sourceOffset:( *itor )->getBlockStart()
-                //                    toBuffer:mBuffer
-                //           destinationOffset:( *itor )->getBlockStart()
-                //                        size:( *itor )->getBlockSize()];
                 ( *itor )->mLastFrameUsed = currentFrame;
             }
             else
@@ -325,8 +314,8 @@ void Ogre::VulkanDiscardBufferManager::_getBlock( VulkanDiscardBuffer *discardBu
     }
 }
 
-Ogre::VulkanDiscardBuffer * Ogre::VulkanDiscardBufferManager::createDiscardBuffer( size_t bufferSize,
-    uint16 alignment )
+Ogre::VulkanDiscardBuffer *Ogre::VulkanDiscardBufferManager::createDiscardBuffer( size_t bufferSize,
+                                                                                  uint16 alignment )
 {
     alignment = std::max<uint16>( 4u, alignment );  // Prevent alignments lower than 4 bytes.
     VulkanDiscardBuffer *retVal =
@@ -369,8 +358,7 @@ void Ogre::VulkanDiscardBufferManager::destroyDiscardBuffer( VulkanDiscardBuffer
 }
 
 Ogre::VulkanDiscardBuffer::VulkanDiscardBuffer( size_t bufferSize, uint16 alignment,
-                                                VaoManager *vaoManager,
-                                                VulkanDevice *device,
+                                                VaoManager *vaoManager, VulkanDevice *device,
                                                 VulkanDiscardBufferManager *owner ) :
     mBuffer( 0 ),
     mDevice( device ),
@@ -384,13 +372,14 @@ Ogre::VulkanDiscardBuffer::VulkanDiscardBuffer( size_t bufferSize, uint16 alignm
 {
 }
 
-void * Ogre::VulkanDiscardBuffer::map( bool noOverwrite )
+void *Ogre::VulkanDiscardBuffer::map( bool noOverwrite )
 {
     if( !noOverwrite )
         mOwner->_getBlock( this );
 
     VulkanVaoManager *vaoMagr = static_cast<VulkanVaoManager *>( mVaoManager );
-    const size_t offset = alignMemory( mBufferOffset, mDevice->mDeviceProperties.limits.nonCoherentAtomSize );
+    const size_t offset =
+        alignMemory( mBufferOffset, mDevice->mDeviceProperties.limits.nonCoherentAtomSize );
     void *data = 0;
     VkResult result =
         vkMapMemory( mDevice->mDevice, mDeviceMemory,
