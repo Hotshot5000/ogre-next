@@ -144,8 +144,6 @@ namespace Ogre
                     }
                 }
 
-                }
-
                 a[i].appendPOD( b[i].begin() + minBindings, b[i].end() );
 
                 defaultLog->logMessage( String( "AFTER MERGING" ) );

@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "OgreVulkanDescriptors.h"
 
 #include "OgreHeaderPrefix.h"
+#include "OgreVulkanDescriptorSetLayout.h"
 
 namespace Ogre
 {
@@ -59,7 +60,7 @@ namespace Ogre
         DescriptorSetLayoutBindingArray descriptorLayoutBindingSets;
         DescriptorSetLayoutArray descriptorSets;
 
-        //std::vector<VulkanDescriptorSetLayout> descriptorLayoutSets;
+        std::vector<VulkanDescriptorSetLayout> descriptorLayoutSets;
 
         VkPipelineLayout pipelineLayout;
 

@@ -404,8 +404,8 @@ namespace Ogre
         if( PixelFormatGpuUtils::isStencil( mDepthBuffer->getPixelFormat() ) )
             mStencilBuffer = mDepthBuffer;
 
-        mTexture->setMsaa( mMsaaCount );
-        mDepthBuffer->setMsaa( mMsaaCount );
+        // mTexture->setMsaa( mMsaaCount );
+        // mDepthBuffer->setMsaa( mMsaaCount );
 
         
 

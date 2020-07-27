@@ -12,7 +12,7 @@ Ogre::VulkanHlmsPso::VulkanHlmsPso( VkPipeline _pso, VulkanProgram *_vertexShade
     descriptorSets( _descriptorSets ),
     pipelineLayout( _layout )
 {
-    /*DescriptorSetLayoutBindingArray::const_iterator itor = descriptorLayoutBindingSets.begin();
+    DescriptorSetLayoutBindingArray::const_iterator itor = descriptorLayoutBindingSets.begin();
     DescriptorSetLayoutBindingArray::const_iterator endt = descriptorLayoutBindingSets.end();
 
     size_t i = 0;
@@ -21,7 +21,7 @@ Ogre::VulkanHlmsPso::VulkanHlmsPso( VkPipeline _pso, VulkanProgram *_vertexShade
     {
         descriptorLayoutSets.emplace_back( descriptorSets[i++], * itor );
         ++itor;
-    }*/
+    }
 }
 
 Ogre::VulkanHlmsPso::~VulkanHlmsPso()

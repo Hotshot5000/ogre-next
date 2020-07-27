@@ -28,6 +28,8 @@ THE SOFTWARE.
 #ifndef _OgreVulkanDescriptors_H_
 #define _OgreVulkanDescriptors_H_
 
+#include <vulkan/vulkan.h>
+
 #include "OgreVulkanPrerequisites.h"
 
 struct VkDescriptorSetLayoutBinding;
