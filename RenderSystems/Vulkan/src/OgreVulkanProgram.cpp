@@ -33,8 +33,10 @@ THE SOFTWARE.
 #include "OgreVulkanDescriptors.h"
 #include "OgreVulkanGpuProgramManager.h"
 #include "OgreVulkanMappings.h"
+#include "OgreVulkanRootLayout.h"
 #include "Vao/OgreVulkanVaoManager.h"
 
+#include "OgreStringConverter.h"
 #include "OgreVulkanUtils.h"
 #include "SPIRV-Reflect/spirv_reflect.h"
 
@@ -83,6 +85,7 @@ namespace Ogre
                                   VulkanDevice *device ) :
         HighLevelGpuProgram( creator, name, handle, group, isManual, loader ),
         mDevice( device ),
+        mRootLayout( 0 ),
         mShaderModule( 0 ),
         mNumSystemGenVertexInputs( 0u ),
         mCompiled( false ),
@@ -100,7 +103,7 @@ namespace Ogre
         }
 
         // Manually assign language now since we use it immediately
-        mSyntaxCode = "glsl-vulkan";
+        mSyntaxCode = "glslvk";
     }
     //---------------------------------------------------------------------------
     VulkanProgram::~VulkanProgram()
@@ -132,6 +135,35 @@ namespace Ogre
         }
 
         return EShLangFragment;
+    }
+    //-----------------------------------------------------------------------
+    void VulkanProgram::extractRootLayoutFromSource( void )
+    {
+        const String rootLayoutHeader = "## ROOT LAYOUT BEGIN";
+        const String rootLayoutFooter = "## ROOT LAYOUT END";
+
+        size_t posStart = mSource.find( rootLayoutHeader );
+        if( posStart == String::npos )
+        {
+            LogManager::getSingleton().logMessage( "Error " + mName + ": failed to find required '" +
+                                                   rootLayoutHeader + "'" );
+            mCompileError = true;
+            return;
+        }
+        posStart += rootLayoutHeader.size();
+        const size_t posEnd = mSource.find( "## ROOT LAYOUT END", posStart );
+        if( posEnd == String::npos )
+        {
+            LogManager::getSingleton().logMessage( "Error " + mName + ": failed to find required '" +
+                                                   rootLayoutFooter + "'" );
+            mCompileError = true;
+            return;
+        }
+
+        VulkanGpuProgramManager *vulkanProgramManager =
+            static_cast<VulkanGpuProgramManager *>( VulkanGpuProgramManager::getSingletonPtr() );
+        mRootLayout = vulkanProgramManager->getRootLayout(
+            mSource.substr( posStart, posEnd - posStart ).c_str(), mType == GPT_COMPUTE_PROGRAM, mName );
     }
     //-----------------------------------------------------------------------
     void VulkanProgram::initGlslResources( TBuiltInResource &resources )
@@ -241,10 +273,131 @@ namespace Ogre
     //-----------------------------------------------------------------------
     void VulkanProgram::loadFromSource( void ) { compile( true ); }
     //-----------------------------------------------------------------------
+    struct SemanticMacro
+    {
+        const char *nameStr;
+        VertexElementSemantic semantic;
+        uint8 count;
+        SemanticMacro( const char *_nameStr, VertexElementSemantic _semantic, uint8 _count = 1u ) :
+            nameStr( _nameStr ),
+            semantic( _semantic ),
+            count( _count )
+        {
+        }
+    };
+    // The names match our HLSL bindings
+    static const SemanticMacro c_semanticMacros[] = {
+        SemanticMacro( "OGRE_POSITION", VES_POSITION ),
+        SemanticMacro( "OGRE_BLENDWEIGHT", VES_BLEND_WEIGHTS ),
+        SemanticMacro( "OGRE_BLENDINDICES", VES_BLEND_INDICES ),
+        SemanticMacro( "OGRE_BLENDWEIGHT2", VES_BLEND_WEIGHTS2 ),
+        SemanticMacro( "OGRE_BLENDINDICES2", VES_BLEND_INDICES2 ),
+        SemanticMacro( "OGRE_NORMAL", VES_NORMAL ),
+        SemanticMacro( "OGRE_DIFFUSE", VES_DIFFUSE ),
+        SemanticMacro( "OGRE_SPECULAR", VES_SPECULAR ),
+        SemanticMacro( "OGRE_TEXCOORD", VES_TEXTURE_COORDINATES, 8u ),
+        SemanticMacro( "OGRE_BINORMAL", VES_BINORMAL ),
+        SemanticMacro( "OGRE_TANGENT", VES_TANGENT ),
+    };
+    void VulkanProgram::addVertexSemanticsToPreamble( String &inOutPreamble ) const
+    {
+        // This code could be baked at compile time...
+        char tmpBuffer[768];
+        Ogre::LwString preamble( Ogre::LwString::FromEmptyPointer( tmpBuffer, sizeof( tmpBuffer ) ) );
+
+        for( size_t i = 0u; i < sizeof( c_semanticMacros ) / sizeof( c_semanticMacros[0] ); ++i )
+        {
+            uint32 attrIdx = VulkanVaoManager::getAttributeIndexFor( c_semanticMacros[i].semantic );
+            if( c_semanticMacros[i].count == 1u )
+            {
+                preamble.a( "#define ", c_semanticMacros[i].nameStr, " ", "location = ", attrIdx, "\n" );
+            }
+            else
+            {
+                for( uint8 j = 0u; j < c_semanticMacros[i].count; ++j )
+                {
+                    preamble.a( "#define ", c_semanticMacros[i].nameStr, j, " ", "location = ", attrIdx,
+                                "\n" );
+                }
+            }
+        }
+
+        preamble.a( "#define OGRE_DRAWID location = 15u\n" );
+
+        inOutPreamble += preamble.c_str();
+    }
+    //-----------------------------------------------------------------------
+    void VulkanProgram::addPreprocessorToPreamble( String &inOutPreamble ) const
+    {
+        String preamble;
+        preamble.swap( inOutPreamble );
+        // Pass all user-defined macros to preprocessor
+        if( !mPreprocessorDefines.empty() )
+        {
+            String::size_type pos = 0u;
+            while( pos != String::npos )
+            {
+                // Find delims
+                String::size_type endPos = mPreprocessorDefines.find_first_of( ";,=", pos );
+                if( endPos != String::npos )
+                {
+                    String::size_type macro_name_start = pos;
+                    size_t macro_name_len = endPos - pos;
+                    pos = endPos;
+
+                    // Check definition part
+                    if( mPreprocessorDefines[pos] == '=' )
+                    {
+                        // Set up a definition, skip delim
+                        ++pos;
+                        String::size_type macro_val_start = pos;
+                        size_t macro_val_len;
+
+                        endPos = mPreprocessorDefines.find_first_of( ";,", pos );
+                        if( endPos == String::npos )
+                        {
+                            macro_val_len = mPreprocessorDefines.size() - pos;
+                            pos = endPos;
+                        }
+                        else
+                        {
+                            macro_val_len = endPos - pos;
+                            pos = endPos + 1u;
+                        }
+                        preamble += "#define " +
+                                    mPreprocessorDefines.substr( macro_name_start, macro_name_len ) +
+                                    " " + mPreprocessorDefines.substr( macro_val_start, macro_val_len );
+                    }
+                    else
+                    {
+                        // No definition part, define as "1"
+                        ++pos;
+                        preamble += "#define " +
+                                    mPreprocessorDefines.substr( macro_name_start, macro_name_len ) +
+                                    " 1";
+                    }
+                }
+                else
+                {
+                    if( pos < mPreprocessorDefines.size() )
+                    {
+                        preamble +=
+                            "#define " +
+                            mPreprocessorDefines.substr( pos, mPreprocessorDefines.size() - pos ) + " 1";
+                    }
+                    pos = endPos;
+                }
+            }
+        }
+        preamble.swap( inOutPreamble );
+    }
+    //-----------------------------------------------------------------------
     bool VulkanProgram::compile( const bool checkErrors )
     {
         mCompiled = false;
         mCompileError = false;
+
+        extractRootLayoutFromSource();
 
         const EShLanguage stage = getEshLanguage();
         glslang::TShader shader( stage );
@@ -259,12 +412,24 @@ namespace Ogre
         const char *sourceCString = mSource.c_str();
         shader.setStrings( &sourceCString, 1 );
 
-        if( !shader.parse( &resources, 450, false, messages ) )
+        if( !mCompileError )
         {
-            LogManager::getSingleton().logMessage( "Vulkan GLSL compiler error in " + mName + ":\n" +
-                                                   shader.getInfoLog() + "\nDEBUG LOG:\n" +
-                                                   shader.getInfoDebugLog() );
-            mCompileError = true;
+            String preamble = "#define vulkan_layout layout\n";
+
+            mRootLayout->generateRootLayoutMacros( mType, preamble );
+            if( mType == GPT_VERTEX_PROGRAM )
+                addVertexSemanticsToPreamble( preamble );
+            addPreprocessorToPreamble( preamble );
+
+            shader.setPreamble( preamble.c_str() );
+
+            if( !shader.parse( &resources, 450, false, messages ) )
+            {
+                LogManager::getSingleton().logMessage( "Vulkan GLSL compiler error in " + mName + ":\n" +
+                                                       shader.getInfoLog() + "\nDEBUG LOG:\n" +
+                                                       shader.getInfoDebugLog() );
+                mCompileError = true;
+            }
         }
 
         // Add shader to new program object.
@@ -400,18 +565,70 @@ namespace Ogre
         params->_setNamedConstants( mConstantDefs );
     }
     //-----------------------------------------------------------------------
+    const SpvReflectDescriptorBinding *VulkanProgram::findBinding(
+        const FastArray<SpvReflectDescriptorSet *> &sets, size_t setIdx, size_t bindingIdx )
+    {
+        FastArray<SpvReflectDescriptorSet *>::const_iterator itor = sets.begin();
+        FastArray<SpvReflectDescriptorSet *>::const_iterator endt = sets.end();
+
+        while( itor != endt && ( *itor )->set != setIdx )
+            ++itor;
+
+        SpvReflectDescriptorBinding const *binding = 0;
+
+        if( itor != sets.end() )
+        {
+            const SpvReflectDescriptorSet *descSet = *itor;
+            const size_t numBindings = descSet->binding_count;
+            for( size_t i = 0u; i < numBindings && !binding; ++i )
+            {
+                if( descSet->bindings[i]->binding == bindingIdx )
+                    binding = descSet->bindings[i];
+            }
+        }
+
+        return binding;
+    }
+    //-----------------------------------------------------------------------
     void VulkanProgram::buildConstantDefinitions( void ) const
     {
         OgreProfileExhaustive( "VulkanProgram::buildConstantDefinitions" );
 
         // if( !mBuildParametersFromReflection )
         //     return;
+        struct FreeModuleOnDestructor
+        {
+            SpvReflectShaderModule *module;
+
+            FreeModuleOnDestructor( SpvReflectShaderModule *_module ) : module( _module ) {}
+            ~FreeModuleOnDestructor()
+            {
+                if( module )
+                {
+                    spvReflectDestroyShaderModule( module );
+                    module = 0;
+                }
+            }
+
+        private:
+            // Prevent being able to copy this object
+            FreeModuleOnDestructor( const FreeModuleOnDestructor & );
+            FreeModuleOnDestructor &operator=( const FreeModuleOnDestructor & );
+        };
 
         if( mCompileError )
             return;
 
         if( mSpirv.empty() )
             return;
+
+        size_t paramSetIdx = 0u;
+        size_t paramBindingIdx = 0u;
+        if( !mRootLayout->findParamsBuffer( mType, paramSetIdx, paramBindingIdx ) )
+        {
+            // Root layout does not specify a params buffer. Nothing to do here.
+            return;
+        }
 
         SpvReflectShaderModule module;
         memset( &module, 0, sizeof( module ) );
@@ -424,6 +641,9 @@ namespace Ogre
                              " error code: " + getSpirvReflectError( result ),
                          "VulkanDescriptors::generateDescriptorSet" );
         }
+
+        // Ensure module gets freed if we throw
+        FreeModuleOnDestructor modulePtr( &module );
 
         uint32 numDescSets = 0;
         result = spvReflectEnumerateDescriptorSets( &module, &numDescSets, 0 );
@@ -449,310 +669,191 @@ namespace Ogre
         // const_cast to get around the fact that buildConstantDefinitions() is const.
         VulkanProgram *vp = const_cast<VulkanProgram *>( this );
 
-        size_t numSets = 0u;
-        FastArray<SpvReflectDescriptorSet *>::const_iterator itor = sets.begin();
-        FastArray<SpvReflectDescriptorSet *>::const_iterator endt = sets.end();
+        const SpvReflectDescriptorBinding *descBinding =
+            findBinding( sets, paramSetIdx, paramBindingIdx );
 
-        while( itor != endt )
+        if( !descBinding )
         {
-            const SpvReflectDescriptorSet &reflSet = **itor;
-            const size_t numUsedBindings = reflSet.binding_count;
+            // It's fine. The root layout declared a slot but the shader is not forced to use it
+            return;
+        }
 
-            size_t numBindings = 0;
-            for( size_t i = 0; i < numUsedBindings; ++i )
-                numBindings = std::max<size_t>( reflSet.bindings[i]->binding + 1u, numBindings );
+        // VulkanConstantDefinitionBindingParam prevBindingParam;
+        // prevBindingParam.offset = 0;
+        // prevBindingParam.size = 0;
+        size_t prevSize = 0;
 
-            // VulkanConstantDefinitionBindingParam prevBindingParam;
-            // prevBindingParam.offset = 0;
-            // prevBindingParam.size = 0;
-            size_t prevSize = 0;
+        const SpvReflectDescriptorBinding &reflBinding = *descBinding;
 
-            for( size_t bindingPos = 0; bindingPos < numUsedBindings; ++bindingPos )
+        const VkDescriptorType type = static_cast<VkDescriptorType>( reflBinding.descriptor_type );
+
+        if( type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER )
+        {
+            OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
+                         "Error on shader " + mName + ": params buffer slot must be a uniform buffer",
+                         "VulkanProgram::buildConstantDefinitions" );
+        }
+
+        const size_t numMembers = reflBinding.block.member_count;
+        for( size_t memberPos = 0u; memberPos < numMembers; ++memberPos )
+        {
+            const SpvReflectBlockVariable &blockVariable = reflBinding.block.members[memberPos];
+            GpuConstantType constantType = VulkanMappings::get( blockVariable.type_description->op );
+            if( constantType == GCT_MATRIX_4X4 )
             {
-                const SpvReflectDescriptorBinding &reflBinding = *( reflSet.bindings[bindingPos] );
+                const uint32_t rowCount = blockVariable.numeric.matrix.row_count;
+                const uint32_t columnCount = blockVariable.numeric.matrix.column_count;
 
-                if( reflBinding.binding != OGRE_VULKAN_PARAMETER_SLOT )
-                    continue;
-
-                const VkDescriptorType type =
-                    static_cast<VkDescriptorType>( reflBinding.descriptor_type );
-                if( type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER )
+                if( rowCount == 2 && columnCount == 2 )
+                    constantType = GCT_MATRIX_2X2;
+                else if( rowCount == 2 && columnCount == 3 )
+                    constantType = GCT_MATRIX_2X3;
+                else if( rowCount == 2 && columnCount == 4 )
+                    constantType = GCT_MATRIX_2X4;
+                else if( rowCount == 3 && columnCount == 2 )
+                    constantType = GCT_MATRIX_3X2;
+                else if( rowCount == 3 && columnCount == 3 )
+                    constantType = GCT_MATRIX_3X3;
+                else if( rowCount == 3 && columnCount == 4 )
+                    constantType = GCT_MATRIX_3X4;
+                else if( rowCount == 4 && columnCount == 2 )
+                    constantType = GCT_MATRIX_4X2;
+                else if( rowCount == 4 && columnCount == 3 )
+                    constantType = GCT_MATRIX_4X3;
+                else if( rowCount == 4 && columnCount == 4 )
+                    constantType = GCT_MATRIX_4X4;
+            }
+            else if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_VECTOR )
+            {
+                const uint32 componentCount = blockVariable.numeric.vector.component_count;
+                if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT )
                 {
-                    for( uint32 memberPos = 0; memberPos < reflBinding.block.member_count; ++memberPos )
+                    switch( componentCount )
                     {
-                        const SpvReflectBlockVariable &blockVariable =
-                            reflBinding.block.members[memberPos];
-                        GpuConstantType constantType =
-                            VulkanMappings::get( blockVariable.type_description->op );
-                        if( constantType == GCT_MATRIX_4X4 )
-                        {
-                            const uint32_t rowCount = blockVariable.numeric.matrix.row_count;
-                            const uint32_t columnCount = blockVariable.numeric.matrix.column_count;
-
-                            if( rowCount == 2 && columnCount == 2 )
-                                constantType = GCT_MATRIX_2X2;
-                            else if( rowCount == 2 && columnCount == 3 )
-                                constantType = GCT_MATRIX_2X3;
-                            else if( rowCount == 2 && columnCount == 4 )
-                                constantType = GCT_MATRIX_2X4;
-                            else if( rowCount == 3 && columnCount == 2 )
-                                constantType = GCT_MATRIX_3X2;
-                            else if( rowCount == 3 && columnCount == 3 )
-                                constantType = GCT_MATRIX_3X3;
-                            else if( rowCount == 3 && columnCount == 4 )
-                                constantType = GCT_MATRIX_3X4;
-                            else if( rowCount == 4 && columnCount == 2 )
-                                constantType = GCT_MATRIX_4X2;
-                            else if( rowCount == 4 && columnCount == 3 )
-                                constantType = GCT_MATRIX_4X3;
-                            else if( rowCount == 4 && columnCount == 4 )
-                                constantType = GCT_MATRIX_4X4;
-                        }
-                        else if( blockVariable.type_description->type_flags &
-                                 SPV_REFLECT_TYPE_FLAG_VECTOR )
-                        {
-                            const uint32 componentCount = blockVariable.numeric.vector.component_count;
-                            if( blockVariable.type_description->type_flags &
-                                SPV_REFLECT_TYPE_FLAG_FLOAT )
-                            {
-                                switch( componentCount )
-                                {
-                                case 1:
-                                    constantType = GCT_FLOAT1;
-                                    break;
-                                case 2:
-                                    constantType = GCT_FLOAT2;
-                                    break;
-                                case 3:
-                                    constantType = GCT_FLOAT3;
-                                    break;
-                                case 4:
-                                    constantType = GCT_FLOAT4;
-                                    break;
-                                default:
-                                    OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
-                                                 "invalid component count for float vector",
-                                                 "VulkanProgram::buildConstantDefinitions" );
-                                }
-                            }
-                            else if( blockVariable.type_description->type_flags &
-                                     SPV_REFLECT_TYPE_FLAG_INT )
-                            {
-                                switch( componentCount )
-                                {
-                                case 1:
-                                    constantType = GCT_INT1;
-                                    break;
-                                case 2:
-                                    constantType = GCT_INT2;
-                                    break;
-                                case 3:
-                                    constantType = GCT_INT3;
-                                    break;
-                                case 4:
-                                    constantType = GCT_INT4;
-                                    break;
-                                default:
-                                    OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
-                                                 "invalid component count for int vector",
-                                                 "VulkanProgram::buildConstantDefinitions" );
-                                }
-                            }
-                        }
-                        else if( blockVariable.type_description->type_flags &
-                                 SPV_REFLECT_TYPE_FLAG_STRUCT )
-                        {
-                            continue;
-                        }
-
-                        GpuConstantDefinition def;
-                        def.constType = constantType;
-                        def.logicalIndex = prevSize;  // blockVariable.offset;
-                        // def.physicalIndex = blockVariable.offset;
-                        if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_ARRAY )
-                        {
-                            def.elementSize = blockVariable.array.stride / sizeof( float );
-                            def.arraySize = blockVariable.array.dims_count;
-                        }
-                        else
-                        {
-                            def.elementSize =
-                                GpuConstantDefinition::getElementSize( def.constType, false );
-                            def.arraySize = 1;
-                        }
-                        def.variability = GPV_GLOBAL;
-
-                        if( def.isFloat() )
-                        {
-                            def.physicalIndex = mFloatLogicalToPhysical->bufferSize;
-                            OGRE_LOCK_MUTEX( mFloatLogicalToPhysical->mutex );
-                            mFloatLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
-                                def.logicalIndex,
-                                GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
-                                                    GPV_GLOBAL ) ) );
-                            mFloatLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
-                            mConstantDefs->floatBufferSize = mFloatLogicalToPhysical->bufferSize;
-                        }
-                        else if( def.isUnsignedInt() )
-                        {
-                            def.physicalIndex = mUIntLogicalToPhysical->bufferSize;
-                            OGRE_LOCK_MUTEX( mUIntLogicalToPhysical->mutex );
-                            mUIntLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
-                                def.logicalIndex,
-                                GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
-                                                    GPV_GLOBAL ) ) );
-                            mUIntLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
-                            mConstantDefs->uintBufferSize = mUIntLogicalToPhysical->bufferSize;
-                        }
-                        else
-                        {
-                            def.physicalIndex = mIntLogicalToPhysical->bufferSize;
-                            OGRE_LOCK_MUTEX( mIntLogicalToPhysical->mutex );
-                            mIntLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
-                                def.logicalIndex,
-                                GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
-                                                    GPV_GLOBAL ) ) );
-                            mIntLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
-                            mConstantDefs->intBufferSize = mIntLogicalToPhysical->bufferSize;
-                        }
-
-                        String varName = blockVariable.name;
-                        if( blockVariable.array.dims_count )
-                            vp->mConstantDefs->generateConstantDefinitionArrayEntries( varName, def );
-
-                        mConstantDefs->map.insert(
-                            GpuConstantDefinitionMap::value_type( varName, def ) );
-                        vp->mConstantDefsSorted.push_back( def );
-
-                        vp->mConstantsBytesToWrite = std::max<uint32>(
-                            vp->mConstantsBytesToWrite,
-                            def.logicalIndex + def.arraySize * def.elementSize * sizeof( float ) );
+                    case 1:
+                        constantType = GCT_FLOAT1;
+                        break;
+                    case 2:
+                        constantType = GCT_FLOAT2;
+                        break;
+                    case 3:
+                        constantType = GCT_FLOAT3;
+                        break;
+                    case 4:
+                        constantType = GCT_FLOAT4;
+                        break;
+                    default:
+                        OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                                     "invalid component count for float vector",
+                                     "VulkanProgram::buildConstantDefinitions" );
                     }
-
-                    VulkanConstantDefinitionBindingParam bindingParam;
-                    bindingParam.offset = reflBinding.block.offset;
-                    bindingParam.size = reflBinding.block.size;
-                    if( vp->mConstantDefsBindingParams.find( reflBinding.binding ) ==
-                        vp->getConstantDefsBindingParams().end() )
-                    {
-                        prevSize += alignMemory(
-                            reflBinding.block.size,
-                            mDevice->mDeviceProperties.limits.minUniformBufferOffsetAlignment );
-                    }
-
-                    vp->mConstantDefsBindingParams.insert(
-                        unordered_map<uint32, VulkanConstantDefinitionBindingParam>::type::value_type(
-                            reflBinding.binding, bindingParam ) );
-
-                    // prevBindingParam.offset = bindingParam.offset;
-                    // prevBindingParam.size = bindingParam.size;
                 }
-                else
+                else if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_INT )
                 {
-                    GpuConstantDefinition def;
-                    if( type == VK_DESCRIPTOR_TYPE_SAMPLER )
+                    switch( componentCount )
                     {
-                        def.constType = GCT_SAMPLER2D;
+                    case 1:
+                        constantType = GCT_INT1;
+                        break;
+                    case 2:
+                        constantType = GCT_INT2;
+                        break;
+                    case 3:
+                        constantType = GCT_INT3;
+                        break;
+                    case 4:
+                        constantType = GCT_INT4;
+                        break;
+                    default:
+                        OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                                     "invalid component count for int vector",
+                                     "VulkanProgram::buildConstantDefinitions" );
                     }
-                    else if( type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER )
-                    {
-                        def.constType = GCT_SAMPLER1D;
-                    }
-                    else if( type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER )
-                    {
-                        def.constType = GCT_SAMPLER2D;
-                    }
-                    def.arraySize = 1;
-                    def.logicalIndex = prevSize;
-                    // if( prevBindingParam.size != 0 )
-                    // {
-                    //     def.logicalIndex = alignMemory( prevBindingParam.size,
-                    //     mDevice->mDeviceProperties.limits.minUniformBufferOffsetAlignment );
-                    //     prevBindingParam.offset = 0;
-                    //     prevBindingParam.size = 0;
-                    // }
-                    // def.physicalIndex = 0;
-                    def.elementSize = 1;
-                    GpuNamedConstants &defs = *mConstantDefs.get();
-                    if( def.isFloat() )
-                    {
-                        def.physicalIndex = mFloatLogicalToPhysical->bufferSize;
-                        OGRE_LOCK_MUTEX( mFloatLogicalToPhysical->mutex );
-                        mFloatLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
-                            def.logicalIndex,
-                            GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
-                                                GPV_GLOBAL ) ) );
-                        mFloatLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
-                        mConstantDefs->floatBufferSize = mFloatLogicalToPhysical->bufferSize;
-                    }
-                    else if( def.isUnsignedInt() )
-                    {
-                        def.physicalIndex = mUIntLogicalToPhysical->bufferSize;
-                        OGRE_LOCK_MUTEX( mUIntLogicalToPhysical->mutex );
-                        mUIntLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
-                            def.logicalIndex,
-                            GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
-                                                GPV_GLOBAL ) ) );
-                        mUIntLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
-                        mConstantDefs->uintBufferSize = mUIntLogicalToPhysical->bufferSize;
-                    }
-                    else
-                    {
-                        def.physicalIndex = mIntLogicalToPhysical->bufferSize;
-                        OGRE_LOCK_MUTEX( mIntLogicalToPhysical->mutex );
-                        mIntLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
-                            def.logicalIndex,
-                            GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
-                                                GPV_GLOBAL ) ) );
-                        mIntLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
-                        mConstantDefs->intBufferSize = mIntLogicalToPhysical->bufferSize;
-                    }
-                    // if( def.isFloat() )
-                    // {
-                    //     def.physicalIndex = defs.floatBufferSize;
-                    //     defs.floatBufferSize += def.arraySize * def.elementSize;
-                    // }
-                    // else if( def.isDouble() )
-                    // {
-                    //     def.physicalIndex = defs.doubleBufferSize;
-                    //     defs.doubleBufferSize += def.arraySize * def.elementSize;
-                    // }
-                    // else if( def.isInt() || def.isSampler() )
-                    // {
-                    //     def.physicalIndex = defs.intBufferSize;
-                    //     defs.intBufferSize += def.arraySize * def.elementSize;
-                    // }
-                    // else if( def.isUnsignedInt() || def.isBool() )
-                    // {
-                    //     def.physicalIndex = defs.uintBufferSize;
-                    //     defs.uintBufferSize += def.arraySize * def.elementSize;
-                    // }
-                    String varName( reflBinding.name );
-                    if( varName.empty() )
-                        varName = reflBinding.type_description->type_name;
-                    if( reflBinding.array.dims_count > 0 )
-                        vp->mConstantDefs->generateConstantDefinitionArrayEntries( varName, def );
-                    mConstantDefs->map.insert( GpuConstantDefinitionMap::value_type( varName, def ) );
-
-                    vp->mConstantDefsSorted.push_back( def );
-
-                    vp->mConstantsBytesToWrite = std::max<uint32>(
-                        vp->mConstantsBytesToWrite,
-                        def.physicalIndex + def.arraySize * def.elementSize * sizeof( float ) );
-
-                    VulkanConstantDefinitionBindingParam bindingParam;
-                    bindingParam.offset = def.logicalIndex;
-                    bindingParam.size = def.arraySize * def.elementSize;
-                    prevSize += bindingParam.size;
-
-                    vp->mConstantDefsBindingParams.insert(
-                        unordered_map<uint32, VulkanConstantDefinitionBindingParam>::type::value_type(
-                            reflBinding.binding, bindingParam ) );
                 }
             }
+            else if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_STRUCT )
+            {
+                continue;
+            }
 
-            ++itor;
+            GpuConstantDefinition def;
+            def.constType = constantType;
+            def.logicalIndex = prevSize;  // blockVariable.offset;
+            // def.physicalIndex = blockVariable.offset;
+            if( blockVariable.type_description->type_flags & SPV_REFLECT_TYPE_FLAG_ARRAY )
+            {
+                def.elementSize = blockVariable.array.stride / sizeof( float );
+                def.arraySize = blockVariable.array.dims_count;
+            }
+            else
+            {
+                def.elementSize = GpuConstantDefinition::getElementSize( def.constType, false );
+                def.arraySize = 1;
+            }
+            def.variability = GPV_GLOBAL;
+
+            if( def.isFloat() )
+            {
+                def.physicalIndex = mFloatLogicalToPhysical->bufferSize;
+                OGRE_LOCK_MUTEX( mFloatLogicalToPhysical->mutex );
+                mFloatLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
+                    def.logicalIndex,
+                    GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
+                                        GPV_GLOBAL ) ) );
+                mFloatLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
+                mConstantDefs->floatBufferSize = mFloatLogicalToPhysical->bufferSize;
+            }
+            else if( def.isUnsignedInt() )
+            {
+                def.physicalIndex = mUIntLogicalToPhysical->bufferSize;
+                OGRE_LOCK_MUTEX( mUIntLogicalToPhysical->mutex );
+                mUIntLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
+                    def.logicalIndex,
+                    GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
+                                        GPV_GLOBAL ) ) );
+                mUIntLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
+                mConstantDefs->uintBufferSize = mUIntLogicalToPhysical->bufferSize;
+            }
+            else
+            {
+                def.physicalIndex = mIntLogicalToPhysical->bufferSize;
+                OGRE_LOCK_MUTEX( mIntLogicalToPhysical->mutex );
+                mIntLogicalToPhysical->map.insert( GpuLogicalIndexUseMap::value_type(
+                    def.logicalIndex,
+                    GpuLogicalIndexUse( def.physicalIndex, def.arraySize * def.elementSize,
+                                        GPV_GLOBAL ) ) );
+                mIntLogicalToPhysical->bufferSize += def.arraySize * def.elementSize;
+                mConstantDefs->intBufferSize = mIntLogicalToPhysical->bufferSize;
+            }
+
+            String varName = blockVariable.name;
+            if( blockVariable.array.dims_count )
+                vp->mConstantDefs->generateConstantDefinitionArrayEntries( varName, def );
+
+            mConstantDefs->map.insert( GpuConstantDefinitionMap::value_type( varName, def ) );
+            vp->mConstantDefsSorted.push_back( def );
+
+            vp->mConstantsBytesToWrite =
+                std::max<uint32>( vp->mConstantsBytesToWrite,
+                                  def.logicalIndex + def.arraySize * def.elementSize * sizeof( float ) );
         }
+
+        VulkanConstantDefinitionBindingParam bindingParam;
+        bindingParam.offset = reflBinding.block.offset;
+        bindingParam.size = reflBinding.block.size;
+        if( vp->mConstantDefsBindingParams.find( reflBinding.binding ) ==
+            vp->getConstantDefsBindingParams().end() )
+        {
+            prevSize += alignMemory( reflBinding.block.size,
+                                     mDevice->mDeviceProperties.limits.minUniformBufferOffsetAlignment );
+        }
+
+        vp->mConstantDefsBindingParams.insert(
+            unordered_map<uint32, VulkanConstantDefinitionBindingParam>::type::value_type(
+                reflBinding.binding, bindingParam ) );
+
+        // prevBindingParam.offset = bindingParam.offset;
+        // prevBindingParam.size = bindingParam.size;
 
         spvReflectDestroyShaderModule( &module );
     }

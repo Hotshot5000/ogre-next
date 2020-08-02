@@ -28,7 +28,9 @@ THE SOFTWARE.
 
 #include "Vao/OgreVulkanVaoManager.h"
 
+#include "OgreVulkanDescriptorPool.h"
 #include "OgreVulkanDevice.h"
+#include "OgreVulkanRootLayout.h"
 #include "OgreVulkanUtils.h"
 #include "Vao/OgreVulkanAsyncTicket.h"
 #include "Vao/OgreVulkanBufferInterface.h"
@@ -75,10 +77,12 @@ namespace Ogre
         14,   // VES_BLEND_INDICES2 - 1
     };
 
-    VulkanVaoManager::VulkanVaoManager( uint8 dynBufferMultiplier, VulkanDevice *device ) :
+    VulkanVaoManager::VulkanVaoManager( uint8 dynBufferMultiplier, VulkanDevice *device,
+                                        VulkanRenderSystem *renderSystem ) :
         VaoManager( 0 ),
         mDrawId( 0 ),
         mDevice( device ),
+        mVkRenderSystem( renderSystem ),
         mFenceFlushed( true ),
         mSupportsCoherentMemory( false ),
         mSupportsNonCoherentMemory( false )
@@ -266,8 +270,18 @@ namespace Ogre
         if( bufferType >= BT_DYNAMIC_DEFAULT )
             sizeBytes *= mDynamicBufferMultiplier;
 
-        VboVec::const_iterator itor = mVbos[vboFlag].begin();
-        VboVec::const_iterator endt = mVbos[vboFlag].end();
+        allocateVbo( sizeBytes, alignment, mVbos[vboFlag], mBestVkMemoryTypeIndex[vboFlag],
+                     mDefaultPoolSize[vboFlag], false, vboFlag != CPU_INACCESSIBLE,
+                     isVboFlagCoherent( vboFlag ), outVboIdx, outBufferOffset );
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanVaoManager::allocateVbo( size_t sizeBytes, size_t alignment, VboVec &vboVec,
+                                        uint32 vkMemoryTypeIndex, size_t defaultPoolSize,
+                                        bool textureOnly, bool cpuAccessible, bool isCoherent,
+                                        size_t &outVboIdx, size_t &outBufferOffset )
+    {
+        VboVec::const_iterator itor = vboVec.begin();
+        VboVec::const_iterator endt = vboVec.end();
 
         // clang-format off
         // Find a suitable VBO that can hold the requested size. We prefer those free
@@ -294,7 +308,7 @@ namespace Ogre
                 if( sizeBytes + padding <= block.size )
                 {
                     // clang-format off
-                    bestVboIdx      = static_cast<size_t>( itor - mVbos[vboFlag].begin());
+                    bestVboIdx      = static_cast<size_t>( itor - vboVec.begin());
                     bestBlockIdx    = static_cast<size_t>( blockIt - itor->freeBlocks.begin() );
                     // clang-format on
 
@@ -311,64 +325,67 @@ namespace Ogre
         if( bestBlockIdx == (size_t)-1 )
         {
             // clang-format off
-            bestVboIdx      = mVbos[vboFlag].size();
+            bestVboIdx      = vboVec.size();
             bestBlockIdx    = 0;
             foundMatchingStride = true;
             // clang-format on
 
             Vbo newVbo;
 
-            size_t poolSize = std::max( mDefaultPoolSize[vboFlag], sizeBytes );
+            size_t poolSize = std::max( defaultPoolSize, sizeBytes );
 
             // No luck, allocate a new buffer.
-            OGRE_ASSERT_LOW( mBestVkMemoryTypeIndex[vboFlag] <
-                             mDevice->mDeviceMemoryProperties.memoryTypeCount );
+            OGRE_ASSERT_LOW( vkMemoryTypeIndex < mDevice->mDeviceMemoryProperties.memoryTypeCount );
 
             VkMemoryAllocateInfo memAllocInfo;
             makeVkStruct( memAllocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
             memAllocInfo.allocationSize = poolSize;
-            memAllocInfo.memoryTypeIndex = mBestVkMemoryTypeIndex[vboFlag];
+            memAllocInfo.memoryTypeIndex = vkMemoryTypeIndex;
 
             VkResult result = vkAllocateMemory( mDevice->mDevice, &memAllocInfo, NULL, &newVbo.vboName );
             checkVkResult( result, "vkAllocateMemory" );
 
-            VkBufferCreateInfo bufferCi;
-            makeVkStruct( bufferCi, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO );
-            bufferCi.size = poolSize;
-            bufferCi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                             VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                             VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT |
-                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                             VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                             VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-            result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
-            checkVkResult( result, "vkCreateBuffer" );
+            newVbo.vkBuffer = 0;
+            if( !textureOnly )
+            {
+                VkBufferCreateInfo bufferCi;
+                makeVkStruct( bufferCi, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO );
+                bufferCi.size = poolSize;
+                bufferCi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                 VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+                                 VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT |
+                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+                result = vkCreateBuffer( mDevice->mDevice, &bufferCi, 0, &newVbo.vkBuffer );
+                checkVkResult( result, "vkCreateBuffer" );
 
-            VkMemoryRequirements memRequirements;
-            vkGetBufferMemoryRequirements( mDevice->mDevice, newVbo.vkBuffer, &memRequirements );
+                VkMemoryRequirements memRequirements;
+                vkGetBufferMemoryRequirements( mDevice->mDevice, newVbo.vkBuffer, &memRequirements );
 
-            // TODO use one large buffer and multiple offsets
-            VkDeviceSize offset = 0;
-            offset = alignMemory( offset, memRequirements.alignment );
+                // TODO use one large buffer and multiple offsets
+                VkDeviceSize offset = 0;
+                offset = alignMemory( offset, memRequirements.alignment );
 
-            result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, offset );
-            checkVkResult( result, "vkBindBufferMemory" );
+                result = vkBindBufferMemory( mDevice->mDevice, newVbo.vkBuffer, newVbo.vboName, offset );
+                checkVkResult( result, "vkBindBufferMemory" );
+            }
 
             newVbo.sizeBytes = poolSize;
             newVbo.freeBlocks.push_back( Block( 0, poolSize ) );
             newVbo.dynamicBuffer = 0;
 
-            if( vboFlag != CPU_INACCESSIBLE )
+            if( cpuAccessible )
             {
-                newVbo.dynamicBuffer = new VulkanDynamicBuffer(
-                    newVbo.vboName, newVbo.sizeBytes, isVboFlagCoherent( vboFlag ), false, mDevice );
+                newVbo.dynamicBuffer = new VulkanDynamicBuffer( newVbo.vboName, newVbo.sizeBytes,
+                                                                isCoherent, false, mDevice );
             }
 
-            mVbos[vboFlag].push_back( newVbo );
+            vboVec.push_back( newVbo );
         }
 
         // clang-format off
-        Vbo &bestVbo        = mVbos[vboFlag][bestVboIdx];
+        Vbo &bestVbo        = vboVec[bestVboIdx];
         Block &bestBlock    = bestVbo.freeBlocks[bestBlockIdx];
         // clang-format on
 
@@ -406,7 +423,13 @@ namespace Ogre
         if( bufferType >= BT_DYNAMIC_DEFAULT )
             sizeBytes *= mDynamicBufferMultiplier;
 
-        Vbo &vbo = mVbos[vboFlag][vboIdx];
+        deallocateVbo( vboIdx, bufferOffset, sizeBytes, mVbos[vboFlag] );
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanVaoManager::deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes,
+                                          VboVec &vboVec )
+    {
+        Vbo &vbo = vboVec[vboIdx];
         StrideChangerVec::iterator itStride =
             std::lower_bound( vbo.strideChangers.begin(), vbo.strideChangers.end(),  //
                               bufferOffset, StrideChanger() );
@@ -424,6 +447,49 @@ namespace Ogre
         // See if we're contiguous to a free block and make that block grow.
         vbo.freeBlocks.push_back( Block( bufferOffset, sizeBytes ) );
         mergeContiguousBlocks( vbo.freeBlocks.end() - 1u, vbo.freeBlocks );
+    }
+    //-----------------------------------------------------------------------------------
+    VkDeviceMemory VulkanVaoManager::allocateTexture( const VkMemoryRequirements &memReq,
+                                                      uint16 &outTexMemIdx, size_t &outVboIdx,
+                                                      size_t &outBufferOffset )
+    {
+        TextureMemoryVec::iterator itor = mTextureMemory.begin();
+        TextureMemoryVec::iterator endt = mTextureMemory.end();
+
+        while( itor != endt && ( 1u << itor->vkMemoryTypeIndex ) & memReq.memoryTypeBits )
+            ++itor;
+
+        if( itor == mTextureMemory.end() )
+        {
+            // No memory pool is capable of holding this texture. Create a new entry
+            TextureMemory texMemory;
+            texMemory.vkMemoryTypeIndex =
+                findMemoryType( mDevice->mDeviceMemoryProperties, memReq.memoryTypeBits,
+                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+            mTextureMemory.push_back( texMemory );
+            itor = mTextureMemory.end() - 1u;
+        }
+
+        outTexMemIdx = static_cast<uint16>( itor - mTextureMemory.begin() );
+
+        const bool isTextureOnly = itor->vkMemoryTypeIndex == mBestVkMemoryTypeIndex[CPU_INACCESSIBLE];
+        VboVec &vboVec = isTextureOnly ? itor->vbos : mVbos[CPU_INACCESSIBLE];
+
+        allocateVbo( memReq.size, memReq.alignment, vboVec, itor->vkMemoryTypeIndex,
+                     mDefaultPoolSize[CPU_INACCESSIBLE], isTextureOnly, false, false, outVboIdx,
+                     outBufferOffset );
+
+        return vboVec[outVboIdx].vboName;
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanVaoManager::deallocateTexture( uint16 texMemIdx, size_t vboIdx, size_t bufferOffset,
+                                              size_t sizeBytes )
+    {
+        VboVec &vboVec =
+            mTextureMemory[texMemIdx].vkMemoryTypeIndex == mBestVkMemoryTypeIndex[CPU_INACCESSIBLE]
+                ? mVbos[CPU_INACCESSIBLE]
+                : mTextureMemory[texMemIdx].vbos;
+        deallocateVbo( vboIdx, bufferOffset, sizeBytes, vboVec );
     }
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks )
@@ -579,23 +645,13 @@ namespace Ogre
 
         VulkanConstBufferPacked *retVal = OGRE_NEW VulkanConstBufferPacked(
             bufferOffset, requestedSize, 1u, ( uint32 )( sizeBytes - requestedSize ), bufferType,
-            initialData, keepAsShadow, this, bufferInterface );
-
-        mConstBuffers.push_back( retVal );
+            initialData, keepAsShadow, mVkRenderSystem, this, bufferInterface );
 
         return retVal;
     }
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::destroyConstBufferImpl( ConstBufferPacked *constBuffer )
     {
-        vector<VulkanConstBufferPacked *>::type::iterator it =
-            std::find( mConstBuffers.begin(), mConstBuffers.end(), constBuffer );
-        if( it == mConstBuffers.end() )
-        {
-            OGRE_EXCEPT( Exception::ERR_ITEM_NOT_FOUND, "", "VulkanVaoManager::destroyConstBufferImpl" );
-        }
-        mConstBuffers.erase( it );
-
         VulkanBufferInterface *bufferInterface =
             static_cast<VulkanBufferInterface *>( constBuffer->getBufferInterface() );
 
@@ -633,9 +689,7 @@ namespace Ogre
 
         VulkanTexBufferPacked *retVal = OGRE_NEW VulkanTexBufferPacked(
             bufferOffset, requestedSize, 1u, ( uint32 )( sizeBytes - requestedSize ), bufferType,
-            initialData, keepAsShadow, this, bufferInterface, pixelFormat );
-
-        mTexBuffersPacked.push_back( retVal );
+            initialData, keepAsShadow, mVkRenderSystem, this, bufferInterface, pixelFormat );
 
         if( initialData )
             bufferInterface->_firstUpload( initialData, 0, requestedSize );
@@ -645,14 +699,6 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::destroyTexBufferImpl( TexBufferPacked *texBuffer )
     {
-        vector<VulkanTexBufferPacked *>::type::iterator it =
-            std::find( mTexBuffersPacked.begin(), mTexBuffersPacked.end(), texBuffer );
-        if( it == mTexBuffersPacked.end() )
-        {
-            OGRE_EXCEPT( Exception::ERR_ITEM_NOT_FOUND, "", "VulkanVaoManager::destroyConstBufferImpl" );
-        }
-        mTexBuffersPacked.erase( it );
-
         VulkanBufferInterface *bufferInterface =
             static_cast<VulkanBufferInterface *>( texBuffer->getBufferInterface() );
 
@@ -849,9 +895,57 @@ namespace Ogre
             OGRE_NEW VulkanAsyncTicket( creator, stagingBuffer, elementStart, elementCount ) );
     }
     //-----------------------------------------------------------------------------------
+    VulkanDescriptorPool *VulkanVaoManager::getDescriptorPool( const VulkanRootLayout *rootLayout,
+                                                               size_t setIdx,
+                                                               VkDescriptorSetLayout setLayout )
+    {
+        size_t capacity = 16u;
+        VulkanDescriptorPool *retVal = 0;
+
+        VulkanDescriptorPoolMap::iterator itor = mDescriptorPools.find( setLayout );
+        if( itor != mDescriptorPools.end() )
+        {
+            FastArray<VulkanDescriptorPool *>::const_iterator it = itor->second.begin();
+            FastArray<VulkanDescriptorPool *>::const_iterator en = itor->second.end();
+
+            while( it != en && !retVal )
+            {
+                capacity = std::max( capacity, ( *it )->getCurrentCapacity() );
+
+                if( ( *it )->isAvailableInCurrentFrame() )
+                    retVal = *it;
+                ++it;
+            }
+        }
+
+        if( !retVal )
+        {
+            retVal = new VulkanDescriptorPool( this, rootLayout, setIdx, capacity );
+            mDescriptorPools[setLayout].push_back( retVal );
+        }
+
+        return retVal;
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanVaoManager::_schedulePoolAdvanceFrame( VulkanDescriptorPool *pool )
+    {
+        mUsedDescriptorPools.push_back( pool );
+    }
+    //-----------------------------------------------------------------------------------
     void VulkanVaoManager::_update( void )
     {
+        FastArray<VulkanDescriptorPool *>::const_iterator itor = mUsedDescriptorPools.begin();
+        FastArray<VulkanDescriptorPool *>::const_iterator endt = mUsedDescriptorPools.end();
+
+        while( itor != endt )
+        {
+            ( *itor )->_advanceFrame();
+            ++itor;
+        }
+
         VaoManager::_update();
+
+        mUsedDescriptorPools.clear();
 
         if( !mFenceFlushed )
         {
@@ -1022,9 +1116,56 @@ namespace Ogre
         return mDynamicBufferCurrentFrame;
     }
     //-----------------------------------------------------------------------------------
-    void VulkanVaoManager::waitForSpecificFrameToFinish( uint32 frameCount ) {}
+    void VulkanVaoManager::waitForSpecificFrameToFinish( uint32 frameCount )
+    {
+        if( frameCount == mFrameCount )
+        {
+            // Full stall
+            mDevice->stall();
+            //"mFrameCount += mDynamicBufferMultiplier" is already handled in _notifyDeviceStalled;
+        }
+        if( mFrameCount - frameCount <= mDynamicBufferMultiplier )
+        {
+            // Let's wait on one of our existing fences...
+            // frameDiff has to be in range [1; mDynamicBufferMultiplier]
+            size_t frameDiff = mFrameCount - frameCount;
+
+            const size_t idx = ( mDynamicBufferCurrentFrame + mDynamicBufferMultiplier - frameDiff ) %
+                               mDynamicBufferMultiplier;
+
+            mDevice->mGraphicsQueue._waitOnFrame( static_cast<uint8>( idx ) );
+        }
+        else
+        {
+            // No stall
+        }
+    }
     //-----------------------------------------------------------------------------------
-    bool VulkanVaoManager::isFrameFinished( uint32 frameCount ) { return true; }
+    bool VulkanVaoManager::isFrameFinished( uint32 frameCount )
+    {
+        bool retVal = false;
+        if( frameCount == mFrameCount )
+        {
+            // Full stall
+            // retVal = false;
+        }
+        else if( mFrameCount - frameCount <= mDynamicBufferMultiplier )
+        {
+            // frameDiff has to be in range [1; mDynamicBufferMultiplier]
+            size_t frameDiff = mFrameCount - frameCount;
+            const size_t idx = ( mDynamicBufferCurrentFrame + mDynamicBufferMultiplier - frameDiff ) %
+                               mDynamicBufferMultiplier;
+
+            retVal = mDevice->mGraphicsQueue._isFrameFinished( static_cast<uint8>( idx ) );
+        }
+        else
+        {
+            // No stall
+            retVal = true;
+        }
+
+        return retVal;
+    }
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::_notifyDeviceStalled()
     {

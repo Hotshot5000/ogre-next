@@ -37,6 +37,8 @@ THE SOFTWARE.
 
 struct VkVertexInputBindingDescription;
 struct VkVertexInputAttributeDescription;
+struct SpvReflectDescriptorBinding;
+struct SpvReflectDescriptorSet;
 struct SpvReflectShaderModule;
 
 namespace Ogre
@@ -110,6 +112,8 @@ namespace Ogre
             return mConstantDefsBindingParams;
         }
 
+        VulkanRootLayout *getRootLayout( void ) { return mRootLayout; }
+
         void getLayoutForPso( const VertexElement2VecVec &vertexElements,
                               FastArray<VkVertexInputBindingDescription> &outBufferBindingDescs,
                               FastArray<VkVertexInputAttributeDescription> &outVertexInputs );
@@ -119,11 +123,17 @@ namespace Ogre
 
         EShLanguage getEshLanguage( void ) const;
 
+        void extractRootLayoutFromSource( void );
+
         static void initGlslResources( TBuiltInResource &resources );
 
         /** Internal load implementation, must be implemented by subclasses.
          */
         void loadFromSource( void );
+
+        void addVertexSemanticsToPreamble( String &inOutPreamble ) const;
+        void addPreprocessorToPreamble( String &inOutPreamble ) const;
+
         /** Internal method for creating a dummy low-level program for this
         high-level program. Vulkan does not give access to the low level implementation of the
         shader so this method creates an object sub-classed from VulkanGpuProgram just to be
@@ -140,16 +150,21 @@ namespace Ogre
         /// Populate the passed parameters with name->index map, must be overridden
         void buildConstantDefinitions( void ) const;
 
+        static const SpvReflectDescriptorBinding *findBinding(
+            const FastArray<SpvReflectDescriptorSet *> &sets, size_t setIdx, size_t bindingIdx );
+
         void gatherVertexInputs( SpvReflectShaderModule &module );
 
     private:
         VulkanDevice *mDevice;
 
+        VulkanRootLayout *mRootLayout;
+
         std::vector<uint32> mSpirv;
         VkShaderModule mShaderModule;
 
         FastArray<VkVertexInputAttributeDescription> mVertexInputs;
-        uint8 mNumSystemGenVertexInputs; // System-generated inputs like gl_VertexIndex
+        uint8 mNumSystemGenVertexInputs;  // System-generated inputs like gl_VertexIndex
 
         /// Flag indicating if shader object successfully compiled
         bool mCompiled;

@@ -32,6 +32,7 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanPrerequisites.h"
 
 #include "OgreRenderSystem.h"
+#include "OgreVulkanGlobalBindingTable.h"
 #include "OgreVulkanProgram.h"
 
 #include "OgreVulkanRenderPassDescriptor.h"
@@ -78,7 +79,8 @@ namespace Ogre
         unsigned char *mSwIndirectBufferPtr;
 
         VulkanGpuProgramManager *mShaderManager;
-        VulkanProgramFactory *mVulkanProgramFactory;
+        VulkanProgramFactory *mVulkanProgramFactory0;
+        VulkanProgramFactory *mVulkanProgramFactory1;
 
         VkInstance mVkInstance;
 
@@ -103,10 +105,21 @@ namespace Ogre
 
         VulkanHlmsPso *mPso;
 
+        bool mTableDirty;
+        VulkanGlobalBindingTable mGlobalTable;
+        // Vulkan requires a valid handle when updating descriptors unless nullDescriptor is present
+        // So we just use a dummy. The dummy texture we get it from TextureGpuManager which needs
+        // to create some anyway for different reasons
+        ConstBufferPacked *mDummyBuffer;
+        TexBufferPacked *mDummyTexBuffer;
+        VkImageView mDummyTextureView;
+        VkSampler mDummySampler;
+
         // clang-format off
         VulkanFrameBufferDescMap    mFrameBufferDescMap;
         uint32                      mEntriesToFlush;
         bool                        mVpChanged;
+        bool                        mInterruptedRenderCommandEncoder;
         // clang-format on
 
         PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback;
@@ -126,6 +139,8 @@ namespace Ogre
         VkRenderPass getVkRenderPass( HlmsPassPso passPso, uint8 &outMrtCount );
 
         void bindDescriptorSet() const;
+
+        void flushRootLayout( void );
 
     public:
         VulkanRenderSystem();
@@ -168,6 +183,10 @@ namespace Ogre
                                           Real quadratic, Real minSize, Real maxSize );
 
         virtual void flushUAVs( void );
+
+        void _setParamBuffer( GpuProgramType shaderStage, const VkDescriptorBufferInfo &bufferInfo );
+        void _setConstBuffer( size_t slot, const VkDescriptorBufferInfo &bufferInfo );
+        void _setTexBuffer( size_t slot, VkBufferView bufferView );
 
         virtual void _setCurrentDeviceFromTexture( TextureGpu *texture );
         virtual void _setTexture( size_t unit, TextureGpu *texPtr );
@@ -257,7 +276,9 @@ namespace Ogre
                                                 uint8 mipLevel, const Vector4 *viewportSizes,
                                                 const Vector4 *scissors, uint32 numViewports,
                                                 bool overlaysEnabled, bool warnIfRtvWasFlushed );
+        void executeRenderPassDescriptorDelayedActions( bool officialCall );
         virtual void executeRenderPassDescriptorDelayedActions( void );
+        inline void endRenderPassDescriptor( bool isInterruptingRender );
         virtual void endRenderPassDescriptor( void );
 
         void notifySwapchainCreated( VulkanWindow *window );
@@ -282,6 +303,8 @@ namespace Ogre
 
         VulkanDevice *getVulkanDevice() const { return mDevice; }
         void _notifyDeviceStalled();
+
+        void _notifyActiveEncoderEnded( bool callEndRenderPassDesc );
 
     protected:
         template <typename TDescriptorSetTexture, typename TTexSlot, typename TBufferPacked>

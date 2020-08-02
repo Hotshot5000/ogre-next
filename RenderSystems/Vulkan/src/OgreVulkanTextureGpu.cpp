@@ -28,6 +28,8 @@ THE SOFTWARE.
 
 #include "OgreVulkanTextureGpu.h"
 
+#include "Vao/OgreVulkanVaoManager.h"
+
 #include "OgrePixelFormatGpuUtils.h"
 
 #include "OgreException.h"
@@ -35,6 +37,8 @@ THE SOFTWARE.
 #include "OgreVulkanMappings.h"
 #include "OgreVulkanTextureGpuManager.h"
 #include "OgreVulkanUtils.h"
+
+#define TODO_delay_everything_that_starts_with_vkDestroy
 
 namespace Ogre
 {
@@ -47,6 +51,9 @@ namespace Ogre
         mDisplayTextureName( 0 ),
         mFinalTextureName( 0 ),
         mMsaaFramebufferName( 0 ),
+        mTexMemIdx( 0u ),
+        mVboPoolIdx( 0u ),
+        mInternalBufferStart( 0u ),
         mCurrLayout( VK_IMAGE_LAYOUT_UNDEFINED ),
         mNextLayout( VK_IMAGE_LAYOUT_UNDEFINED )
     {
@@ -61,7 +68,6 @@ namespace Ogre
 
         VkImageCreateInfo imageInfo;
         makeVkStruct( imageInfo, VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO );
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = getVulkanTextureType();
         imageInfo.extent.width = mWidth;
         imageInfo.extent.height = mHeight;
@@ -82,8 +88,8 @@ namespace Ogre
             imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.flags = 0;
 
-        if( mTextureType == TextureTypes::TypeCube )
-            imageInfo.arrayLayers /= 6u;
+        if( mTextureType == TextureTypes::TypeCube || mTextureType == TextureTypes::TypeCubeArray )
+            imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
         if( isRenderToTexture() )
         {
@@ -103,7 +109,7 @@ namespace Ogre
         VulkanDevice *device = textureManager->getDevice();
 
         VkResult imageResult = vkCreateImage( device->mDevice, &imageInfo, 0, &mFinalTextureName );
-        checkVkResult( imageResult, "createInternalResourcesImpl" );
+        checkVkResult( imageResult, "vkCreateImage" );
 
         setObjectName( device->mDevice, (uint64_t)mFinalTextureName,
                        VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, textureName.c_str() );
@@ -111,30 +117,14 @@ namespace Ogre
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements( device->mDevice, mFinalTextureName, &memRequirements );
 
-        VkMemoryAllocateInfo allocInfo;
-        makeVkStruct( allocInfo, VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO );
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex =
-            findMemoryType( device->mPhysicalDevice, device->mDeviceMemoryProperties,
-                            memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+        VulkanVaoManager *vaoManager =
+            static_cast<VulkanVaoManager *>( textureManager->getVaoManager() );
+        VkDeviceMemory deviceMemory = vaoManager->allocateTexture( memRequirements, mTexMemIdx,
+                                                                   mVboPoolIdx, mInternalBufferStart );
 
-        if( vkAllocateMemory( device->mDevice, &allocInfo, 0, &mTextureImageMemory ) != VK_SUCCESS )
-        {
-            OGRE_EXCEPT( Exception::ERR_INVALID_STATE, "Could not allocate memory",
-                         "VulkanTextureGpu::createInternalResourcesImpl" );
-        }
-
-        // TODO use one large buffer and multiple offsets
-        VkDeviceSize offset = 0;
-        offset = alignMemory( offset, memRequirements.alignment );
-
-        if( vkBindImageMemory( device->mDevice, mFinalTextureName, mTextureImageMemory, offset ) !=
-            VK_SUCCESS )
-        {
-            OGRE_EXCEPT( Exception::ERR_INVALID_STATE, "Could not allocate bind image to memory",
-                         "VulkanTextureGpu::createInternalResourcesImpl" );
-        }
+        VkResult result =
+            vkBindImageMemory( device->mDevice, mFinalTextureName, deviceMemory, mInternalBufferStart );
+        checkVkResult( result, "vkBindImageMemory" );
 
         if( mSampleDescription.isMultisample() && !hasMsaaExplicitResolves() )
         {
@@ -153,8 +143,17 @@ namespace Ogre
             VulkanDevice *device = textureManager->getDevice();
             if( mFinalTextureName )
             {
+                VkMemoryRequirements memRequirements;
+                vkGetImageMemoryRequirements( device->mDevice, mFinalTextureName, &memRequirements );
+
+                TODO_delay_everything_that_starts_with_vkDestroy;
                 vkDestroyImage( device->mDevice, mFinalTextureName, 0 );
                 mFinalTextureName = 0;
+
+                VulkanVaoManager *vaoManager =
+                    static_cast<VulkanVaoManager *>( textureManager->getVaoManager() );
+                vaoManager->deallocateTexture( mTexMemIdx, mVboPoolIdx, mInternalBufferStart,
+                                               memRequirements.size );
             }
         }
         else
@@ -261,8 +260,8 @@ namespace Ogre
         case TextureTypes::Type1DArray:     return VK_IMAGE_TYPE_1D;
         case TextureTypes::Type2D:          return VK_IMAGE_TYPE_2D;
         case TextureTypes::Type2DArray:     return VK_IMAGE_TYPE_2D;
-        case TextureTypes::TypeCube:        return VK_IMAGE_TYPE_3D;
-        case TextureTypes::TypeCubeArray:   return VK_IMAGE_TYPE_3D;
+        case TextureTypes::TypeCube:        return VK_IMAGE_TYPE_2D;
+        case TextureTypes::TypeCubeArray:   return VK_IMAGE_TYPE_2D;
         case TextureTypes::Type3D:          return VK_IMAGE_TYPE_3D;
         }
         // clang-format on
@@ -270,10 +269,10 @@ namespace Ogre
         return VK_IMAGE_TYPE_2D;
     }
     //-----------------------------------------------------------------------------------
-    VkImageViewType VulkanTextureGpu::getVulkanTextureViewType( void ) const
+    VkImageViewType VulkanTextureGpu::getInternalVulkanTextureViewType( void ) const
     {
         // clang-format off
-        switch( mTextureType )
+        switch( getInternalTextureType() )
         {
         case TextureTypes::Unknown:         return VK_IMAGE_VIEW_TYPE_2D;
         case TextureTypes::Type1D:          return VK_IMAGE_VIEW_TYPE_1D;
@@ -301,7 +300,7 @@ namespace Ogre
             if( forUav )
                 pixelFormat = PixelFormatGpuUtils::getEquivalentLinear( pixelFormat );
         }
-        VkImageViewType texType = this->getVulkanTextureViewType();
+        VkImageViewType texType = this->getInternalVulkanTextureViewType();
 
         if( mSampleDescription.isMultisample() && hasMsaaExplicitResolves() )
             texType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
@@ -336,7 +335,7 @@ namespace Ogre
 
         VkImageView imageView;
         VkResult result = vkCreateImageView( device->mDevice, &imageViewCi, 0, &imageView );
-        checkVkResult( result, "VulkanTextureGpu::getView" );
+        checkVkResult( result, "vkCreateImageView" );
 
         return imageView;
     }

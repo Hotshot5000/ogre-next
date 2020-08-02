@@ -149,8 +149,7 @@ namespace Ogre
             VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT );
     }
     //-------------------------------------------------------------------------
-    uint32_t findMemoryType( VkPhysicalDevice physicalDevice,
-                             VkPhysicalDeviceMemoryProperties &memProperties, uint32_t typeFilter,
+    uint32_t findMemoryType( VkPhysicalDeviceMemoryProperties &memProperties, uint32_t typeFilter,
                              VkMemoryPropertyFlags properties )
     {
         for( uint32_t i = 0; i < memProperties.memoryTypeCount; i++ )

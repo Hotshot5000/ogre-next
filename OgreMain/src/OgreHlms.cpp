@@ -190,6 +190,7 @@ namespace Ogre
     const IdString HlmsBaseProp::Hlsl           = IdString( "hlsl" );
     const IdString HlmsBaseProp::Glsl           = IdString( "glsl" );
     const IdString HlmsBaseProp::Glsles         = IdString( "glsles" );
+    const IdString HlmsBaseProp::Glslvk         = IdString( "glslvk" );
     const IdString HlmsBaseProp::Metal          = IdString( "metal" );
     const IdString HlmsBaseProp::GL3Plus        = IdString( "GL3+" );
     const IdString HlmsBaseProp::GLES           = IdString( "GLES" );
@@ -272,7 +273,7 @@ namespace Ogre
         mDebugOutput( false ),
     #endif
     #if OGRE_DEBUG_MODE >= OGRE_DEBUG_HIGH
-        mDebugOutputProperties( true ),
+        mDebugOutputProperties( false ),
     #else
         mDebugOutputProperties( false ),
     #endif
@@ -2162,8 +2163,7 @@ namespace Ogre
             const String filename = ShaderFiles[i] + mShaderFileExt;
             if( mDataFolder->exists( filename ) )
             {
-                if( mShaderProfile == "glsl" ||
-                    mShaderProfile == "glsl-vulkan" )  // TODO: String comparision
+                if( mShaderProfile == "glsl" || mShaderProfile == "glslvk" ) //TODO: String comparision
                 {
                     setProperty( HlmsBaseProp::GL3Plus,
                                  mRenderSystem->getNativeShadingLanguageVersion() );
@@ -2178,6 +2178,7 @@ namespace Ogre
                 setProperty( HlmsBaseProp::Hlsl,    HlmsBaseProp::Hlsl.mHash );
                 setProperty( HlmsBaseProp::Glsl,    HlmsBaseProp::Glsl.mHash );
                 setProperty( HlmsBaseProp::Glsles,  HlmsBaseProp::Glsles.mHash );
+                setProperty( HlmsBaseProp::Glslvk,  HlmsBaseProp::Glslvk.mHash );
                 setProperty( HlmsBaseProp::Metal,   HlmsBaseProp::Metal.mHash );
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
@@ -3174,7 +3175,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void Hlms::applyTextureRegisters( const HlmsCache *psoEntry )
     {
-        if( mShaderProfile == "hlsl" || mShaderProfile == "metal" || mShaderProfile == "glsl-vulkan" )
+        if( mShaderProfile != "glsl" )
             return; //D3D embeds the texture slots in the shader.
 
         GpuProgramPtr shaders[NumShaderTypes];
@@ -3285,8 +3286,8 @@ namespace Ogre
                     mFastShaderBuildHack = StringConverter::parseBool( itor->second.currentValue );
             }
 
-            //Prefer glsl over glsles
-            const String shaderProfiles[5] = { "hlsl", "glsles", "glsl", "metal", "glsl-vulkan" };
+            //Prefer glslvk over glsl, and glsl over glsles
+            const String shaderProfiles[5] = { "hlsl", "glsles", "glsl", "glslvk", "metal" };
             const RenderSystemCapabilities *capabilities = mRenderSystem->getCapabilities();
 
             for( size_t i=0; i<5; ++i )

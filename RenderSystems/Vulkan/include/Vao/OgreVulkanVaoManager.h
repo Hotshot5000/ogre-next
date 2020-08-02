@@ -28,12 +28,14 @@ THE SOFTWARE.
 
 #ifndef _Ogre_VulkanVaoManager_H_
 #define _Ogre_VulkanVaoManager_H_
+#include "OgreVulkanPrerequisites.h"
 
 #include "OgreVulkanConstBufferPacked.h"
-#include "OgreVulkanPrerequisites.h"
 #include "OgreVulkanTexBufferPacked.h"
 
 #include "Vao/OgreVaoManager.h"
+
+struct VkMemoryRequirements;
 
 namespace Ogre
 {
@@ -41,7 +43,7 @@ namespace Ogre
     class _OgreVulkanExport VulkanVaoManager : public VaoManager
     {
     public:
-        friend VulkanStagingBuffer;
+        friend class VulkanStagingBuffer;
         enum VboFlag
         {
             CPU_INACCESSIBLE,
@@ -135,10 +137,22 @@ namespace Ogre
         typedef vector<Vao>::type VaoVec;
         typedef map<VertexElement2Vec, Vbo>::type VboMap;
 
+        struct TextureMemory
+        {
+            /// If vkMemoryTypeIndex == mBestVkMemoryTypeIndex[CPU_INACCESSIBLE] then
+            /// TextureMemory::vbos is not used and mVbos[CPU_INACCESSIBLE] is used instead
+            uint32 vkMemoryTypeIndex;
+            VboVec vbos;
+        };
+
+        typedef vector<TextureMemory>::type TextureMemoryVec;
+
         uint32 mBestVkMemoryTypeIndex[MAX_VBO_FLAG];
 
         VboVec mVbos[MAX_VBO_FLAG];
         size_t mDefaultPoolSize[MAX_VBO_FLAG];
+
+        TextureMemoryVec mTextureMemory;
 
         VaoVec mVaos;
 
@@ -160,11 +174,13 @@ namespace Ogre
         VkSemaphoreArray mAvailableSemaphores;
 
         VulkanDevice *mDevice;
+        VulkanRenderSystem *mVkRenderSystem;
 
-#ifndef VULKAN_HOTSHOT_WILL_REMOVE
-        vector<VulkanConstBufferPacked *>::type mConstBuffers;
-        vector<VulkanTexBufferPacked *>::type mTexBuffersPacked;
-#endif
+        typedef map<VkDescriptorSetLayout, FastArray<VulkanDescriptorPool *> >::type
+            VulkanDescriptorPoolMap;
+
+        VulkanDescriptorPoolMap mDescriptorPools;
+        FastArray<VulkanDescriptorPool *> mUsedDescriptorPools;
 
         bool mFenceFlushed;
         bool mSupportsCoherentMemory;
@@ -199,6 +215,10 @@ namespace Ogre
         void allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType, size_t &outVboIdx,
                           size_t &outBufferOffset );
 
+        void allocateVbo( size_t sizeBytes, size_t alignment, VboVec &vboVec, uint32 vkMemoryTypeIndex,
+                          size_t defaultPoolSize, bool textureOnly, bool cpuAccessible, bool isCoherent,
+                          size_t &outVboIdx, size_t &outBufferOffset );
+
         /** Deallocates a buffer allocated with VulkanVaoManager::allocateVbo.
         @remarks
             All four parameters *must* match with the ones provided to or
@@ -215,7 +235,8 @@ namespace Ogre
         void deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes,
                             BufferType bufferType );
 
-        
+        void deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes,
+                            VboVec &vboVec );
 
         virtual VertexBufferPacked *createVertexBufferImpl( size_t numElements, uint32 bytesPerElement,
                                                             BufferType bufferType, void *initialData,
@@ -265,11 +286,16 @@ namespace Ogre
                                              BufferPacked *buffer );
 
     public:
-        VulkanVaoManager( uint8 dynBufferMultiplier, VulkanDevice *device );
+        VulkanVaoManager( uint8 dynBufferMultiplier, VulkanDevice *device,
+                          VulkanRenderSystem *renderSystem );
         virtual ~VulkanVaoManager();
 
         void initDrawIdVertexBuffer();
         void bindDrawIdVertexBuffer( VkCommandBuffer cmdBuffer );
+
+        VkDeviceMemory allocateTexture( const VkMemoryRequirements &memReq, uint16 &outTexMemIdx,
+                                        size_t &outVboIdx, size_t &outBufferOffset );
+        void deallocateTexture( uint16 texMemIdx, size_t vboIdx, size_t bufferOffset, size_t sizeBytes );
 
         virtual void getMemoryStats( MemoryStatsEntryVec &outStats, size_t &outCapacityBytes,
                                      size_t &outFreeBytes, Log *log ) const;
@@ -288,6 +314,10 @@ namespace Ogre
 
         virtual AsyncTicketPtr createAsyncTicket( BufferPacked *creator, StagingBuffer *stagingBuffer,
                                                   size_t elementStart, size_t elementCount );
+
+        VulkanDescriptorPool *getDescriptorPool( const VulkanRootLayout *rootLayout, size_t setIdx,
+                                                 VkDescriptorSetLayout setLayout );
+        void _schedulePoolAdvanceFrame( VulkanDescriptorPool *pool );
 
         virtual void _update( void );
         void _notifyNewCommandBuffer( void );
@@ -322,21 +352,7 @@ namespace Ogre
         /// @see StagingBuffer::mergeContiguousBlocks
         static void mergeContiguousBlocks( BlockVec::iterator blockToMerge, BlockVec &blocks );
 
-        const vector<VulkanConstBufferPacked *>::type &getConstBuffers() const
-        {
-            return mConstBuffers;
-        }
-
-        const vector<VulkanTexBufferPacked *>::type &getTexBuffersPacked() const
-        {
-            return mTexBuffersPacked;
-        }
-
-
-        VertexBufferPacked * getDrawId() const
-        {
-            return mDrawId;
-        }
+        VertexBufferPacked *getDrawId() const { return mDrawId; }
 
         const uint32 *getBestVkMemoryTypeIndex() { return mBestVkMemoryTypeIndex; }
 
