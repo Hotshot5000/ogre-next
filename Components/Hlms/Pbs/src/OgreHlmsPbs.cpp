@@ -3476,28 +3476,19 @@ namespace Ogre
         // name of the compatible shading language is part of the path
         Ogre::RenderSystem *renderSystem = Ogre::Root::getSingleton().getRenderSystem();
         Ogre::String shaderSyntax = "GLSL";
-        if (renderSystem->getName() == "OpenGL ES 2.x Rendering Subsystem")
+        if( renderSystem->getName() == "OpenGL ES 2.x Rendering Subsystem" )
             shaderSyntax = "GLSLES";
-        else if (renderSystem->getName() == "Direct3D11 Rendering Subsystem")
+        else if( renderSystem->getName() == "Direct3D11 Rendering Subsystem" )
             shaderSyntax = "HLSL";
         else if( renderSystem->getName() == "Metal Rendering Subsystem" )
             shaderSyntax = "Metal";
-        else if( renderSystem->getName() == "Vulkan Rendering Subsystem" )
-            shaderSyntax = "Vulkan";
 
         // Fill the library folder paths with the relevant folders
         outLibraryFoldersPaths.clear();
         outLibraryFoldersPaths.push_back( "Hlms/Common/" + shaderSyntax );
-        if( renderSystem->getName() == "Vulkan Rendering Subsystem" )
-        {
-            outLibraryFoldersPaths.push_back( "Hlms/Pbs/" + shaderSyntax + "/Main" );
-        }
-        else
-        {
         outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
         outLibraryFoldersPaths.push_back( "Hlms/Pbs/Any" );
         outLibraryFoldersPaths.push_back( "Hlms/Pbs/Any/Main" );
-        }
 
         // Fill the data folder path
         outDataFolderPath = "Hlms/Pbs/" + shaderSyntax;

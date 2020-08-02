@@ -1069,30 +1069,24 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void HlmsUnlit::getDefaultPaths( String &outDataFolderPath, StringVector &outLibraryFoldersPaths )
     {
-        //We need to know what RenderSystem is currently in use, as the
-        //name of the compatible shading language is part of the path
+        // We need to know what RenderSystem is currently in use, as the
+        // name of the compatible shading language is part of the path
         RenderSystem *renderSystem = Root::getSingleton().getRenderSystem();
         String shaderSyntax = "GLSL";
-        if (renderSystem->getName() == "OpenGL ES 2.x Rendering Subsystem")
+        if( renderSystem->getName() == "OpenGL ES 2.x Rendering Subsystem" )
             shaderSyntax = "GLSLES";
         else if( renderSystem->getName() == "Direct3D11 Rendering Subsystem" )
             shaderSyntax = "HLSL";
         else if( renderSystem->getName() == "Metal Rendering Subsystem" )
             shaderSyntax = "Metal";
-        else if( renderSystem->getName() == "Vulkan Rendering Subsystem" )
-            shaderSyntax = "Vulkan";
 
-
-        //Fill the library folder paths with the relevant folders
+        // Fill the library folder paths with the relevant folders
         outLibraryFoldersPaths.clear();
         outLibraryFoldersPaths.push_back( "Hlms/Common/" + shaderSyntax );
-        if( renderSystem->getName() != "Vulkan Rendering Subsystem" )
-        {
-            outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
-            outLibraryFoldersPaths.push_back( "Hlms/Unlit/Any" );
-        }
+        outLibraryFoldersPaths.push_back( "Hlms/Common/Any" );
+        outLibraryFoldersPaths.push_back( "Hlms/Unlit/Any" );
 
-        //Fill the data folder path
+        // Fill the data folder path
         outDataFolderPath = "Hlms/Unlit/" + shaderSyntax;
     }
 #if !OGRE_NO_JSON
