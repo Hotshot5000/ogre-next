@@ -303,9 +303,9 @@ namespace Ogre
 
             WindowEventUtilities::_addRenderWindow( this );
 
-            LogManager::getSingleton().stream()
-                << "Created Win32Window '" << mTitle << "' : " << mRequestedWidth << "x"
-                << mRequestedHeight << ", " << mColourDepth << "bpp";
+            // LogManager::getSingleton().stream()
+            //     << "Created Win32Window '" << mTitle << "' : " << mRequestedWidth << "x"
+            //     << mRequestedHeight << ", " << mColourDepth << "bpp";
         }
 
         VkWin32SurfaceCreateInfoKHR createInfo = {};

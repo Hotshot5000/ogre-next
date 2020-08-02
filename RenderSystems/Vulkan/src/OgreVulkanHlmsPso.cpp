@@ -8,7 +8,6 @@ Ogre::VulkanHlmsPso::VulkanHlmsPso( VkPipeline _pso, VulkanProgram *_vertexShade
     rootLayout( _rootLayout )
 {
 }
-}
 
 Ogre::VulkanHlmsPso::~VulkanHlmsPso()
 {

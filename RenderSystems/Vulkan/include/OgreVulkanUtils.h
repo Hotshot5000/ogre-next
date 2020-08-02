@@ -58,6 +58,8 @@ namespace Ogre
                                         const FastArray<PixelFormatGpu> &candidates,
                                         VkImageTiling tiling, VkFormatFeatureFlags features );
 
+    PixelFormatGpu findDepthFormat( VkPhysicalDevice physicalDevice );
+
     uint32_t findMemoryType( VkPhysicalDeviceMemoryProperties &memProperties, uint32_t typeFilter,
                              VkMemoryPropertyFlags properties );
 

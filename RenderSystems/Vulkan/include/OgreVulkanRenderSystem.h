@@ -36,10 +36,7 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanProgram.h"
 
 #include "OgreVulkanRenderPassDescriptor.h"
-#include "OgreVulkanUtils2.h"
 #include "Vao/OgreVulkanConstBufferPacked.h"
-
-#define VULKAN_HOTSHOT_DISABLED 1
 
 namespace Ogre
 {
@@ -221,6 +218,10 @@ namespace Ogre
         virtual void _dispatch( const HlmsComputePso &pso );
 
         virtual void _setVertexArrayObject( const VertexArrayObject *vao );
+        void flushDescriptorState(
+            VkPipelineBindPoint pipeline_bind_point, const VulkanConstBufferPacked &constBuffer,
+            const size_t bindOffset, const size_t bytesToWrite,
+            const unordered_map<unsigned, VulkanConstantDefinitionBindingParam>::type &shaderBindings );
 
         virtual void _render( const CbDrawCallIndexed *cmd );
         virtual void _render( const CbDrawCallStrip *cmd );

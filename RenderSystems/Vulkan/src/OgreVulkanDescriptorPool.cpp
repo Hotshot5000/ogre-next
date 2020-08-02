@@ -28,13 +28,14 @@ THE SOFTWARE.
 
 #include "OgreVulkanDescriptorPool.h"
 
+#include "OgreVulkanDevice.h"
+#include "OgreVulkanRootLayout.h"
+#include "OgreVulkanUtils.h"
+#include "Vao/OgreVulkanVaoManager.h"
 
-#include <cassert>
-#include <map>
+#include "OgreException.h"
 
-
-// #include "common/error.h"
-#include "OgreVulkanDescriptorSetLayout.h"
+#include "vulkan/vulkan_core.h"
 
 namespace Ogre
 {
@@ -191,12 +192,3 @@ namespace Ogre
         return mVaoManager->isFrameFinished( mLastFrameUsed );
     }
 }  // namespace Ogre
-
-#include "OgreVulkanDevice.h"
-#include "OgreVulkanRootLayout.h"
-#include "OgreVulkanUtils.h"
-#include "Vao/OgreVulkanVaoManager.h"
-
-#include "OgreException.h"
-
-#include "vulkan/vulkan_core.h"

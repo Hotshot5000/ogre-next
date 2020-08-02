@@ -30,7 +30,6 @@ THE SOFTWARE.
 #include "OgreLogManager.h"
 #include "OgreProfiler.h"
 #include "OgreVulkanDevice.h"
-#include "OgreVulkanDescriptors.h"
 #include "OgreVulkanGpuProgramManager.h"
 #include "OgreVulkanMappings.h"
 #include "OgreVulkanRootLayout.h"
