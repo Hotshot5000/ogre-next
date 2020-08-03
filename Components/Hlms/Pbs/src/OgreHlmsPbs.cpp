@@ -42,6 +42,7 @@ THE SOFTWARE.
 #include "OgreCamera.h"
 #include "OgreHighLevelGpuProgramManager.h"
 #include "OgreHighLevelGpuProgram.h"
+#include "OgreRootLayout.h"
 #include "OgreForward3D.h"
 #include "Cubemaps/OgreParallaxCorrectedCubemap.h"
 #include "OgreIrradianceVolume.h"
@@ -77,6 +78,7 @@ THE SOFTWARE.
 #include "OgreProfiler.h"
 
 #define TODO_irradianceField_samplerblock
+#define TODO_deal_with_Poses
 
 namespace Ogre
 {
@@ -89,6 +91,7 @@ namespace Ogre
     const IdString PbsProperty::HasPlanarReflections=IdString( "has_planar_reflections" );
     const IdString PbsProperty::PerceptualRoughness=IdString( "perceptual_roughness" );
 
+    const IdString PbsProperty::Set0TextureSlotEnd  = IdString( "set0_texture_slot_end" );
     const IdString PbsProperty::NumTextures     = IdString( "num_textures" );
     const IdString PbsProperty::NumSamplers     = IdString( "num_samplers" );
     const IdString PbsProperty::DiffuseMapGrayscale = IdString( "diffuse_map_grayscale" );
@@ -444,6 +447,60 @@ namespace Ogre
             mHasSeparateSamplers = caps->hasCapability( RSC_SEPARATE_SAMPLERS_FROM_TEXTURES );
         }
     }
+
+    //-----------------------------------------------------------------------------------
+    void HlmsPbs::setupRootLayout( RootLayout &rootLayout )
+    {
+        DescBindingRange *descBindingRanges = rootLayout.mDescBindingRanges[0];
+
+        if( getProperty( PbsProperty::useLightBuffers ) )
+            descBindingRanges[DescBindingTypes::ConstBuffer].end = 7u;
+        else
+        {
+            // PccManualProbeDecl piece uses more conditionals to whether use a 4th const buffer
+            // However we don't need to test them all. It's ok to have false positives
+            // (it just wastes a little bit more memory)
+            if( getProperty( PbsProperty::UseParallaxCorrectCubemaps ) &&
+                getProperty( PbsProperty::EnableCubemapsAuto ) )
+            {
+                descBindingRanges[DescBindingTypes::ConstBuffer].end = 4u;
+            }
+            else
+                descBindingRanges[DescBindingTypes::ConstBuffer].end = 3u;
+        }
+
+        descBindingRanges[DescBindingTypes::TexBuffer].end = 1u;
+
+        if( mSetupWorldMatBuf )
+            descBindingRanges[DescBindingTypes::TexBuffer].start = 0u;
+        else
+            descBindingRanges[DescBindingTypes::TexBuffer].start = 1u;
+
+        TODO_deal_with_Poses;
+        //if( getProperty( HlmsBaseProp::Pose ) )
+            //descBindingRanges[DescBindingTypes::TexBuffer].end = 4u;
+
+        //else
+        {
+            if( getProperty( HlmsBaseProp::ForwardPlus ) )
+            {
+                descBindingRanges[DescBindingTypes::TexBuffer].end =
+                    (uint16)getProperty( "f3dLightList" ) + 1u;
+            }
+        }
+
+        descBindingRanges[DescBindingTypes::Texture].start =
+            descBindingRanges[DescBindingTypes::TexBuffer].end;
+        descBindingRanges[DescBindingTypes::Texture].end =
+            (uint16)getProperty( PbsProperty::Set0TextureSlotEnd );
+
+        descBindingRanges[DescBindingTypes::Sampler].start =
+            descBindingRanges[DescBindingTypes::Texture].start;
+        descBindingRanges[DescBindingTypes::Sampler].end =
+            ( uint16 )( getProperty( "samplerStateStart" ) + getProperty( PbsProperty::NumSamplers ) );
+
+        mListener->setupRootLayout( rootLayout, mSetProperties );
+    }
     //-----------------------------------------------------------------------------------
     const HlmsCache* HlmsPbs::createShaderCacheEntry( uint32 renderableHash,
                                                             const HlmsCache &passCache,
@@ -465,9 +522,6 @@ namespace Ogre
         GpuProgramParametersSharedPtr vsParams = retVal->pso.vertexShader->getDefaultParameters();
         if( mSetupWorldMatBuf )
             vsParams->setNamedConstant( "worldMatBuf", 0 );
-
-        if( queuedRenderable.renderable->getNumPoses() > 0 )
-            vsParams->setNamedConstant( "poseBuf", 4 );
 
         mListener->shaderCacheEntryCreated( mShaderProfile, retVal, passCache,
                                             mSetProperties, queuedRenderable );
@@ -1019,6 +1073,7 @@ namespace Ogre
         }
 
         int32 texUnit = mReservedTexSlots;
+
         if( getProperty( HlmsBaseProp::ForwardPlus ) )
         {
             setTextureReg( PixelShader, "f3dGrid", texUnit++ );
@@ -1185,6 +1240,11 @@ namespace Ogre
             else
                 setTextureReg( PixelShader, "texEnvProbeMap", texUnit++ );
         }
+
+        if( getProperty( HlmsBaseProp::Pose ) )
+            setTextureReg( VertexShader, "poseBuf", texUnit++ );
+
+        setProperty( PbsProperty::Set0TextureSlotEnd, texUnit );
 
         //This is a regular property!
         setProperty( "samplerStateStart", samplerStateStart );
@@ -3203,11 +3263,14 @@ namespace Ogre
         #endif
                 }
 
-                TexBufferPacked* poseBuf = queuedRenderable.renderable->getPoseTexBuffer();
-                *commandBuffer->addCommand<CbShaderBuffer>() = CbShaderBuffer( VertexShader,
-                                                                               4, poseBuf, 0,
-                                                                               poseBuf->
-                                                                               getTotalSizeBytes() );
+                size_t numTextures = 0u;
+                if( datablock->mTexturesDescSet )
+                    numTextures = datablock->mTexturesDescSet->mTextures.size();
+
+                TexBufferPacked *poseBuf = queuedRenderable.renderable->getPoseTexBuffer();
+                *commandBuffer->addCommand<CbShaderBuffer>() =
+                    CbShaderBuffer( VertexShader, mTexUnitSlotStart + numTextures, poseBuf, 0,
+                                    poseBuf->getTotalSizeBytes() );
             }
 
             //If the next entity will not be skeletally animated, we'll need

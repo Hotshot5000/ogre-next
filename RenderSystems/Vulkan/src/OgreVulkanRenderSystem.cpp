@@ -71,7 +71,6 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #define TODO_check_layers_exist
 
 #define TODO_addVpCount_to_passpso
-#define TODO_optimize
 
 namespace Ogre
 {
@@ -962,10 +961,6 @@ namespace Ogre
         vkCmdBindVertexBuffers( cmdBuffer, 0, static_cast<uint32>( numVertexBuffers ),
                                 vulkanVertexBuffers, offsets );
 
-        TODO_optimize;
-        VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
-        vaoManager->bindDrawIdVertexBuffer( cmdBuffer );
-
         IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
         if( indexBuffer )
         {
@@ -1825,6 +1820,9 @@ namespace Ogre
 
             mActiveDevice->mGraphicsQueue.getGraphicsEncoder();
 
+            VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
+            vaoManager->bindDrawIdVertexBuffer( mDevice->mGraphicsQueue.mCurrentCmdBuffer );
+
 #if VULKAN_DISABLED
             [mActiveRenderEncoder setFrontFacingWinding:MTLWindingCounterClockwise];
 
@@ -2134,7 +2132,7 @@ namespace Ogre
         makeVkStruct( rasterState, VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO );
         rasterState.polygonMode = VulkanMappings::get( newPso->macroblock->mPolygonMode );
         rasterState.cullMode = VulkanMappings::get( newPso->macroblock->mCullMode );
-        rasterState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterState.frontFace = VK_FRONT_FACE_CLOCKWISE;
         rasterState.depthBiasEnable = newPso->macroblock->mDepthBiasConstant != 0.0f;
         rasterState.depthBiasConstantFactor = newPso->macroblock->mDepthBiasConstant;
         rasterState.depthBiasClamp = 0.0f;
