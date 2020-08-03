@@ -25,7 +25,8 @@ namespace Ogre
 
     OgreVulkanWin32Window::OgreVulkanWin32Window( FastArray<const char *> &inOutRequiredInstanceExts,
                                                   const String &title, uint32 width, uint32 height,
-                                                  bool fullscreenMode ) :
+                                                  bool fullscreenMode,
+                                                  const NameValuePairList *_miscParams ) :
         VulkanWindow( title, width, height, fullscreenMode ),
         mHwnd( 0 ),
         mHDC( 0 ),
@@ -42,7 +43,8 @@ namespace Ogre
         mIsTopLevel( true ),
         mMsaaCount( 1u ),
         mWindowedWinStyle( 0 ),
-        mFullscreenWinStyle( 0 )
+        mFullscreenWinStyle( 0 ),
+        mMiscParams( _miscParams )
     {
         inOutRequiredInstanceExts.push_back( VK_KHR_WIN32_SURFACE_EXTENSION_NAME );
     }
@@ -107,6 +109,110 @@ namespace Ogre
         HINSTANCE hInstance = NULL;
         uint32 windowWidth = width;
         uint32 windowHeight = height;
+
+        if( mMiscParams )
+        {
+            // Get variable-length params
+            NameValuePairList::const_iterator opt;
+            NameValuePairList::const_iterator end = mMiscParams->end();
+
+            opt = mMiscParams->find( "title" );
+            if( opt != end )
+                mTitle = opt->second;
+            opt = mMiscParams->find( "left" );
+            if( opt != end )
+                left = StringConverter::parseInt( opt->second );
+            opt = mMiscParams->find( "top" );
+            if( opt != end )
+                top = StringConverter::parseInt( opt->second );
+            opt = mMiscParams->find( "vsync" );
+            if( opt != end )
+                mVSync = StringConverter::parseBool( opt->second );
+            opt = mMiscParams->find( "hidden" );
+            if( opt != end )
+                hidden = StringConverter::parseBool( opt->second );
+            opt = mMiscParams->find( "vsyncInterval" );
+            if( opt != end )
+                mVSyncInterval = StringConverter::parseUnsignedInt( opt->second );
+            opt = mMiscParams->find( "FSAA" );
+            if( opt != end )
+                mRequestedSampleDescription.parseString( opt->second );
+            opt = mMiscParams->find( "gamma" );
+            if( opt != end )
+                mHwGamma = StringConverter::parseBool( opt->second );
+
+#if OGRE_NO_QUAD_BUFFER_STEREO == 0
+            opt = mMiscParams->find( "stereoMode" );
+            if( opt != end )
+            {
+                StereoModeType stereoMode = StringConverter::parseStereoMode( opt->second );
+                if( SMT_NONE != stereoMode )
+                    mStereoEnabled = true;
+            }
+#endif
+            opt = mMiscParams->find( "externalWindowHandle" );
+            if( opt != end )
+            {
+                mHwnd = (HWND)StringConverter::parseSizeT( opt->second );
+
+                if( IsWindow( mHwnd ) && mHwnd )
+                {
+                    mIsExternal = true;
+                    mRequestedFullscreenMode = false;
+                }
+
+                opt = mMiscParams->find( "externalGLControl" );
+                if( opt != end )
+                    mIsExternalGLControl = StringConverter::parseBool( opt->second );
+            }
+
+
+            // window border style
+            opt = mMiscParams->find( "border" );
+            if( opt != mMiscParams->end() )
+                border = opt->second;
+            // set outer dimensions?
+            opt = mMiscParams->find( "outerDimensions" );
+            if( opt != mMiscParams->end() )
+                outerSize = StringConverter::parseBool( opt->second );
+
+            // only available with fullscreen
+            opt = mMiscParams->find( "displayFrequency" );
+            if( opt != end )
+                mFrequencyNumerator = StringConverter::parseUnsignedInt( opt->second );
+
+            opt = mMiscParams->find( "colourDepth" );
+            if( opt != end )
+            {
+                mColourDepth = StringConverter::parseUnsignedInt( opt->second );
+                if( !mRequestedFullscreenMode )
+                {
+                    // make sure we don't exceed desktop colour depth
+                    if( (int)mColourDepth > GetDeviceCaps( GetDC( 0 ), BITSPIXEL ) )
+                        mColourDepth = GetDeviceCaps( GetDC( 0 ), BITSPIXEL );
+                }
+            }
+
+            // incompatible with fullscreen
+            opt = mMiscParams->find( "parentWindowHandle" );
+            if( opt != end )
+                parentHwnd = (HWND)StringConverter::parseSizeT( opt->second );
+
+            // monitor index
+            opt = mMiscParams->find( "monitorIndex" );
+            if( opt != end )
+                monitorIndex = StringConverter::parseInt( opt->second );
+
+            // monitor handle
+            opt = mMiscParams->find( "monitorHandle" );
+            if( opt != end )
+                hMonitor = (HMONITOR)StringConverter::parseInt( opt->second );
+
+            // enable double click messages
+            opt = mMiscParams->find( "enableDoubleClick" );
+            if( opt != end )
+                enableDoubleClick = StringConverter::parseBool( opt->second );
+        }
 
         if( !mIsExternal )
         {
@@ -310,8 +416,8 @@ namespace Ogre
                 << mRequestedHeight << ", " << mColourDepth << "bpp";
         }
 
-        VkWin32SurfaceCreateInfoKHR createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        VkWin32SurfaceCreateInfoKHR createInfo;
+        makeVkStruct( createInfo, VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR );
         createInfo.hwnd = mHwnd;
         createInfo.hinstance = hInstance;
 
