@@ -340,6 +340,23 @@ namespace Ogre
         return imageView;
     }
     //-----------------------------------------------------------------------------------
+    void VulkanTextureGpu::_notifyTextureSlotChanged( const TexturePool *newPool, uint16 slice )
+    {
+        TextureGpu::_notifyTextureSlotChanged( newPool, slice );
+
+        _setToDisplayDummyTexture();
+
+        if( mTexturePool )
+        {
+            assert( dynamic_cast<VulkanTextureGpu *>( mTexturePool->masterTexture ) );
+            VulkanTextureGpu *masterTexture =
+                static_cast<VulkanTextureGpu *>( mTexturePool->masterTexture );
+            mFinalTextureName = masterTexture->mFinalTextureName;
+        }
+
+        notifyAllListenersTextureChanged( TextureGpuListener::PoolTextureSlotChanged );
+    }
+    //-----------------------------------------------------------------------------------
     void VulkanTextureGpu::destroyView( VkImageView imageView )
     {
         VulkanTextureGpuManager *textureManager =

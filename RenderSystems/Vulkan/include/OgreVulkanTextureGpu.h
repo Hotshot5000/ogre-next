@@ -135,6 +135,7 @@ namespace Ogre
         VkImageView createView( const DescriptorSetTexture2::TextureSlot &texSlot ) const;
         VkImageView createView( DescriptorSetUav::TextureSlot texSlot );
         VkImageView createView( void ) const;
+        virtual void _notifyTextureSlotChanged( const TexturePool *newPool, uint16 slice ) override;
         VkImageView getDefaultDisplaySrv( void ) const { return mDefaultDisplaySrv; }
 
         void destroyView( VkImageView imageView );
