@@ -160,10 +160,6 @@ namespace Ogre
                     mIsExternal = true;
                     mRequestedFullscreenMode = false;
                 }
-
-                opt = mMiscParams->find( "externalGLControl" );
-                if( opt != end )
-                    mIsExternalGLControl = StringConverter::parseBool( opt->second );
             }
 
 
