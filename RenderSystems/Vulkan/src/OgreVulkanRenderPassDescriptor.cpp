@@ -841,6 +841,8 @@ namespace Ogre
         if( mInformationOnly )
             return;
 
+        vkCmdEndRenderPass( mQueue->mCurrentCmdBuffer );
+
         if( isInterruptingRendering )
         {
 #if OGRE_DEBUG_MODE && OGRE_PLATFORM == OGRE_PLATFORM_LINUX
@@ -855,8 +857,6 @@ namespace Ogre
 #endif
             return;
         }
-
-        vkCmdEndRenderPass( mQueue->mCurrentCmdBuffer );
 
         // End (if exists) the render command encoder tied to this RenderPassDesc.
         // Another encoder will have to be created, and don't let ours linger

@@ -82,6 +82,8 @@ namespace Ogre
         /// Only used when hasMsaaExplicitResolves() == false
         VkImage mMsaaFramebufferName;
 
+        bool mOwnsSrv;
+
         uint16 mTexMemIdx;
         size_t mVboPoolIdx;
         size_t mInternalBufferStart;
@@ -107,11 +109,6 @@ namespace Ogre
                           TextureGpuManager *textureManager );
         virtual ~VulkanTextureGpu();
 
-        VkImageSubresourceRange getFullSubresourceRange( void ) const;
-
-        virtual void getSubsampleLocations( vector<Vector2>::type locations );
-        virtual void notifyDataIsReady( void );
-
         virtual void setTextureType( TextureTypes::TextureTypes textureType );
 
         virtual void copyTo( TextureGpu *dst, const TextureBox &dstBox, uint8 dstMipLevel,
@@ -119,9 +116,16 @@ namespace Ogre
                              bool keepResolvedTexSynced = true );
 
         virtual void _autogenerateMipmaps( void );
-        virtual void _setToDisplayDummyTexture( void );
 
+        virtual void getSubsampleLocations( vector<Vector2>::type locations );
+
+        virtual void notifyDataIsReady(void);
         virtual bool _isDataReadyImpl( void ) const;
+
+        virtual void _setToDisplayDummyTexture(void);
+        virtual void _notifyTextureSlotChanged( const TexturePool *newPool, uint16 slice );
+
+        VkImageSubresourceRange getFullSubresourceRange( void ) const;
 
         VkImageType getVulkanTextureType( void ) const;
 
