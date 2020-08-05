@@ -81,6 +81,7 @@ namespace Ogre
     {
         if( mRootLayout )
         {
+            // This should not need to be delayed, since VulkanRootLayouts persists until shutdown
             vkDestroyPipelineLayout( mProgramManager->getDevice()->mDevice, mRootLayout, 0 );
             mRootLayout = 0;
         }
@@ -355,7 +356,7 @@ namespace Ogre
                                                 const DescBindingRange *descBindingRanges,
                                                 const VulkanGlobalBindingTable &table )
     {
-        const DescBindingRange &bindRanges = descBindingRanges[DescBindingTypes::Texture];
+        const DescBindingRange &bindRanges = descBindingRanges[DescBindingTypes::Sampler];
 
         if( !bindRanges.isInUse() )
             return;
@@ -439,11 +440,17 @@ namespace Ogre
                     {
                         VulkanRootLayout *newBest = 0;
                         if( numSlotsA > numSlotsB )
+                        {
                             newBest = a;
+                            other = b;
+                        }
                         else
+                        {
                             newBest = b;
+                            other = a;
+                        }
 
-                        if( best != newBest )
+                        if( best && best != newBest )
                         {
                             // This is the first divergence within this set idx
                             // However a previous set diverged; and the 'best' one

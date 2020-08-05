@@ -30,11 +30,13 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 
 #include "OgreRenderPassDescriptor.h"
 #include "OgreVulkanCache.h"
+#include "OgreVulkanDelayedFuncs.h"
 #include "OgreVulkanDevice.h"
 #include "OgreVulkanGpuProgramManager.h"
 #include "OgreVulkanMappings.h"
 #include "OgreVulkanProgramFactory.h"
 #include "OgreVulkanRenderPassDescriptor.h"
+#include "OgreVulkanResourceTransition.h"
 #include "OgreVulkanRootLayout.h"
 #include "OgreVulkanTextureGpuManager.h"
 #include "OgreVulkanUtils.h"
@@ -42,7 +44,7 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "Vao/OgreVulkanVaoManager.h"
 
 #include "OgreDefaultHardwareBufferManager.h"
-#include "Vao/OgreVulkanVertexArrayObject.h"
+#include "Vao/OgreVertexArrayObject.h"
 
 #include "CommandBuffer/OgreCbDrawCall.h"
 
@@ -50,6 +52,7 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "Vao/OgreIndirectBufferPacked.h"
 #include "Vao/OgreVulkanBufferInterface.h"
 #include "Vao/OgreVulkanConstBufferPacked.h"
+#include "Vao/OgreVulkanTexBufferPacked.h"
 
 #include "OgreVulkanHardwareBufferManager.h"
 #include "OgreVulkanHardwareIndexBuffer.h"
@@ -68,9 +71,12 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #    include "Windowing/X11/OgreVulkanXcbWindow.h"
 #endif
 
+#include "OgrePixelFormatGpuUtils.h"
+
 #define TODO_check_layers_exist
 
 #define TODO_addVpCount_to_passpso
+#define TODO_depth_readOnly_passes_dont_need_flushing
 
 namespace Ogre
 {
@@ -388,6 +394,7 @@ namespace Ogre
         rsc->setCapability( RSC_TEXTURE_2D_ARRAY );
         rsc->setCapability( RSC_CONST_BUFFER_SLOTS_IN_SHADER );
         rsc->setCapability( RSC_SEPARATE_SAMPLERS_FROM_TEXTURES );
+        rsc->setCapability( RSC_EXPLICIT_API );
         rsc->setMaxPointSize( 256 );
 
         rsc->setMaximumResolutions( 16384, 4096, 16384 );
@@ -439,8 +446,8 @@ namespace Ogre
     {
         FastArray<const char *> reqInstanceExtensions;
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
-        VulkanWindow *win =
-            OGRE_NEW OgreVulkanWin32Window( reqInstanceExtensions, name, width, height, fullScreen, miscParams );
+        VulkanWindow *win = OGRE_NEW OgreVulkanWin32Window( reqInstanceExtensions, name, width, height,
+                                                            fullScreen, miscParams );
 #else
         VulkanWindow *win =
             OGRE_NEW VulkanXcbWindow( reqInstanceExtensions, name, width, height, fullScreen );
@@ -848,7 +855,7 @@ namespace Ogre
     RenderPassDescriptor *VulkanRenderSystem::createRenderPassDescriptor( void )
     {
         VulkanRenderPassDescriptor *retVal =
-            OGRE_NEW VulkanRenderPassDescriptor( &mDevice->mGraphicsQueue, this );
+            OGRE_NEW VulkanRenderPassDescriptor( &mActiveDevice->mGraphicsQueue, this );
         mRenderPassDescs.insert( retVal );
         return retVal;
     }
@@ -1674,6 +1681,10 @@ namespace Ogre
     void VulkanRenderSystem::clearFrameBuffer( RenderPassDescriptor *renderPassDesc,
                                                TextureGpu *anyTarget, uint8 mipLevel )
     {
+        Vector4 fullVp( 0, 0, 1, 1 );
+        beginRenderPassDescriptor( renderPassDesc, anyTarget, mipLevel,  //
+                                   &fullVp, &fullVp, 1u, false, false );
+        executeRenderPassDescriptorDelayedActions();
     }
     //-------------------------------------------------------------------------
     Real VulkanRenderSystem::getHorizontalTexelOffset( void ) { return 0.0f; }
@@ -1821,7 +1832,7 @@ namespace Ogre
             mActiveDevice->mGraphicsQueue.getGraphicsEncoder();
 
             VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
-            vaoManager->bindDrawIdVertexBuffer( mDevice->mGraphicsQueue.mCurrentCmdBuffer );
+            vaoManager->bindDrawIdVertexBuffer( mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer );
 
 #if VULKAN_DISABLED
             [mActiveRenderEncoder setFrontFacingWinding:MTLWindingCounterClockwise];
@@ -1850,7 +1861,7 @@ namespace Ogre
                 vkVp[i].maxDepth = 1;
             }
 
-            vkCmdSetViewport( mDevice->mGraphicsQueue.mCurrentCmdBuffer, 0u, numViewports, vkVp );
+            vkCmdSetViewport( mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer, 0u, numViewports, vkVp );
         }
 
         if( mVpChanged || numViewports > 1u )
@@ -1866,7 +1877,8 @@ namespace Ogre
                     static_cast<uint32>( mCurrentRenderViewport[i].getScissorActualHeight() );
             }
 
-            vkCmdSetScissor( mDevice->mGraphicsQueue.mCurrentCmdBuffer, 0u, numViewports, scissorRect );
+            vkCmdSetScissor( mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer, 0u, numViewports,
+                             scissorRect );
         }
 
         mEntriesToFlush = 0;
@@ -2021,6 +2033,169 @@ namespace Ogre
         return retVal;
     }
     //-------------------------------------------------------------------------
+    static VkPipelineStageFlags toVkPipelineStageFlags( ResourceLayout::Layout layout,
+                                                        const bool bIsDepth )
+    {
+        VkPipelineStageFlags stage = 0;
+        if( layout == ResourceLayout::RenderTarget || ( layout == ResourceLayout::Clear && !bIsDepth ) )
+        {
+            stage |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        }
+        if( layout == ResourceLayout::RenderDepth || ( layout == ResourceLayout::Clear && bIsDepth ) )
+        {
+            stage |=
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        }
+        if( layout == ResourceLayout::Texture || layout == ResourceLayout::TextureDepth )
+        {
+            stage |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                     VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+                     VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+                     VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        }
+
+        if( layout == ResourceLayout::Uav )
+            stage |= VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;  // TODO (compute vs graphics)
+
+        return stage;
+    }
+
+    void VulkanRenderSystem::_resourceTransitionCreated( ResourceTransitionCollection *rstCollection )
+    {
+        OGRE_ASSERT_LOW( !rstCollection->mRsData );
+
+        if( rstCollection->resourceTransitions.empty() )
+            return;
+
+        VulkanResourceTransition *resTrans = new VulkanResourceTransition();
+        memset( resTrans, 0, sizeof( VulkanResourceTransition ) );
+
+        size_t numTextures = 0u;
+
+        uint32 bufferWriteBarrierBits = 0u;
+        uint32 bufferReadBarrierBits = 0u;
+
+        ResourceTransitionArray::const_iterator itor = rstCollection->resourceTransitions.begin();
+        ResourceTransitionArray::const_iterator endt = rstCollection->resourceTransitions.end();
+
+        while( itor != endt )
+        {
+            if( itor->resource && itor->resource->isTextureGpu() )
+                ++numTextures;
+            else
+            {
+                bufferWriteBarrierBits |= itor->writeBarrierBits;
+                bufferReadBarrierBits |= itor->readBarrierBits;
+            }
+            ++itor;
+        }
+
+        if( bufferWriteBarrierBits || bufferReadBarrierBits )
+        {
+            makeVkStruct( resTrans->memBarrier, VK_STRUCTURE_TYPE_MEMORY_BARRIER );
+
+            if( bufferWriteBarrierBits & WriteBarrier::Uav )
+                resTrans->memBarrier.srcAccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
+            if( bufferReadBarrierBits & ( ReadBarrier::Uav | ReadBarrier::Texture ) )
+                resTrans->memBarrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
+        }
+
+        resTrans->imageBarriers.resizePOD( numTextures );
+
+        numTextures = 0u;
+        itor = rstCollection->resourceTransitions.begin();
+        while( itor != endt )
+        {
+            if( itor->resource && itor->resource->isTextureGpu() )
+            {
+                VulkanTextureGpu *texture = static_cast<VulkanTextureGpu *>( itor->resource );
+                VkImageMemoryBarrier &imageBarrier = resTrans->imageBarriers[numTextures];
+                imageBarrier = texture->getImageMemoryBarrier();
+                imageBarrier.oldLayout = VulkanMappings::get( itor->oldLayout, texture );
+                imageBarrier.newLayout = VulkanMappings::get( itor->newLayout, texture );
+
+                const bool bIsDepth = PixelFormatGpuUtils::isDepth( texture->getPixelFormat() );
+
+                TODO_depth_readOnly_passes_dont_need_flushing;
+
+                resTrans->srcStage |= toVkPipelineStageFlags( itor->oldLayout, bIsDepth );
+                resTrans->dstStage |= toVkPipelineStageFlags( itor->newLayout, bIsDepth );
+
+                if( itor->writeBarrierBits & WriteBarrier::Uav )
+                    imageBarrier.srcAccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
+                if( itor->writeBarrierBits & WriteBarrier::RenderTarget )
+                    imageBarrier.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                if( itor->writeBarrierBits & WriteBarrier::DepthStencil )
+                    imageBarrier.srcAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+                if( itor->readBarrierBits & ( ReadBarrier::Texture | ReadBarrier::Uav ) )
+                    imageBarrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
+                if( itor->readBarrierBits & ReadBarrier::RenderTarget )
+                    imageBarrier.dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+                if( itor->readBarrierBits & ReadBarrier::DepthStencil )
+                    imageBarrier.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+                ++numTextures;
+            }
+            ++itor;
+        }
+
+        if( resTrans->srcStage == 0 )
+            resTrans->srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+        OGRE_ASSERT_LOW( resTrans->dstStage );
+
+        rstCollection->mRsData = resTrans;
+    }
+    //-------------------------------------------------------------------------
+    void VulkanRenderSystem::_resourceTransitionDestroyed( ResourceTransitionCollection *rstCollection )
+    {
+        OGRE_ASSERT_LOW( ( rstCollection->mRsData && !rstCollection->resourceTransitions.empty() ) ||
+                         ( !rstCollection->mRsData && rstCollection->resourceTransitions.empty() ) );
+        if( !rstCollection->resourceTransitions.empty() )
+        {
+            VulkanResourceTransition *rsData =
+                reinterpret_cast<VulkanResourceTransition *>( rstCollection->mRsData );
+            delete rsData;
+            rstCollection->mRsData = 0;
+        }
+    }
+    //-------------------------------------------------------------------------
+    void VulkanRenderSystem::_executeResourceTransition( ResourceTransitionCollection *rstCollection )
+    {
+        if( rstCollection->resourceTransitions.empty() )
+            return;
+
+        VulkanResourceTransition *rsData =
+            reinterpret_cast<VulkanResourceTransition *>( rstCollection->mRsData );
+
+        uint32 numMemBarriers = 0u;
+        if( rsData->memBarrier.sType == VK_STRUCTURE_TYPE_MEMORY_BARRIER )
+            numMemBarriers = 1u;
+
+        size_t numTextures = 0u;
+        ResourceTransitionArray::const_iterator itor = rstCollection->resourceTransitions.begin();
+        ResourceTransitionArray::const_iterator endt = rstCollection->resourceTransitions.end();
+
+        while( itor != endt )
+        {
+            if( itor->resource && itor->resource->isTextureGpu() )
+            {
+                VulkanTextureGpu *texture = static_cast<VulkanTextureGpu *>( itor->resource );
+                rsData->imageBarriers[numTextures].image = texture->getFinalTextureName();
+                ++numTextures;
+            }
+            ++itor;
+        }
+
+        mActiveDevice->mGraphicsQueue.endAllEncoders();
+
+        vkCmdPipelineBarrier( mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer, rsData->srcStage,
+                              rsData->dstStage, 0, numMemBarriers, &rsData->memBarrier, 0u, 0,
+                              static_cast<uint32>( rsData->imageBarriers.size() ),
+                              rsData->imageBarriers.begin() );
+    }
+    //-------------------------------------------------------------------------
     void VulkanRenderSystem::_hlmsPipelineStateObjectCreated( HlmsPso *newPso )
     {
         size_t numShaderStages = 0u;
@@ -2074,15 +2249,40 @@ namespace Ogre
             String shaderNames =
                 "The following shaders cannot be linked. Their Root Layouts are incompatible:\n";
             if( newPso->vertexShader )
-                shaderNames += newPso->vertexShader->getName() + " ";
+            {
+                shaderNames += newPso->vertexShader->getName() + "\n";
+                static_cast<VulkanProgram *>( newPso->vertexShader->_getBindingDelegate() )
+                    ->getRootLayout()
+                    ->dump( shaderNames );
+            }
             if( newPso->geometryShader )
-                shaderNames += newPso->geometryShader->getName() + " ";
+            {
+                shaderNames += newPso->geometryShader->getName() + "\n";
+                static_cast<VulkanProgram *>( newPso->geometryShader->_getBindingDelegate() )
+                    ->getRootLayout()
+                    ->dump( shaderNames );
+            }
             if( newPso->tesselationHullShader )
-                shaderNames += newPso->tesselationHullShader->getName() + " ";
+            {
+                shaderNames += newPso->tesselationHullShader->getName() + "\n";
+                static_cast<VulkanProgram *>( newPso->tesselationHullShader->_getBindingDelegate() )
+                    ->getRootLayout()
+                    ->dump( shaderNames );
+            }
             if( newPso->tesselationDomainShader )
-                shaderNames += newPso->tesselationDomainShader->getName() + " ";
+            {
+                shaderNames += newPso->tesselationDomainShader->getName() + "\n";
+                static_cast<VulkanProgram *>( newPso->tesselationDomainShader->_getBindingDelegate() )
+                    ->getRootLayout()
+                    ->dump( shaderNames );
+            }
             if( newPso->pixelShader )
-                shaderNames += newPso->pixelShader->getName() + " ";
+            {
+                shaderNames += newPso->pixelShader->getName() + "\n";
+                static_cast<VulkanProgram *>( newPso->pixelShader->_getBindingDelegate() )
+                    ->getRootLayout()
+                    ->dump( shaderNames );
+            }
 
             LogManager::getSingleton().logMessage( shaderNames, LML_CRITICAL );
             OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
@@ -2149,7 +2349,10 @@ namespace Ogre
         makeVkStruct( depthStencilStateCi, VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO );
         depthStencilStateCi.depthTestEnable = newPso->macroblock->mDepthCheck;
         depthStencilStateCi.depthWriteEnable = newPso->macroblock->mDepthWrite;
-        depthStencilStateCi.depthCompareOp = VulkanMappings::get( newPso->macroblock->mDepthFunc );
+        CompareFunction depthFunc = newPso->macroblock->mDepthFunc;
+        if( mReverseDepth )
+            depthFunc = reverseCompareFunction( depthFunc );
+        depthStencilStateCi.depthCompareOp = VulkanMappings::get( depthFunc );
         depthStencilStateCi.stencilTestEnable = newPso->pass.stencilParams.enabled;
         if( newPso->pass.stencilParams.enabled )
         {
@@ -2290,9 +2493,8 @@ namespace Ogre
 
         VulkanHlmsPso *vulkanPso = static_cast<VulkanHlmsPso *>( pso->rsData );
 
-        //        removeDepthStencilState( pso );
-
-        vkDestroyPipeline( mActiveDevice->mDevice, reinterpret_cast<VkPipeline>( vulkanPso->pso ), 0 );
+        delayed_vkDestroyPipeline( mVaoManager, mActiveDevice->mDevice,
+                                   reinterpret_cast<VkPipeline>( vulkanPso->pso ), 0 );
 
         delete vulkanPso;
         pso->rsData = 0;
@@ -2353,7 +2555,8 @@ namespace Ogre
         }
 
         VkSampler textureSampler;
-        VkResult result = vkCreateSampler( mDevice->mDevice, &samplerDescriptor, 0, &textureSampler );
+        VkResult result =
+            vkCreateSampler( mActiveDevice->mDevice, &samplerDescriptor, 0, &textureSampler );
         checkVkResult( result, "vkCreateSampler" );
 
         newBlock->mRsData = textureSampler;
@@ -2363,7 +2566,7 @@ namespace Ogre
     {
         assert( block->mRsData );
         VkSampler textureSampler = static_cast<VkSampler>( block->mRsData );
-        vkDestroySampler( mDevice->mDevice, textureSampler, 0 );
+        delayed_vkDestroySampler( mVaoManager, mActiveDevice->mDevice, textureSampler, 0 );
     }
     //-------------------------------------------------------------------------
     template <typename TDescriptorSetTexture, typename TTexSlot, typename TBufferPacked>

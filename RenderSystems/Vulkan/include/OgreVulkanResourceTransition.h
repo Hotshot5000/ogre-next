@@ -1,10 +1,10 @@
 /*
 -----------------------------------------------------------------------------
 This source file is part of OGRE
-(Object-oriented Graphics Rendering Engine)
-For the latest info, see http://www.ogre3d.org
+    (Object-oriented Graphics Rendering Engine)
+For the latest info, see http://www.ogre3d.org/
 
-Copyright (c) 2000-2014 Torus Knot Software Ltd
+Copyright (c) 2000-present Torus Knot Software Ltd
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,25 +25,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
-
-#ifndef _Ogre_VulkanVertexArrayObject_H_
-#define _Ogre_VulkanVertexArrayObject_H_
+#ifndef _OgreVulkanResourceTransition_H_
+#define _OgreVulkanResourceTransition_H_
 
 #include "OgreVulkanPrerequisites.h"
 
-#include "Vao/OgreVertexArrayObject.h"
+#include "vulkan/vulkan_core.h"
 
 namespace Ogre
 {
-    struct _OgreVulkanExport VulkanVertexArrayObject : public VertexArrayObject
+	struct _OgreVulkanExport VulkanResourceTransition
     {
-        VulkanVertexArrayObject( uint32 vaoName, uint32 renderQueueId,
-                                 const VertexBufferPackedVec &vertexBuffers,
-                                 IndexBufferPacked *indexBuffer, OperationType opType ) :
-            VertexArrayObject( vaoName, renderQueueId, 0, vertexBuffers, indexBuffer, opType )
-        {
-        }
+		VkPipelineStageFlags srcStage;
+		VkPipelineStageFlags dstStage;
+
+		VkMemoryBarrier memBarrier;
+		FastArray<VkImageMemoryBarrier> imageBarriers;
     };
 }  // namespace Ogre
 
-#endif
+#endif  // _OgreVulkanResourceTransition_H_

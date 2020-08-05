@@ -28,6 +28,8 @@ THE SOFTWARE.
 
 #include "OgreVulkanTextureGpu.h"
 
+#include "OgreVulkanDelayedFuncs.h"
+
 #include "Vao/OgreVulkanVaoManager.h"
 
 #include "OgrePixelFormatGpuUtils.h"
@@ -59,6 +61,7 @@ namespace Ogre
         mCurrLayout( VK_IMAGE_LAYOUT_UNDEFINED ),
         mNextLayout( VK_IMAGE_LAYOUT_UNDEFINED )
     {
+        _setToDisplayDummyTexture();
     }
     //-----------------------------------------------------------------------------------
     VulkanTextureGpu::~VulkanTextureGpu() { destroyInternalResourcesImpl(); }
@@ -79,7 +82,8 @@ namespace Ogre
         imageInfo.format = VulkanMappings::get( mPixelFormat );
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                          VK_IMAGE_USAGE_SAMPLED_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         if( hasMsaaExplicitResolves() )
         {
@@ -156,11 +160,12 @@ namespace Ogre
                 vkGetImageMemoryRequirements( device->mDevice, mFinalTextureName, &memRequirements );
 
                 TODO_delay_everything_that_starts_with_vkDestroy;
-                vkDestroyImage( device->mDevice, mFinalTextureName, 0 );
-                mFinalTextureName = 0;
-
                 VulkanVaoManager *vaoManager =
                     static_cast<VulkanVaoManager *>( textureManager->getVaoManager() );
+
+                delayed_vkDestroyImage( vaoManager, device->mDevice, mFinalTextureName, 0 );
+                mFinalTextureName = 0;
+
                 vaoManager->deallocateTexture( mTexMemIdx, mVboPoolIdx, mInternalBufferStart,
                                                memRequirements.size );
             }
@@ -211,7 +216,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     bool VulkanTextureGpu::_isDataReadyImpl( void ) const
     {
-        return mDisplayTextureName != mFinalTextureName;
+        return mDisplayTextureName == mFinalTextureName;
     }
     //-----------------------------------------------------------------------------------
     void VulkanTextureGpu::_setToDisplayDummyTexture( void )
@@ -288,7 +293,7 @@ namespace Ogre
     {
         TextureGpu::copyTo( dst, dstBox, dstMipLevel, srcBox, srcMipLevel );
 
-        assert( dynamic_cast<VulkanTextureGpu *>( dst ) );
+        OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpu *>( dst ) );
 
         VulkanTextureGpu *dstTexture = static_cast<VulkanTextureGpu *>( dst );
         VulkanTextureGpuManager *textureManager =
@@ -304,7 +309,7 @@ namespace Ogre
         const uint32 destinationSlice = dstBox.sliceStart + dstTexture->getInternalSliceStart();
         const uint32 numSlices = dstBox.numSlices != 0 ? dstBox.numSlices : dstTexture->getNumSlices();
 
-        region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.srcSubresource.aspectMask = VulkanMappings::getImageAspect( this->getPixelFormat() );
         region.srcSubresource.mipLevel = srcMipLevel;
         region.srcSubresource.baseArrayLayer = sourceSlice;
         region.srcSubresource.layerCount = numSlices;
@@ -313,7 +318,7 @@ namespace Ogre
         region.srcOffset.y = srcBox.y;
         region.srcOffset.z = srcBox.z;
 
-        region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.dstSubresource.aspectMask = VulkanMappings::getImageAspect( dst->getPixelFormat() );
         region.dstSubresource.mipLevel = dstMipLevel;
         region.dstSubresource.baseArrayLayer = destinationSlice;
         region.dstSubresource.layerCount = numSlices;
@@ -328,6 +333,14 @@ namespace Ogre
 
         vkCmdCopyImage( device->mGraphicsQueue.mCurrentCmdBuffer, mFinalTextureName, mCurrLayout,
                         dstTexture->getFinalTextureName(), dstTexture->mCurrLayout, 1, &region );
+
+        // Do not perform the sync if notifyDataIsReady hasn't been called yet (i.e. we're
+        // still building the HW mipmaps, and the texture will never be ready)
+        if( dst->_isDataReadyImpl() &&
+            dst->getGpuPageOutStrategy() == GpuPageOutStrategy::AlwaysKeepSystemRamCopy )
+        {
+            dst->_syncGpuResidentToSystemRam();
+    }
     }
     //-----------------------------------------------------------------------------------
     void VulkanTextureGpu::_autogenerateMipmaps( void ) {}
@@ -446,7 +459,8 @@ namespace Ogre
         VulkanTextureGpuManager *textureManager =
             static_cast<VulkanTextureGpuManager *>( mTextureManager );
         VulkanDevice *device = textureManager->getDevice();
-        vkDestroyImageView( device->mDevice, imageView, 0 );
+
+        delayed_vkDestroyImageView( textureManager->getVaoManager(), device->mDevice, imageView, 0 );
     }
     //-----------------------------------------------------------------------------------
     VkImageView VulkanTextureGpu::createView( void ) const

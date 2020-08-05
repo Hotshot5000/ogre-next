@@ -63,7 +63,8 @@ namespace Ogre
         deleteFences( mFences.begin(), mFences.end() );
 
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
-        vaoManager->deallocateVbo( mVboPoolIdx, mInternalBufferStart, getMaxSize(), BT_DYNAMIC_DEFAULT );
+        vaoManager->deallocateVbo( mVboPoolIdx, mInternalBufferStart, getMaxSize(), BT_DYNAMIC_DEFAULT,
+                                   !mUploadOnly );
     }
     //-----------------------------------------------------------------------------------
     void VulkanStagingBuffer::addFence( size_t from, size_t to, bool forceFence )
@@ -320,12 +321,14 @@ namespace Ogre
 
         device->mGraphicsQueue.getCopyEncoderV1Buffer( false );
 
+        size_t dstOffsetStart = 0;
+        VkBuffer dstBuffer = hwBuffer->getBufferNameForGpuWrite( dstOffsetStart );
+
         VkBufferCopy region;
         region.srcOffset = mInternalBufferStart + mMappingStart;
-        region.dstOffset = lockStart;
+        region.dstOffset = lockStart + dstOffsetStart;
         region.size = alignToNextMultiple( lockSize, 4u );
-        vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer, mVboName,
-                         hwBuffer->getBufferNameForGpuWrite(), 1u, &region );
+        vkCmdCopyBuffer( device->mGraphicsQueue.mCurrentCmdBuffer, mVboName, dstBuffer, 1u, &region );
 
         if( mUploadOnly )
         {

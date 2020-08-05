@@ -4,7 +4,7 @@ This source file is part of OGRE
 (Object-oriented Graphics Rendering Engine)
 For the latest info, see http://www.ogre3d.org
 
-Copyright (c) 2000-2014 Torus Knot Software Ltd
+Copyright (c) 2000-present Torus Knot Software Ltd
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,16 +30,31 @@ THE SOFTWARE.
 #define _Ogre_VulkanVaoManager_H_
 #include "OgreVulkanPrerequisites.h"
 
-#include "OgreVulkanConstBufferPacked.h"
-#include "OgreVulkanTexBufferPacked.h"
-
 #include "Vao/OgreVaoManager.h"
 
 struct VkMemoryRequirements;
 
 namespace Ogre
 {
+    class VulkanDelayedFuncBase;
     class VulkanStagingTexture;
+
+    /// Provides a simple interface similar to that of MTLBuffer
+    struct VulkanRawBuffer
+    {
+        VkBuffer mVboName;
+        VulkanDynamicBuffer *mDynamicBuffer;
+        uint32 mVboFlag;  /// See VulkanVaoManager::VboFlag
+        size_t mUnmapTicket;
+
+        size_t mSize;
+        size_t mInternalBufferStart;
+        size_t mVboPoolIdx;
+
+        void *map( void );
+        void unmap( void );
+    };
+
     class _OgreVulkanExport VulkanVaoManager : public VaoManager
     {
     public:
@@ -47,9 +62,9 @@ namespace Ogre
         enum VboFlag
         {
             CPU_INACCESSIBLE,
-            CPU_ACCESSIBLE_DEFAULT,
-            CPU_ACCESSIBLE_PERSISTENT,
-            CPU_ACCESSIBLE_PERSISTENT_COHERENT,
+            CPU_WRITE_PERSISTENT,
+            CPU_WRITE_PERSISTENT_COHERENT,
+            CPU_READ_WRITE,
             MAX_VBO_FLAG
         };
 
@@ -106,12 +121,12 @@ namespace Ogre
 
         struct Vao
         {
+            uint32 vaoName;
+
             struct VertexBinding
             {
-                // GLuint              vertexBufferVbo;
+                VkBuffer vertexBufferVbo;
                 VertexElement2Vec vertexElements;
-                uint32 stride;
-                size_t offset;
 
                 // OpenGL supports this parameter per attribute, but
                 // we're a bit more conservative and do it per buffer
@@ -119,16 +134,19 @@ namespace Ogre
 
                 bool operator==( const VertexBinding &_r ) const
                 {
-                    return  // vertexBufferVbo == _r.vertexBufferVbo &&
-                        vertexElements == _r.vertexElements && stride == _r.stride &&
-                        offset == _r.offset && instancingDivisor == _r.instancingDivisor;
+                    return vertexBufferVbo == _r.vertexBufferVbo &&
+                           vertexElements == _r.vertexElements &&
+                           instancingDivisor == _r.instancingDivisor;
                 }
             };
 
             typedef vector<VertexBinding>::type VertexBindingVec;
 
+            /// Not required anymore, however it's still useful for sorting
+            /// purposes in the RenderQueue (using the Vao's ID).
+            OperationType operationType;
             VertexBindingVec vertexBuffers;
-            uint32 indexBufferVbo;
+            VkBuffer indexBufferVbo;
             IndexBufferPacked::IndexType indexType;
             uint32 refCount;
         };
@@ -155,6 +173,7 @@ namespace Ogre
         TextureMemoryVec mTextureMemory;
 
         VaoVec mVaos;
+        uint32 mVaoNames;
 
         VertexBufferPacked *mDrawId;
 
@@ -182,9 +201,13 @@ namespace Ogre
         VulkanDescriptorPoolMap mDescriptorPools;
         FastArray<VulkanDescriptorPool *> mUsedDescriptorPools;
 
+        typedef FastArray<VulkanDelayedFuncBase *> VulkanDelayedFuncBaseArray;
+        FastArray<VulkanDelayedFuncBaseArray> mDelayedFuncs;
+
         bool mFenceFlushed;
         bool mSupportsCoherentMemory;
         bool mSupportsNonCoherentMemory;
+        bool mReadMemoryIsCoherent;
 
         static const uint32 VERTEX_ATTRIBUTE_INDEX[VES_COUNT];
 
@@ -212,8 +235,8 @@ namespace Ogre
         @param outBufferOffset [out]
             The offset in bytes at which the buffer data should be placed.
         */
-        void allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType, size_t &outVboIdx,
-                          size_t &outBufferOffset );
+        void allocateVbo( size_t sizeBytes, size_t alignment, BufferType bufferType, bool readCapable,
+                          size_t &outVboIdx, size_t &outBufferOffset );
 
         void allocateVbo( size_t sizeBytes, size_t alignment, VboVec &vboVec, uint32 vkMemoryTypeIndex,
                           size_t defaultPoolSize, bool textureOnly, bool cpuAccessible, bool isCoherent,
@@ -232,11 +255,10 @@ namespace Ogre
         @param bufferType
             The type of buffer that was passed to allocateVbo.
         */
-        void deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes,
-                            BufferType bufferType );
+        void deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes, BufferType bufferType,
+                            bool readCapable );
 
-        void deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes,
-                            VboVec &vboVec );
+        void deallocateVbo( size_t vboIdx, size_t bufferOffset, size_t sizeBytes, VboVec &vboVec );
 
         virtual VertexBufferPacked *createVertexBufferImpl( size_t numElements, uint32 bytesPerElement,
                                                             BufferType bufferType, void *initialData,
@@ -279,7 +301,15 @@ namespace Ogre
 
         virtual void destroyVertexArrayObjectImpl( VertexArrayObject *vao );
 
-        VboFlag bufferTypeToVboFlag( BufferType bufferType ) const;
+        /// Finds the Vao. Calls createVao automatically if not found.
+        /// Increases refCount before returning the iterator.
+        VaoVec::iterator findVao( const VertexBufferPackedVec &vertexBuffers,
+                                  IndexBufferPacked *indexBuffer, OperationType opType );
+        uint32 createVao( void );
+
+        static uint32 generateRenderQueueId( uint32 vaoName, uint32 uniqueVaoId );
+
+        VboFlag bufferTypeToVboFlag( BufferType bufferType, const bool readCapable ) const;
         bool isVboFlagCoherent( VboFlag vboFlag ) const;
 
         virtual void switchVboPoolIndexImpl( size_t oldPoolIdx, size_t newPoolIdx,
@@ -296,6 +326,11 @@ namespace Ogre
         VkDeviceMemory allocateTexture( const VkMemoryRequirements &memReq, uint16 &outTexMemIdx,
                                         size_t &outVboIdx, size_t &outBufferOffset );
         void deallocateTexture( uint16 texMemIdx, size_t vboIdx, size_t bufferOffset, size_t sizeBytes );
+
+        VulkanRawBuffer allocateRawBuffer( VboFlag vboFlag, size_t sizeBytes );
+        void deallocateRawBuffer( VulkanRawBuffer &rawBuffer );
+
+        void addDelayedFunc( VulkanDelayedFuncBase *cmd );
 
         virtual void getMemoryStats( MemoryStatsEntryVec &outStats, size_t &outCapacityBytes,
                                      size_t &outFreeBytes, Log *log ) const;

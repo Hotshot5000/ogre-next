@@ -1,4 +1,4 @@
-﻿/*
+/*
 -----------------------------------------------------------------------------
 This source file is part of OGRE
     (Object-oriented Graphics Rendering Engine)
@@ -46,4 +46,6 @@ namespace Ogre
             return resourceAccessTable[value];
         }
     }
+
+    GpuTrackedResource::~GpuTrackedResource() {}
 }
