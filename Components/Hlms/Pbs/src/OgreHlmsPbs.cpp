@@ -361,7 +361,7 @@ namespace Ogre
             else
                 samplerblock.mBorderColour  = pitchBlackBorder;
 
-            if( mShaderProfile != "hlsl" )
+            if( mShaderProfile != "hlsl" && mShaderProfile  != "hlslvk" )
             {
                 samplerblock.mMinFilter = FO_POINT;
                 samplerblock.mMagFilter = FO_POINT;
@@ -3545,6 +3545,8 @@ namespace Ogre
             shaderSyntax = "HLSL";
         else if( renderSystem->getName() == "Metal Rendering Subsystem" )
             shaderSyntax = "Metal";
+        else if( renderSystem->getName() == "Vulkan Rendering Subsystem" )
+            shaderSyntax = "HLSL";
 
         // Fill the library folder paths with the relevant folders
         outLibraryFoldersPaths.clear();
