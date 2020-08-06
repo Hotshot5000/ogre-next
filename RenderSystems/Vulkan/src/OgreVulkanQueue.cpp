@@ -574,7 +574,10 @@ namespace Ogre
             else
             {
                 if( !it->second )
+                {
                     bufferAccessFlags = VK_ACCESS_TRANSFER_WRITE_BIT;
+                    srcStage |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+                }
                 else
                     bufferAccessFlags = 0;  // Consecutive reads don't require waiting
             }
@@ -942,11 +945,11 @@ namespace Ogre
         const uint8 dynBufferFrame = mVaoManager->waitForTailFrameToFinish();
         VkFence fence = getCurrentFence();
 
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( "VulkanQueue::commitAndNextCommandBuffer" ) );
-        }
+        //        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        //        if( defaultLog )
+        //        {
+        //            defaultLog->logMessage( String( "VulkanQueue::commitAndNextCommandBuffer" ) );
+        //        }
 
         vkQueueSubmit( mQueue, 1u, &submitInfo, fence );
         vkQueueWaitIdle( mQueue );

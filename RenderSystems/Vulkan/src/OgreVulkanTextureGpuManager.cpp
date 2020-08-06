@@ -42,6 +42,8 @@ THE SOFTWARE.
 
 #include "OgreException.h"
 
+#define TODO_implement__autogenerateMipmaps
+
 namespace Ogre
 {
     static const bool c_bSkipAliasable = true;
@@ -210,8 +212,8 @@ namespace Ogre
             memset( &region, 0, sizeof( region ) );
 
             region.bufferOffset = stagingTex->_getInternalBufferStart() + bufStart;
-            region.bufferRowLength = static_cast<uint32_t>( whiteBox.bytesPerRow );
-            region.bufferImageHeight = static_cast<uint32_t>( whiteBox.bytesPerImage );
+            region.bufferRowLength = 0u;
+            region.bufferImageHeight = 0u;
 
             region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             if( i == TextureTypes::TypeCube || i == TextureTypes::TypeCubeArray )
@@ -283,6 +285,10 @@ namespace Ogre
                 vkCreateImageView( device->mDevice, &imageViewCi, 0, &mBlankTexture[i].defaultView );
             checkVkResult( result, "vkCreateImageView" );
         }
+
+        TODO_implement__autogenerateMipmaps;
+        mDefaultMipmapGen = DefaultMipmapGen::SwMode;
+        mDefaultMipmapGenCubemaps = DefaultMipmapGen::SwMode;
     }
     //-----------------------------------------------------------------------------------
     VulkanTextureGpuManager::~VulkanTextureGpuManager()

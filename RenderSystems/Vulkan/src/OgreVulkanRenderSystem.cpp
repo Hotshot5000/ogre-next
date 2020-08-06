@@ -451,8 +451,8 @@ namespace Ogre
     {
         FastArray<const char *> reqInstanceExtensions;
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
-        VulkanWindow *win = OGRE_NEW OgreVulkanWin32Window( reqInstanceExtensions, name, width, height,
-                                                            fullScreen, miscParams );
+        VulkanWindow *win =
+            OGRE_NEW OgreVulkanWin32Window( reqInstanceExtensions, name, width, height, fullScreen );
 #else
         VulkanWindow *win =
             OGRE_NEW VulkanXcbWindow( reqInstanceExtensions, name, width, height, fullScreen );
@@ -567,7 +567,7 @@ namespace Ogre
         }
 
         win->_setDevice( mActiveDevice );
-        win->_initialize( mTextureGpuManager );
+        win->_initialize( mTextureGpuManager, miscParams );
 
         return win;
     }
@@ -608,11 +608,11 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::flushUAVs( void )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        /*Log *defaultLog = LogManager::getSingleton().getDefaultLog();
         if( defaultLog )
         {
             defaultLog->logMessage( String( " flushUAVs " ) );
-        }
+        }*/
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setParamBuffer( GpuProgramType shaderStage,
@@ -653,12 +653,6 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setTexture( size_t unit, TextureGpu *texPtr )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " _setTexture " ) );
-        }
-
         OGRE_ASSERT_MEDIUM( unit < NUM_BIND_TEXTURES );
         VulkanTextureGpu *tex = static_cast<VulkanTextureGpu *>( texPtr );
         if( mGlobalTable.textures[unit].imageView != tex->getDefaultDisplaySrv() )
@@ -829,12 +823,12 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setIndirectBuffer( IndirectBufferPacked *indirectBuffer )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
+        /*Log *defaultLog = LogManager::getSingleton().getDefaultLog();
         if( defaultLog )
         {
             defaultLog->logMessage( String( " * _setIndirectBuffer: " ) +
                                     StringConverter::toString( indirectBuffer->getBufferPackedType() ) );
-        }
+        }*/
         if( mVaoManager->supportsIndirectBuffers() )
         {
             if( indirectBuffer )
@@ -893,13 +887,6 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setHlmsSamplerblock( uint8 texUnit, const HlmsSamplerblock *samplerblock )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " * _setHlmsSamplerblock: " ) +
-                                    StringConverter::toString( texUnit ) );
-        }
-
         OGRE_ASSERT_MEDIUM( texUnit < NUM_BIND_SAMPLERS );
         VkSampler textureSampler = reinterpret_cast<VkSampler>( samplerblock->mRsData );
         mGlobalTable.samplers[texUnit].sampler = textureSampler;
@@ -1426,12 +1413,6 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setRenderOperation( const v1::CbRenderOp *cmd )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " v1 * _render: CbRenderOp " ) );
-        }
-
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
 
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
@@ -1508,12 +1489,6 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const v1::CbDrawCallStrip *cmd )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " v1 * _render: CbDrawCallStrip " ) );
-        }
-
         flushRootLayout();
 
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
@@ -1524,13 +1499,6 @@ namespace Ogre
 
     void VulkanRenderSystem::_render( const v1::RenderOperation &op )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " * _render: RenderOperation " ) +
-                                    StringConverter::toString( op.operationType ) );
-        }
-
         flushRootLayout();
 
         // Call super class.
@@ -1588,17 +1556,11 @@ namespace Ogre
             } while( updatePassIterationRenderState() );
         }
     }
-
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::bindGpuProgramParameters( GpuProgramType gptype,
                                                        GpuProgramParametersSharedPtr params,
                                                        uint16 variabilityMask )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " * bindGpuProgramParameters:  " ) );
-        }
         VulkanProgram *shader = 0;
         switch( gptype )
         {
