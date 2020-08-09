@@ -52,7 +52,7 @@ namespace Ogre
                                                 ( 1u << GeometryShader ) | ( 1u << HullShader ) |
                                                 ( 1u << DomainShader );
     static const char c_bufferTypes[] = "PBTtsuU";
-    static const char c_HLSLBufferTypesMap[] = "ccttsuu";
+    static const char c_HLSLBufferTypesMap[] = "bbttsuu";
     //-------------------------------------------------------------------------
     uint32 toVkDescriptorType( DescBindingTypes::DescBindingTypes type )
     {
