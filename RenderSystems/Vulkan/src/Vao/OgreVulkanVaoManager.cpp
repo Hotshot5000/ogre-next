@@ -56,7 +56,6 @@ THE SOFTWARE.
 
 #define TODO_implement
 #define TODO_whenImplemented_include_stagingBuffers
-#define TODO_add_cached_read_memory
 #define TODO_if_memory_non_coherent_align_size
 
 namespace Ogre
@@ -100,7 +99,8 @@ namespace Ogre
         mTexBufferMaxSize = 128 * 1024 * 1024;  // 128MB
 
         mSupportsPersistentMapping = true;
-        mSupportsIndirectBuffers = false;
+        mSupportsIndirectBuffers = mDevice->mDeviceFeatures.multiDrawIndirect &&
+                                   mDevice->mDeviceFeatures.drawIndirectFirstInstance;
 
         // Keep pools of 64MB each for static meshes
         mDefaultPoolSize[CPU_INACCESSIBLE] = 64u * 1024u * 1024u;
@@ -365,7 +365,6 @@ namespace Ogre
     {
         OGRE_ASSERT_LOW( alignment > 0 );
 
-        TODO_add_cached_read_memory;
         TODO_if_memory_non_coherent_align_size;
 
         const VboFlag vboFlag = bufferTypeToVboFlag( bufferType, readCapable );
@@ -466,7 +465,6 @@ namespace Ogre
                 VkMemoryRequirements memRequirements;
                 vkGetBufferMemoryRequirements( mDevice->mDevice, newVbo.vkBuffer, &memRequirements );
 
-                // TODO use one large buffer and multiple offsets
                 VkDeviceSize offset = 0;
                 offset = alignMemory( offset, memRequirements.alignment );
 
@@ -595,7 +593,8 @@ namespace Ogre
         deallocateVbo( vboIdx, bufferOffset, sizeBytes, vboVec );
     }
     //-----------------------------------------------------------------------------------
-    VulkanRawBuffer VulkanVaoManager::allocateRawBuffer( VboFlag vboFlag, size_t sizeBytes )
+    VulkanRawBuffer VulkanVaoManager::allocateRawBuffer( VboFlag vboFlag, size_t sizeBytes,
+                                                         size_t alignment )
     {
         // Change flag if unavailable
         if( vboFlag == CPU_WRITE_PERSISTENT && !mSupportsNonCoherentMemory )
@@ -604,7 +603,7 @@ namespace Ogre
             vboFlag = CPU_WRITE_PERSISTENT;
 
         VulkanRawBuffer retVal;
-        allocateVbo( sizeBytes, 4u, mVbos[vboFlag], mBestVkMemoryTypeIndex[vboFlag],
+        allocateVbo( sizeBytes, alignment, mVbos[vboFlag], mBestVkMemoryTypeIndex[vboFlag],
                      mDefaultPoolSize[vboFlag], false, vboFlag != CPU_INACCESSIBLE,
                      isVboFlagCoherent( vboFlag ), retVal.mVboPoolIdx, retVal.mInternalBufferStart );
         Vbo &vbo = mVbos[vboFlag][retVal.mVboPoolIdx];
@@ -1120,9 +1119,11 @@ namespace Ogre
     {
         sizeBytes = std::max<size_t>( sizeBytes, 4u * 1024u * 1024u );
 
+        const size_t alignment = PixelFormatGpuUtils::getSizeBytes( 1u, 1u, 1u, 1u, formatFamily, 1u );
+
         size_t vboIdx;
         size_t bufferOffset;
-        allocateVbo( sizeBytes, 4u, BT_DYNAMIC_DEFAULT, false, vboIdx, bufferOffset );
+        allocateVbo( sizeBytes, alignment, BT_DYNAMIC_DEFAULT, false, vboIdx, bufferOffset );
         const VboFlag vboFlag = bufferTypeToVboFlag( BT_DYNAMIC_DEFAULT, false );
 
         Vbo &vbo = mVbos[vboFlag][vboIdx];
@@ -1145,8 +1146,8 @@ namespace Ogre
                                                         StagingBuffer *stagingBuffer,
                                                         size_t elementStart, size_t elementCount )
     {
-        return AsyncTicketPtr(
-            OGRE_NEW VulkanAsyncTicket( creator, stagingBuffer, elementStart, elementCount ) );
+        return AsyncTicketPtr( OGRE_NEW VulkanAsyncTicket( creator, stagingBuffer, elementStart,
+                                                           elementCount, &mDevice->mGraphicsQueue ) );
     }
     //-----------------------------------------------------------------------------------
     VulkanDescriptorPool *VulkanVaoManager::getDescriptorPool( const VulkanRootLayout *rootLayout,
@@ -1435,6 +1436,18 @@ namespace Ogre
         }
 
         return retVal;
+    }
+    //-----------------------------------------------------------------------------------
+    VkFence VulkanVaoManager::waitFor( VkFence fenceName, VulkanQueue *queue )
+    {
+        if( !queue->isFenceFlushed( fenceName ) )
+            queue->commitAndNextCommandBuffer();
+
+        VkResult result = vkWaitForFences( queue->mDevice, 1u, &fenceName, VK_TRUE,
+                                           UINT64_MAX );  // You can't wait forever in Vulkan?!?
+        checkVkResult( result, "VulkanStagingBuffer::wait" );
+        queue->releaseFence( fenceName );
+        return 0;
     }
     //-----------------------------------------------------------------------------------
     void VulkanVaoManager::_notifyDeviceStalled()

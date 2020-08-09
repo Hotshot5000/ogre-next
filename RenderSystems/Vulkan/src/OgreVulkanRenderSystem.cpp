@@ -65,6 +65,8 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgreVulkanTextureGpu.h"
 #include "Vao/OgreVulkanUavBufferPacked.h"
 
+#include "OgreDepthBuffer.h"
+
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
 #    include "Windowing/win32/OgreVulkanWin32Window.h"
 #else
@@ -139,8 +141,8 @@ namespace Ogre
          * That's what would happen without validation layers, so we'll
          * keep that behavior here.
          */
-        // return false;
-        return true;
+        return false;
+        // return true;
     }
 
     //-------------------------------------------------------------------------
@@ -148,6 +150,7 @@ namespace Ogre
         RenderSystem(),
         mInitialized( false ),
         mHardwareBufferManager( 0 ),
+        mIndirectBuffer( 0 ),
         mShaderManager( 0 ),
         mVulkanProgramFactory0( 0 ),
         mVulkanProgramFactory1( 0 ),
@@ -373,6 +376,12 @@ namespace Ogre
             rsc->setDriverVersion( driverVersion );
         }
 
+        if( mActiveDevice->mDeviceFeatures.imageCubeArray )
+            rsc->setCapability( RSC_TEXTURE_CUBE_MAP_ARRAY );
+
+        if( mActiveDevice->mDeviceFeatures.depthClamp )
+            rsc->setCapability( RSC_DEPTH_CLAMP );
+
         rsc->setCapability( RSC_HWSTENCIL );
         rsc->setStencilBufferBitDepth( 8 );
         rsc->setNumTextureUnits( 16 );
@@ -503,6 +512,28 @@ namespace Ogre
             mActiveDevice->mVaoManager = vaoManager;
             mActiveDevice->initQueues();
             vaoManager->initDrawIdVertexBuffer();
+
+            FastArray<PixelFormatGpu> depthFormatCandidates( 5u );
+            if( PixelFormatGpuUtils::isStencil( DepthBuffer::DefaultDepthBufferFormat ) )
+            {
+                depthFormatCandidates.push_back( PFG_D32_FLOAT_S8X24_UINT );
+                depthFormatCandidates.push_back( PFG_D24_UNORM_S8_UINT );
+                depthFormatCandidates.push_back( PFG_D32_FLOAT );
+                depthFormatCandidates.push_back( PFG_D24_UNORM );
+                depthFormatCandidates.push_back( PFG_D16_UNORM );
+            }
+            else
+            {
+                depthFormatCandidates.push_back( PFG_D32_FLOAT );
+                depthFormatCandidates.push_back( PFG_D24_UNORM );
+                depthFormatCandidates.push_back( PFG_D32_FLOAT_S8X24_UINT );
+                depthFormatCandidates.push_back( PFG_D24_UNORM_S8_UINT );
+                depthFormatCandidates.push_back( PFG_D16_UNORM );
+            }
+
+            DepthBuffer::DefaultDepthBufferFormat = findSupportedFormat(
+                mDevice->mPhysicalDevice, depthFormatCandidates, VK_IMAGE_TILING_OPTIMAL,
+                VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT );
 
             VulkanTextureGpuManager *textureGpuManager =
                 OGRE_NEW VulkanTextureGpuManager( vaoManager, this, mDevice );
@@ -824,12 +855,6 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_setIndirectBuffer( IndirectBufferPacked *indirectBuffer )
     {
-        /*Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " * _setIndirectBuffer: " ) +
-                                    StringConverter::toString( indirectBuffer->getBufferPackedType() ) );
-        }*/
         if( mVaoManager->supportsIndirectBuffers() )
         {
             if( indirectBuffer )
@@ -1368,22 +1393,22 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const CbDrawCallIndexed *cmd )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " * _render: CbDrawCallIndexed " ) +
-                                    StringConverter::toString( cmd->vao->getVaoName() ) );
-        }
+        flushRootLayout();
+
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+        vkCmdDrawIndexedIndirect( cmdBuffer, mIndirectBuffer,
+                                  reinterpret_cast<VkDeviceSize>( cmd->indirectBufferOffset ),
+                                  cmd->numDraws, sizeof( CbDrawIndexed ) );
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const CbDrawCallStrip *cmd )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " * _render: CbDrawCallStrip " ) +
-                                    StringConverter::toString( cmd->vao->getVaoName() ) );
-        }
+        flushRootLayout();
+
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+        vkCmdDrawIndirect( cmdBuffer, mIndirectBuffer,
+                           reinterpret_cast<VkDeviceSize>( cmd->indirectBufferOffset ), cmd->numDraws,
+                           sizeof( CbDrawIndexed ) );
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_renderEmulated( const CbDrawCallIndexed *cmd )
@@ -1406,11 +1431,18 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_renderEmulated( const CbDrawCallStrip *cmd )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
+        flushRootLayout();
+
+        CbDrawStrip *drawCmd =
+            reinterpret_cast<CbDrawStrip *>( mSwIndirectBufferPtr + (size_t)cmd->indirectBufferOffset );
+
+        VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
+
+        for( uint32 i = cmd->numDraws; i--; )
         {
-            defaultLog->logMessage( String( " * _renderEmulated: CbDrawCallStrip " ) +
-                                    StringConverter::toString( cmd->vao->getVaoName() ) );
+            vkCmdDraw( cmdBuffer, drawCmd->primCount, drawCmd->instanceCount, drawCmd->firstVertexIndex,
+                       drawCmd->baseInstance );
+            ++drawCmd;
         }
     }
     //-------------------------------------------------------------------------
@@ -1477,12 +1509,6 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::_render( const v1::CbDrawCallIndexed *cmd )
     {
-        Log *defaultLog = LogManager::getSingleton().getDefaultLog();
-        if( defaultLog )
-        {
-            defaultLog->logMessage( String( " v1 * _render: CbDrawCallIndexed " ) );
-        }
-
         flushRootLayout();
 
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
@@ -1495,9 +1521,8 @@ namespace Ogre
         flushRootLayout();
 
         VkCommandBuffer cmdBuffer = mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer;
-
-        vkCmdDraw( cmdBuffer, mCurrentVertexBuffer->vertexCount, cmd->instanceCount,
-                   mCurrentVertexBuffer->vertexStart, cmd->baseInstance );
+        vkCmdDraw( cmdBuffer, cmd->primCount, cmd->instanceCount, cmd->firstVertexIndex,
+                   cmd->baseInstance );
     }
 
     void VulkanRenderSystem::_render( const v1::RenderOperation &op )
@@ -1796,6 +1821,9 @@ namespace Ogre
         if( officialCall )
             mInterruptedRenderCommandEncoder = false;
 
+        const bool wasGraphicsOpen =
+            mActiveDevice->mGraphicsQueue.getEncoderState() != VulkanQueue::EncoderGraphicsOpen;
+
         if( mEntriesToFlush )
         {
             mActiveDevice->mGraphicsQueue.endAllEncoders( false );
@@ -1804,7 +1832,11 @@ namespace Ogre
                 static_cast<VulkanRenderPassDescriptor *>( mCurrentRenderPassDescriptor );
 
             newPassDesc->performLoadActions( mInterruptedRenderCommandEncoder );
+        }
 
+        // This is a new command buffer / encoder. State needs to be set again
+        if( mEntriesToFlush || !wasGraphicsOpen )
+        {
             mActiveDevice->mGraphicsQueue.getGraphicsEncoder();
 
             // In HLSL the drawId location is not fixed.
@@ -1821,6 +1853,7 @@ namespace Ogre
             if( mStencilEnabled )
                 [mActiveRenderEncoder setStencilReferenceValue:mStencilRefValue];
 #endif
+            mVpChanged = true;
             mInterruptedRenderCommandEncoder = false;
         }
 
@@ -1876,7 +1909,7 @@ namespace Ogre
             passDesc->performStoreActions( isInterruptingRender );
 
             mEntriesToFlush = 0;
-            mVpChanged = false;
+            mVpChanged = true;
 
             mInterruptedRenderCommandEncoder = isInterruptingRender;
 
@@ -1888,6 +1921,18 @@ namespace Ogre
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::endRenderPassDescriptor( void ) { endRenderPassDescriptor( false ); }
+    //-------------------------------------------------------------------------
+    TextureGpu *VulkanRenderSystem::createDepthBufferFor( TextureGpu *colourTexture,
+                                                          bool preferDepthTexture,
+                                                          PixelFormatGpu depthBufferFormat,
+                                                          uint16 poolId )
+    {
+        if( depthBufferFormat == PFG_UNKNOWN )
+            depthBufferFormat = DepthBuffer::DefaultDepthBufferFormat;
+
+        return RenderSystem::createDepthBufferFor( colourTexture, preferDepthTexture, depthBufferFormat,
+                                                   poolId );
+    }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::notifySwapchainCreated( VulkanWindow *window )
     {
@@ -2018,7 +2063,8 @@ namespace Ogre
                                                         const bool bIsDepth )
     {
         VkPipelineStageFlags stage = 0;
-        if( layout == ResourceLayout::RenderTarget || ( layout == ResourceLayout::Clear && !bIsDepth ) )
+        if( layout == ResourceLayout::RenderTarget || layout == ResourceLayout::PresentReady ||
+            ( layout == ResourceLayout::Clear && !bIsDepth ) )
         {
             stage |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         }
@@ -2164,6 +2210,7 @@ namespace Ogre
             {
                 VulkanTextureGpu *texture = static_cast<VulkanTextureGpu *>( itor->resource );
                 rsData->imageBarriers[numTextures].image = texture->getFinalTextureName();
+                texture->mCurrLayout = rsData->imageBarriers[numTextures].newLayout;
                 ++numTextures;
             }
             ++itor;
@@ -2314,6 +2361,7 @@ namespace Ogre
         rasterState.polygonMode = VulkanMappings::get( newPso->macroblock->mPolygonMode );
         rasterState.cullMode = VulkanMappings::get( newPso->macroblock->mCullMode );
         rasterState.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterState.depthClampEnable = newPso->macroblock->mDepthClamp;
         rasterState.depthBiasEnable = newPso->macroblock->mDepthBiasConstant != 0.0f;
         rasterState.depthBiasConstantFactor = newPso->macroblock->mDepthBiasConstant;
         rasterState.depthBiasClamp = 0.0f;

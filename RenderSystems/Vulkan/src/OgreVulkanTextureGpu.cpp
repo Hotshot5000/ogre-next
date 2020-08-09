@@ -350,9 +350,9 @@ namespace Ogre
         region.srcSubresource.baseArrayLayer = sourceSlice;
         region.srcSubresource.layerCount = numSlices;
 
-        region.srcOffset.x = srcBox.x;
-        region.srcOffset.y = srcBox.y;
-        region.srcOffset.z = srcBox.z;
+        region.srcOffset.x = static_cast<int32_t>( srcBox.x );
+        region.srcOffset.y = static_cast<int32_t>( srcBox.y );
+        region.srcOffset.z = static_cast<int32_t>( srcBox.z );
 
         region.dstSubresource.aspectMask = VulkanMappings::getImageAspect( dst->getPixelFormat() );
         region.dstSubresource.mipLevel = dstMipLevel;
@@ -376,7 +376,7 @@ namespace Ogre
             dst->getGpuPageOutStrategy() == GpuPageOutStrategy::AlwaysKeepSystemRamCopy )
         {
             dst->_syncGpuResidentToSystemRam();
-    }
+        }
     }
     //-----------------------------------------------------------------------------------
     void VulkanTextureGpu::_autogenerateMipmaps( void ) {}
@@ -438,12 +438,15 @@ namespace Ogre
         return VK_IMAGE_VIEW_TYPE_2D;
     }
     //-----------------------------------------------------------------------------------
-    VkImageView VulkanTextureGpu::createView( PixelFormatGpu pixelFormat, uint8 mipLevel, uint8 numMipmaps,
-                                           uint16 arraySlice, bool cubemapsAs2DArrays, bool forUav ) const
+    VkImageView VulkanTextureGpu::_createView( PixelFormatGpu pixelFormat, uint8 mipLevel,
+                                               uint8 numMipmaps, uint16 arraySlice,
+                                               bool cubemapsAs2DArrays, bool forUav, uint32 numSlices,
+                                               VkImage imageOverride ) const
     {
-        OGRE_ASSERT_LOW( ( forUav || isTexture() ) &&
+        OGRE_ASSERT_LOW( ( forUav || imageOverride || isTexture() ) &&
                          "This texture is marked as 'TextureFlags::NotTexture', which "
                          "means it can't be used for reading as a regular texture." );
+
         if( pixelFormat == PFG_UNKNOWN )
         {
             pixelFormat = mPixelFormat;
@@ -473,7 +476,7 @@ namespace Ogre
 
         VkImageViewCreateInfo imageViewCi;
         makeVkStruct( imageViewCi, VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO );
-        imageViewCi.image = mDisplayTextureName;
+        imageViewCi.image = imageOverride ? imageOverride : mDisplayTextureName;
         imageViewCi.viewType = texType;
         imageViewCi.format = VulkanMappings::get( pixelFormat );
 
@@ -481,7 +484,10 @@ namespace Ogre
         imageViewCi.subresourceRange.baseMipLevel = mipLevel;
         imageViewCi.subresourceRange.levelCount = numMipmaps;
         imageViewCi.subresourceRange.baseArrayLayer = arraySlice;
-        imageViewCi.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        if( numSlices == 0u )
+            imageViewCi.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        else
+            imageViewCi.subresourceRange.layerCount = numSlices;
 
         VkImageView imageView;
         VkResult result = vkCreateImageView( device->mDevice, &imageViewCi, 0, &imageView );
@@ -510,17 +516,16 @@ namespace Ogre
         return mDefaultDisplaySrv;
     }
     //-----------------------------------------------------------------------------------
-    VkImageView VulkanTextureGpu::createView(
-        const DescriptorSetTexture2::TextureSlot &texSlot ) const
+    VkImageView VulkanTextureGpu::createView( const DescriptorSetTexture2::TextureSlot &texSlot ) const
     {
-        return createView( texSlot.pixelFormat, texSlot.mipmapLevel, texSlot.numMipmaps,
-                           texSlot.textureArrayIndex, texSlot.cubemapsAs2DArrays, false );
-    }
+        return _createView( texSlot.pixelFormat, texSlot.mipmapLevel, texSlot.numMipmaps,
+                            texSlot.textureArrayIndex, texSlot.cubemapsAs2DArrays, false );
+        }
     //-----------------------------------------------------------------------------------
     VkImageView VulkanTextureGpu::createView( DescriptorSetUav::TextureSlot texSlot )
     {
-        return createView( texSlot.pixelFormat, texSlot.mipmapLevel, 1u, texSlot.textureArrayIndex,
-                           false, true );
+        return _createView( texSlot.pixelFormat, texSlot.mipmapLevel, 1u, texSlot.textureArrayIndex,
+                            false, true );
     }
     //-----------------------------------------------------------------------------------
     VkImageMemoryBarrier VulkanTextureGpu::getImageMemoryBarrier( void ) const

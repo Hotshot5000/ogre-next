@@ -211,8 +211,11 @@ namespace Ogre
         void init( VkDevice device, VkQueue queue, VulkanRenderSystem *renderSystem );
         void destroy( void );
 
+    protected:
         void newCommandBuffer( void );
+        void endCommandBuffer( void );
 
+    public:
         EncoderState getEncoderState( void ) const { return mEncoderState; }
 
         void getGraphicsEncoder( void );
@@ -257,18 +260,20 @@ namespace Ogre
         VkFence acquireCurrentFence( void );
         void releaseFence( VkFence fence );
 
-    public:
-        void endCommandBuffer( void );
-
-    public:
         /// When we'll call commitAndNextCommandBuffer, we'll have to wait for
         /// this semaphore on to execute STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
         void addWindowToWaitFor( VkSemaphore imageAcquisitionSemaph );
 
+        /// If this function returns false, waiting on the fence would cause a deadlock since
+        /// it will never signal. You must call commitAndNextCommandBuffer before waiting.
+        bool isFenceFlushed( VkFence fence ) const;
+
         void _waitOnFrame( uint8 frameIdx );
         bool _isFrameFinished( uint8 frameIdx );
 
-        void commitAndNextCommandBuffer( bool endingFrame );
+        void commitAndNextCommandBuffer( bool endingFrame = false );
+
+        VulkanVaoManager *getVaoManager( void ) { return mVaoManager; }
     };
 
 }  // namespace Ogre

@@ -516,35 +516,6 @@ namespace Ogre
             }
         }
 
-        const RenderSystemCapabilities *caps = mRenderSys->getCapabilities();
-        const bool explicitApi = caps->hasCapability( RSC_EXPLICIT_API );
-
-        if( explicitApi )
-        {
-            //Check the output is still a RenderTarget at the end.
-            CompositorNode *node = getLastEnabledNode();
-
-            if( node )
-            {
-                CompositorChannelVec::const_iterator itor = mExternalRenderTargets.begin();
-                CompositorChannelVec::const_iterator end  = mExternalRenderTargets.end();
-                while( itor != end )
-                {
-                    TextureGpu *renderTarget = *itor;
-                    if( renderTarget->isRenderWindowSpecific() )
-                    {
-                        ResourceLayoutMap::iterator currentLayout =
-                                mResourcesLayout.find( renderTarget );
-
-                        if( currentLayout->second != ResourceLayout::RenderTarget )
-                            node->_setFinalTargetAsRenderTarget( currentLayout );
-                    }
-
-                    ++itor;
-                }
-            }
-        }
-
         {
             CompositorNodeVec::iterator itor = mNodeSequence.begin();
             CompositorNodeVec::iterator end  = mNodeSequence.end();
@@ -651,6 +622,51 @@ namespace Ogre
             mListeners.erase( itor );
     }
     //-----------------------------------------------------------------------------------
+    void CompositorWorkspace::fillPassesUsingRenderWindows(
+        PassesByRenderWindowMap &passesUsingRenderWindows )
+    {
+        CompositorNodeVec::const_iterator itor = mNodeSequence.begin();
+        CompositorNodeVec::const_iterator endt = mNodeSequence.end();
+
+        while( itor != endt )
+        {
+            CompositorNode *node = *itor;
+            if( node->getEnabled() )
+            {
+                const CompositorPassVec &passes = node->_getPasses();
+
+                CompositorPassVec::const_iterator itPass = passes.begin();
+                CompositorPassVec::const_iterator enPass = passes.end();
+
+                while( itPass != enPass )
+                {
+                    const RenderPassDescriptor *renderPassDesc = ( *itPass )->getRenderPassDesc();
+
+                    const size_t numColourEntries = renderPassDesc->getNumColourEntries();
+                    for( size_t i = 0u; i < numColourEntries; ++i )
+                    {
+                        TextureGpu *texture;
+
+                        // Add the pass only once
+                        texture = renderPassDesc->mColour[i].texture;
+                        if( texture && texture->isRenderWindowSpecific() )
+                            passesUsingRenderWindows[texture].push_back( *itPass );
+                        else
+                        {
+                            texture = renderPassDesc->mColour[i].resolveTexture;
+                            if( texture && texture->isRenderWindowSpecific() )
+                                passesUsingRenderWindows[texture].push_back( *itPass );
+                        }
+                    }
+
+                    ++itPass;
+                }
+            }
+
+            ++itor;
+        }
+    }
+    //-----------------------------------------------------------------------------------
     void CompositorWorkspace::fillUavDependenciesForNextWorkspace(
         ResourceLayoutMap &outInitialLayouts, ResourceAccessMap &outInitialUavAccess ) const
     {
@@ -694,6 +710,12 @@ namespace Ogre
             finalTarget = mExternalRenderTargets.front();
 
         return finalTarget;
+    }
+    //-----------------------------------------------------------------------------------
+    void CompositorWorkspace::_notifyBarriersDirty( void )
+    {
+        mBarriersDirty = true;
+        getCompositorManager()->_notifyBarriersDirty();
     }
     //-----------------------------------------------------------------------------------
     CompositorManager2* CompositorWorkspace::getCompositorManager()

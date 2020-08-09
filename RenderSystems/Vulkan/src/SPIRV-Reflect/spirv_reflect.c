@@ -2567,20 +2567,20 @@ static SpvReflectResult ParseDescriptorBlockVariableUsage( Parser *p_parser,
                                                            uint32_t index_index, SpvOp override_op_type,
                                                            SpvReflectBlockVariable *p_var )
 {
-    (void)p_parser;
-    (void)p_access_chain;
-    (void)p_var;
+  (void)p_parser;
+  (void)p_access_chain;
+  (void)p_var;
 
-    // Clear the current variable's USED flag
-    p_var->flags &= ~SPV_REFLECT_VARIABLE_FLAGS_UNUSED;
-
-    // Parsing arrays requires overriding the op type for
-    // for the lowest dim's element type.
-    SpvOp op_type = p_var->type_description->op;
+  // Clear the current variable's USED flag
+  p_var->flags &= ~SPV_REFLECT_VARIABLE_FLAGS_UNUSED;
+  
+  // Parsing arrays requires overriding the op type for
+  // for the lowest dim's element type.
+  SpvOp op_type = p_var->type_description->op;
     if( override_op_type != (SpvOp)INVALID_VALUE )
     {
-        op_type = override_op_type;
-    }
+    op_type = override_op_type;
+  }
 
     switch( op_type )
     {
@@ -2589,33 +2589,38 @@ static SpvReflectResult ParseDescriptorBlockVariableUsage( Parser *p_parser,
 
     case SpvOpTypeArray:
     {
-        // Parse through array's type hierarchy to find the actual/non-array element type
+      // Parse through array's type hierarchy to find the actual/non-array element type
         SpvReflectTypeDescription *p_type = p_var->type_description;
         while( ( p_type->op == SpvOpTypeArray ) && ( index_index < p_access_chain->index_count ) )
         {
-            // Find the array element type id
+        // Find the array element type id
             Node *p_node = FindNode( p_parser, p_type->id );
             if( p_node == NULL )
             {
-                return SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_ID_REFERENCE;
-            }
-            uint32_t element_type_id = p_node->array_traits.element_type_id;
-            // Get the array element type
+          return SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_ID_REFERENCE;
+        }
+        uint32_t element_type_id = p_node->array_traits.element_type_id;
+        // Get the array element type
             p_type = FindType( p_module, element_type_id );
             if( p_type == NULL )
             {
-                return SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_ID_REFERENCE;
-            }
-            // Next access index
-            index_index += 1;
+          return SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_ID_REFERENCE;
         }
-        // Parse current var again with a type override and advanced index index
+        // Next access index
+        index_index += 1;
+      }
+
+      // added by dark_sylinc see https://github.com/KhronosGroup/SPIRV-Reflect/issues/77
+      if( index_index >= p_access_chain->index_count && p_type->op == SpvOpTypeArray )
+          return SPV_REFLECT_RESULT_SUCCESS;
+
+      // Parse current var again with a type override and advanced index index
         SpvReflectResult result = ParseDescriptorBlockVariableUsage( p_parser, p_module, p_access_chain,
                                                                      index_index, p_type->op, p_var );
         if( result != SPV_REFLECT_RESULT_SUCCESS )
         {
-            return result;
-        }
+        return result;
+      }
     }
     break;
 
@@ -2624,30 +2629,30 @@ static SpvReflectResult ParseDescriptorBlockVariableUsage( Parser *p_parser,
         assert( p_var->member_count > 0 );
         if( p_var->member_count == 0 )
         {
-            return SPV_REFLECT_RESULT_ERROR_SPIRV_UNEXPECTED_BLOCK_DATA;
-        }
+        return SPV_REFLECT_RESULT_ERROR_SPIRV_UNEXPECTED_BLOCK_DATA;
+      }
 
         if( index_index < p_access_chain->index_count )
         {
-            uint32_t index = p_access_chain->indexes[index_index];
-
+      uint32_t index = p_access_chain->indexes[index_index];
+  
             if( index >= p_var->member_count )
             {
-                return SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_BLOCK_MEMBER_REFERENCE;
-            }
+        return SPV_REFLECT_RESULT_ERROR_SPIRV_INVALID_BLOCK_MEMBER_REFERENCE;
+      }
 
             SpvReflectBlockVariable *p_member_var = &p_var->members[index];
             if( index_index < p_access_chain->index_count )
             {
-                SpvReflectResult result = ParseDescriptorBlockVariableUsage(
+        SpvReflectResult result = ParseDescriptorBlockVariableUsage(
                     p_parser, p_module, p_access_chain, index_index + 1, (SpvOp)INVALID_VALUE,
                     p_member_var );
                 if( result != SPV_REFLECT_RESULT_SUCCESS )
                 {
-                    return result;
-                }
-            }
+          return result;
         }
+      }
+    }
         else
         {
             return SPV_REFLECT_RESULT_SUCCESS;
@@ -2655,9 +2660,9 @@ static SpvReflectResult ParseDescriptorBlockVariableUsage( Parser *p_parser,
         
     }
     break;
-    }
+  }
 
-    return SPV_REFLECT_RESULT_SUCCESS;
+  return SPV_REFLECT_RESULT_SUCCESS;
 }
 
 static SpvReflectResult ParseDescriptorBlocks( Parser *p_parser, SpvReflectShaderModule *p_module )

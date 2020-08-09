@@ -33,9 +33,10 @@ THE SOFTWARE.
 #include "OgreVulkanTextureGpu.h"
 #include "OgreVulkanTextureGpuWindow.h"
 #include "OgreVulkanWindow.h"
-
-#include "OgreHlmsDatablock.h"
 #include "OgrePixelFormatGpuUtils.h"
+#include "Vao/OgreVulkanVaoManager.h"
+
+#include "OgreVulkanDelayedFuncs.h"
 
 #include "OgreVulkanMappings.h"
 #include "OgreVulkanUtils.h"
@@ -43,8 +44,6 @@ THE SOFTWARE.
 #if OGRE_DEBUG_MODE && OGRE_PLATFORM == OGRE_PLATFORM_LINUX
 #    include <execinfo.h>  //backtrace
 #endif
-
-#define TODO_cannotInterruptRendering_is_wrong
 #define TODO_use_render_pass_that_can_load
 
 //#include <execinfo.h>  //backtrace
@@ -53,11 +52,7 @@ namespace Ogre
 {
     VulkanRenderPassDescriptor::VulkanRenderPassDescriptor( VulkanQueue *graphicsQueue,
                                                             VulkanRenderSystem *renderSystem ) :
-        mRenderPass( 0 ),
-        mNumImageViews( 0u ),
-#if VULKAN_DISABLED
         mSharedFboItor( renderSystem->_getFrameBufferDescMap().end() ),
-#endif
         mTargetWidth( 0u ),
         mTargetHeight( 0u ),
         mQueue( graphicsQueue ),
@@ -67,24 +62,9 @@ namespace Ogre
         mNumCallstackEntries( 0 )
 #endif
     {
-        memset( mImageViews, 0, sizeof( mImageViews ) );
     }
     //-----------------------------------------------------------------------------------
-    VulkanRenderPassDescriptor::~VulkanRenderPassDescriptor()
-    {
-        destroyFbo();
-#if VULKAN_DISABLED
-        VulkanFrameBufferDescMap &frameBufferDescMap = mRenderSystem->_getFrameBufferDescMap();
-        if( mSharedFboItor != frameBufferDescMap.end() )
-        {
-            --mSharedFboItor->second.refCount;
-            if( !mSharedFboItor->second.refCount )
-                frameBufferDescMap.erase( mSharedFboItor );
-            mSharedFboItor = frameBufferDescMap.end();
-        }
-
-#endif
-    }
+    VulkanRenderPassDescriptor::~VulkanRenderPassDescriptor() { releaseFbo(); }
     //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::checkRenderWindowStatus( void )
     {
@@ -115,8 +95,7 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::calculateSharedKey( void )
     {
-#if VULKAN_DISABLED
-        FrameBufferDescKey key( *this );
+        VulkanFrameBufferDescKey key( *this );
         VulkanFrameBufferDescMap &frameBufferDescMap = mRenderSystem->_getFrameBufferDescMap();
         VulkanFrameBufferDescMap::iterator newItor = frameBufferDescMap.find( key );
 
@@ -130,15 +109,9 @@ namespace Ogre
 
         ++newItor->second.refCount;
 
-        if( mSharedFboItor != frameBufferDescMap.end() )
-        {
-            --mSharedFboItor->second.refCount;
-            if( !mSharedFboItor->second.refCount )
-                frameBufferDescMap.erase( mSharedFboItor );
-        }
+        releaseFbo();
 
         mSharedFboItor = newItor;
-#endif
     }
     //-----------------------------------------------------------------------------------
     VkAttachmentLoadOp VulkanRenderPassDescriptor::get( LoadAction::LoadAction action )
@@ -239,19 +212,83 @@ namespace Ogre
 #endif
     }
     //-----------------------------------------------------------------------------------
-    VkImageView VulkanRenderPassDescriptor::setupColourAttachment( VkAttachmentDescription &attachment,
-                                                                   VkImage texName,
-                                                                   const RenderPassColourTarget &colour,
-                                                                   bool resolveTex )
+    /**
+    @brief VulkanRenderPassDescriptor::setupColourAttachment
+        This will setup:
+            attachments[currAttachmIdx]
+            colourAttachRefs[vkIdx]
+            resolveAttachRefs[vkIdx]
+            fboDesc.mImageViews[currAttachmIdx]
+            fboDesc.mWindowImageViews
+
+        Except mWindowImageViews, all the other variables are *always* written to.
+    @param idx [in]
+        idx to mColour[idx]
+    @param fboDesc [in/out]
+    @param attachments [out]
+        A pointer to setup VkAttachmentDescription
+    @param currAttachmIdx [in/out]
+        A value to index attachments[currAttachmIdx]
+    @param colourAttachRefs [out]
+        A pointer to setup VkAttachmentReference
+    @param resolveAttachRefs [out]
+        A pointer to setup VkAttachmentReference
+    @param vkIdx [in]
+        A value to index both colourAttachRefs[vkIdx] & resolveAttachRefs[vkIdx]
+        Very often idx == vkIdx except when we skip a colour entry due to being PFG_NULL
+    @param resolveTex
+        False if we're setting up the main target
+        True if we're setting up the resolve target
+    */
+    void VulkanRenderPassDescriptor::setupColourAttachment(
+        const size_t idx, VulkanFrameBufferDescValue &fboDesc, VkAttachmentDescription *attachments,
+        uint32 &currAttachmIdx, VkAttachmentReference *colourAttachRefs,
+        VkAttachmentReference *resolveAttachRefs, const size_t vkIdx, const bool resolveTex )
     {
-        attachment.format = VulkanMappings::get( colour.texture->getPixelFormat() );
-        attachment.samples = static_cast<VkSampleCountFlagBits>(
-            colour.texture->getSampleDescription().getColourSamples() );
+        const RenderPassColourTarget &colour = mColour[idx];
+
+        if( ( !colour.texture->getSampleDescription().isMultisample() || !colour.resolveTexture ) &&
+            resolveTex )
+        {
+            // There's no resolve texture to setup
+            resolveAttachRefs[vkIdx].attachment = VK_ATTACHMENT_UNUSED;
+            resolveAttachRefs[vkIdx].layout = VK_IMAGE_LAYOUT_UNDEFINED;
+            return;
+        }
+
+        VkImage texName = 0;
+        VulkanTextureGpu *texture = 0;
+
+        if( !resolveTex )
+        {
+            OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpu *>( colour.texture ) );
+            texture = static_cast<VulkanTextureGpu *>( colour.texture );
+            if( colour.texture->getSampleDescription().isMultisample() )
+            {
+                if( !colour.texture->hasMsaaExplicitResolves() )
+                    texName = texture->getMsaaFramebufferName();
+                else
+                    texName = texture->getFinalTextureName();
+            }
+            else
+                texName = texture->getFinalTextureName();
+        }
+        else
+        {
+            OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpu *>( colour.resolveTexture ) );
+            texture = static_cast<VulkanTextureGpu *>( colour.resolveTexture );
+            texName = texture->getFinalTextureName();
+        }
+
+        VkAttachmentDescription &attachment = attachments[currAttachmIdx];
+        attachment.format = VulkanMappings::get( texture->getPixelFormat() );
+        attachment.samples =
+            static_cast<VkSampleCountFlagBits>( texture->getSampleDescription().getColourSamples() );
         attachment.loadOp = get( colour.loadAction );
         attachment.storeOp = get( colour.storeAction );
         attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        if( colour.texture->isRenderWindowSpecific() )
+        if( texture->isRenderWindowSpecific() && mReadyWindowForPresent )
         {
             attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -262,50 +299,49 @@ namespace Ogre
             attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         }
 
-        VkImageViewCreateInfo imgViewCreateInfo;
-        makeVkStruct( imgViewCreateInfo, VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO );
-        imgViewCreateInfo.viewType = VulkanMappings::get( colour.texture->getTextureType() );
-        imgViewCreateInfo.format = attachment.format;
-        imgViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imgViewCreateInfo.subresourceRange.baseMipLevel =
-            resolveTex ? colour.resolveMipLevel : colour.mipLevel;
-        imgViewCreateInfo.subresourceRange.levelCount = 1u;
-        if( colour.allLayers )
+        const uint8 mipLevel = resolveTex ? colour.resolveMipLevel : colour.mipLevel;
+        const uint16 slice = resolveTex ? colour.resolveSlice : colour.slice;
+
+        if( !texture->isRenderWindowSpecific() )
         {
-            imgViewCreateInfo.subresourceRange.baseArrayLayer = 0u;
-            imgViewCreateInfo.subresourceRange.layerCount = colour.texture->getNumSlices();
+            fboDesc.mImageViews[currAttachmIdx] = texture->_createView(
+                texture->getPixelFormat(), mipLevel, 1u, slice, false, false, 1u, texName );
         }
         else
         {
-            imgViewCreateInfo.subresourceRange.baseArrayLayer =
-                resolveTex ? colour.resolveSlice : colour.slice;
-            imgViewCreateInfo.subresourceRange.layerCount = 1u;
-        }
+            fboDesc.mImageViews[currAttachmIdx] = 0;  // Set to null (will be set later, 1 for each FBO)
 
-        VkImageView retVal = 0;
+            OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpuWindow *>( texture ) );
+            VulkanTextureGpuWindow *textureVulkan = static_cast<VulkanTextureGpuWindow *>( texture );
 
-        if( !colour.texture->isRenderWindowSpecific() )
-        {
-            imgViewCreateInfo.image = texName;
-            vkCreateImageView( mQueue->mDevice, &imgViewCreateInfo, 0, &retVal );
-        }
-        else
-        {
-            OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpuWindow *>( colour.texture ) );
-            VulkanTextureGpuWindow *textureVulkan =
-                static_cast<VulkanTextureGpuWindow *>( colour.texture );
-
-            OGRE_ASSERT_LOW( mWindowImageViews.empty() && "Only one window can be used as target" );
+            OGRE_ASSERT_LOW( fboDesc.mWindowImageViews.empty() &&
+                             "Only one window can be used as target" );
             const size_t numSurfaces = textureVulkan->getWindowNumSurfaces();
-            mWindowImageViews.resize( numSurfaces );
+            fboDesc.mWindowImageViews.resize( numSurfaces );
             for( size_t surfIdx = 0u; surfIdx < numSurfaces; ++surfIdx )
             {
-                imgViewCreateInfo.image = textureVulkan->getWindowFinalTextureName( surfIdx );
-                vkCreateImageView( mQueue->mDevice, &imgViewCreateInfo, 0, &mWindowImageViews[surfIdx] );
+                texName = textureVulkan->getWindowFinalTextureName( surfIdx );
+                fboDesc.mWindowImageViews[surfIdx] = texture->_createView(
+                    texture->getPixelFormat(), mipLevel, 1u, slice, false, false, 1u, texName );
             }
         }
 
-        return retVal;
+        if( resolveTex )
+        {
+            resolveAttachRefs[vkIdx].attachment = currAttachmIdx;
+            resolveAttachRefs[vkIdx].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            ++currAttachmIdx;
+        }
+        else
+        {
+            colourAttachRefs[vkIdx].attachment = currAttachmIdx;
+            colourAttachRefs[vkIdx].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            ++currAttachmIdx;
+
+            // Now repeat with the resolve texture (if applies)
+            setupColourAttachment( idx, fboDesc, attachments, currAttachmIdx, colourAttachRefs,
+                                   resolveAttachRefs, vkIdx, true );
+        }
     }
     //-----------------------------------------------------------------------------------
     VkImageView VulkanRenderPassDescriptor::setupDepthAttachment( VkAttachmentDescription &attachment )
@@ -329,32 +365,17 @@ namespace Ogre
         attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        VkImageViewCreateInfo imgViewCreateInfo;
-        makeVkStruct( imgViewCreateInfo, VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO );
-        imgViewCreateInfo.viewType = VulkanMappings::get( mDepth.texture->getTextureType() );
-        imgViewCreateInfo.format = attachment.format;
-        imgViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        if( mStencil.texture )
-            imgViewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-        imgViewCreateInfo.subresourceRange.baseMipLevel = mDepth.mipLevel;
-        imgViewCreateInfo.subresourceRange.levelCount = 1u;
-        imgViewCreateInfo.subresourceRange.baseArrayLayer = mDepth.slice;
-        imgViewCreateInfo.subresourceRange.layerCount = 1u;
-
-        VkImageView retVal = 0;
-
         OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpu *>( mDepth.texture ) );
-        VulkanTextureGpu *textureVulkan = static_cast<VulkanTextureGpu *>( mDepth.texture );
-
-        imgViewCreateInfo.image = textureVulkan->getFinalTextureName();
-        vkCreateImageView( mQueue->mDevice, &imgViewCreateInfo, 0, &retVal );
-
-        return retVal;
+        VulkanTextureGpu *texture = static_cast<VulkanTextureGpu *>( mDepth.texture );
+        VkImage texName = texture->getFinalTextureName();
+        return texture->_createView( texture->getPixelFormat(), mDepth.mipLevel, 1u, mDepth.slice, false,
+                                     false, 1u, texName );
     }
     //-----------------------------------------------------------------------------------
-    void VulkanRenderPassDescriptor::updateFbo( void )
+    void VulkanRenderPassDescriptor::setupFbo( VulkanFrameBufferDescValue &fboDesc )
     {
-        destroyFbo();
+        if( fboDesc.mRenderPass )
+            return;  // Already initialized
 
         if( mDepth.texture && mDepth.texture->getResidencyStatus() != GpuResidency::Resident )
         {
@@ -424,57 +445,16 @@ namespace Ogre
             OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpu *>( mColour[i].texture ) );
             VulkanTextureGpu *textureVulkan = static_cast<VulkanTextureGpu *>( mColour[i].texture );
 
-            VkImage texName = 0;
-            VkImage resolveTexName = 0;
-
-            if( mColour[i].texture->getSampleDescription().isMultisample() )
-            {
-                VulkanTextureGpu *resolveTexture = 0;
-                if( mColour[i].resolveTexture )
-                {
-                    OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpu *>( mColour[i].resolveTexture ) );
-                    resolveTexture = static_cast<VulkanTextureGpu *>( mColour[i].resolveTexture );
-                }
-
-                if( !mColour[i].texture->hasMsaaExplicitResolves() )
-                    texName = textureVulkan->getMsaaFramebufferName();
-                else
-                    texName = textureVulkan->getFinalTextureName();
-
-                if( resolveTexture )
-                    resolveTexName = resolveTexture->getFinalTextureName();
-            }
-            else
-            {
-                texName = textureVulkan->getFinalTextureName();
-            }
-
             if( textureVulkan->isRenderWindowSpecific() )
                 windowAttachmentIdx = attachmentIdx;
 
             mClearValues[attachmentIdx].color =
                 getClearColour( mColour[i].clearColour, mColour[i].texture->getPixelFormat() );
 
-            mImageViews[attachmentIdx] =
-                setupColourAttachment( attachments[attachmentIdx], texName, mColour[i], false );
-            colourAttachRefs[numColourAttachments].attachment = attachmentIdx;
-            colourAttachRefs[numColourAttachments].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            ++attachmentIdx;
-            if( resolveTexName )
-            {
-                mImageViews[attachmentIdx] = setupColourAttachment( attachments[attachmentIdx],
-                                                                    resolveTexName, mColour[i], true );
-                resolveAttachRefs[numColourAttachments].attachment = attachmentIdx;
-                resolveAttachRefs[numColourAttachments].layout =
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                ++attachmentIdx;
+            setupColourAttachment( i, fboDesc, attachments, attachmentIdx, colourAttachRefs,
+                                   resolveAttachRefs, numColourAttachments, false );
+            if( resolveAttachRefs[numColourAttachments].attachment != VK_ATTACHMENT_UNUSED )
                 usesResolveAttachments = true;
-            }
-            else
-            {
-                resolveAttachRefs[numColourAttachments].attachment = VK_ATTACHMENT_UNUSED;
-                resolveAttachRefs[numColourAttachments].layout = VK_IMAGE_LAYOUT_UNDEFINED;
-            }
             ++numColourAttachments;
 
             sanitizeMsaaResolve( i );
@@ -487,11 +467,11 @@ namespace Ogre
             else
             {
                 mClearValues[attachmentIdx].depthStencil.depth =
-                    static_cast<float>( 1.0 - mDepth.clearDepth );
+                    static_cast<float>( Real( 1.0 ) - mDepth.clearDepth );
             }
             mClearValues[attachmentIdx].depthStencil.stencil = mStencil.clearStencil;
 
-            mImageViews[attachmentIdx] = setupDepthAttachment( attachments[attachmentIdx] );
+            fboDesc.mImageViews[attachmentIdx] = setupDepthAttachment( attachments[attachmentIdx] );
             depthAttachRef.attachment = attachmentIdx;
             depthAttachRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             ++attachmentIdx;
@@ -506,7 +486,7 @@ namespace Ogre
         subpass.pResolveAttachments = usesResolveAttachments ? resolveAttachRefs : 0;
         subpass.pDepthStencilAttachment = mDepth.texture ? &depthAttachRef : 0;
 
-        mNumImageViews = attachmentIdx;
+        fboDesc.mNumImageViews = attachmentIdx;
 
         VkRenderPassCreateInfo renderPassCreateInfo;
         makeVkStruct( renderPassCreateInfo, VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO );
@@ -514,70 +494,100 @@ namespace Ogre
         renderPassCreateInfo.pAttachments = attachments;
         renderPassCreateInfo.subpassCount = 1u;
         renderPassCreateInfo.pSubpasses = &subpass;
-        VkResult result = vkCreateRenderPass( mQueue->mDevice, &renderPassCreateInfo, 0, &mRenderPass );
+        VkResult result =
+            vkCreateRenderPass( mQueue->mDevice, &renderPassCreateInfo, 0, &fboDesc.mRenderPass );
         checkVkResult( result, "vkCreateRenderPass" );
 
         VkFramebufferCreateInfo fbCreateInfo;
         makeVkStruct( fbCreateInfo, VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO );
-        fbCreateInfo.renderPass = mRenderPass;
+        fbCreateInfo.renderPass = fboDesc.mRenderPass;
         fbCreateInfo.attachmentCount = attachmentIdx;
-        fbCreateInfo.pAttachments = mImageViews;
+        fbCreateInfo.pAttachments = fboDesc.mImageViews;
         fbCreateInfo.width = mTargetWidth;
         fbCreateInfo.height = mTargetHeight;
         fbCreateInfo.layers = 1u;
 
-        const size_t numFramebuffers = std::max<size_t>( mWindowImageViews.size(), 1u );
-        mFramebuffers.resize( numFramebuffers );
+        const size_t numFramebuffers = std::max<size_t>( fboDesc.mWindowImageViews.size(), 1u );
+        fboDesc.mFramebuffers.resize( numFramebuffers );
         for( size_t i = 0u; i < numFramebuffers; ++i )
         {
-            if( !mWindowImageViews.empty() )
-                mImageViews[windowAttachmentIdx] = mWindowImageViews[i];
-            result = vkCreateFramebuffer( mQueue->mDevice, &fbCreateInfo, 0, &mFramebuffers[i] );
+            if( !fboDesc.mWindowImageViews.empty() )
+                fboDesc.mImageViews[windowAttachmentIdx] = fboDesc.mWindowImageViews[i];
+            result = vkCreateFramebuffer( mQueue->mDevice, &fbCreateInfo, 0, &fboDesc.mFramebuffers[i] );
             checkVkResult( result, "vkCreateFramebuffer" );
-            if( !mWindowImageViews.empty() )
-                mImageViews[windowAttachmentIdx] = 0;
+            if( !fboDesc.mWindowImageViews.empty() )
+                fboDesc.mImageViews[windowAttachmentIdx] = 0;
         }
     }
     //-----------------------------------------------------------------------------------
-    void VulkanRenderPassDescriptor::destroyFbo( void )
+    void VulkanRenderPassDescriptor::releaseFbo( void )
     {
-        mQueue->mOwnerDevice->stall();
-
+        VulkanFrameBufferDescMap &frameBufferDescMap = mRenderSystem->_getFrameBufferDescMap();
+        if( mSharedFboItor != frameBufferDescMap.end() )
         {
-            FastArray<VkFramebuffer>::const_iterator itor = mFramebuffers.begin();
-            FastArray<VkFramebuffer>::const_iterator endt = mFramebuffers.end();
-            while( itor != endt )
-                vkDestroyFramebuffer( mQueue->mDevice, *itor++, 0 );
-            mFramebuffers.clear();
-        }
-
-        {
-            FastArray<VkImageView>::const_iterator itor = mWindowImageViews.begin();
-            FastArray<VkImageView>::const_iterator endt = mWindowImageViews.end();
-
-            while( itor != endt )
-                vkDestroyImageView( mQueue->mDevice, *itor++, 0 );
-            mWindowImageViews.clear();
-        }
-
-        for( size_t i = 0u; i < mNumImageViews; ++i )
-        {
-            if( mImageViews[i] )
+            --mSharedFboItor->second.refCount;
+            if( !mSharedFboItor->second.refCount )
             {
-                vkDestroyImageView( mQueue->mDevice, mImageViews[i], 0 );
-                mImageViews[i] = 0;
+                destroyFbo( mQueue, mSharedFboItor->second );
+                frameBufferDescMap.erase( mSharedFboItor );
+            }
+            mSharedFboItor = frameBufferDescMap.end();
+        }
+    }
+    //-----------------------------------------------------------------------------------
+    void VulkanRenderPassDescriptor::destroyFbo( VulkanQueue *queue,
+                                                 VulkanFrameBufferDescValue &fboDesc )
+    {
+        VaoManager *vaoManager = queue->getVaoManager();
+
+        {
+            FastArray<VkFramebuffer>::const_iterator itor = fboDesc.mFramebuffers.begin();
+            FastArray<VkFramebuffer>::const_iterator endt = fboDesc.mFramebuffers.end();
+            while( itor != endt )
+                delayed_vkDestroyFramebuffer( vaoManager, queue->mDevice, *itor++, 0 );
+            fboDesc.mFramebuffers.clear();
+        }
+
+        {
+            FastArray<VkImageView>::const_iterator itor = fboDesc.mWindowImageViews.begin();
+            FastArray<VkImageView>::const_iterator endt = fboDesc.mWindowImageViews.end();
+
+            while( itor != endt )
+                delayed_vkDestroyImageView( vaoManager, queue->mDevice, *itor++, 0 );
+            fboDesc.mWindowImageViews.clear();
+        }
+
+        for( size_t i = 0u; i < fboDesc.mNumImageViews; ++i )
+        {
+            if( fboDesc.mImageViews[i] )
+            {
+                delayed_vkDestroyImageView( vaoManager, queue->mDevice, fboDesc.mImageViews[i], 0 );
+                fboDesc.mImageViews[i] = 0;
             }
         }
-        mNumImageViews = 0u;
+        fboDesc.mNumImageViews = 0u;
     }
-
-    TODO_cannotInterruptRendering_is_wrong;
-
-    uint32 VulkanRenderPassDescriptor::checkForClearActions( VulkanRenderPassDescriptor *other ) const
+    //-----------------------------------------------------------------------------------
+    bool VulkanRenderPassDescriptor::cannotInterruptRendering( void ) const
     {
-        return 0;
+        bool cannotInterrupt = false;
+
+        for( size_t i = 0; i < mNumColourEntries && !cannotInterrupt; ++i )
+        {
+            if( mColour[i].storeAction != StoreAction::Store &&
+                mColour[i].storeAction != StoreAction::StoreAndMultisampleResolve )
+            {
+                cannotInterrupt = true;
+            }
+        }
+
+        cannotInterrupt |= ( mDepth.texture && mDepth.storeAction != StoreAction::Store &&
+                             mDepth.storeAction != StoreAction::StoreAndMultisampleResolve ) ||
+                           ( mStencil.texture && mStencil.storeAction != StoreAction::Store &&
+                             mStencil.storeAction != StoreAction::StoreAndMultisampleResolve );
+
+        return cannotInterrupt;
     }
-    bool VulkanRenderPassDescriptor::cannotInterruptRendering() const { return false; }
 
     //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::notifySwapchainCreated( VulkanWindow *window )
@@ -594,7 +604,7 @@ namespace Ogre
         if( mNumColourEntries > 0 && mColour[0].texture->isRenderWindowSpecific() &&
             mColour[0].texture == window->getTexture() )
         {
-            destroyFbo();
+            releaseFbo();
         }
     }
     //-----------------------------------------------------------------------------------
@@ -622,7 +632,7 @@ namespace Ogre
         }
 
         if( entryTypes & RenderPassDescriptor::All )
-            updateFbo();
+            setupFbo( mSharedFboItor->second );
     }
     //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::setClearColour( uint8 idx, const ColourValue &clearColour )
@@ -644,15 +654,15 @@ namespace Ogre
     void VulkanRenderPassDescriptor::setClearDepth( Real clearDepth )
     {
         RenderPassDescriptor::setClearDepth( clearDepth );
-        if( mDepth.texture )
+        if( mDepth.texture && mSharedFboItor != mRenderSystem->_getFrameBufferDescMap().end() )
         {
-            size_t attachmentIdx = mNumImageViews - 1u;
+            size_t attachmentIdx = mSharedFboItor->second.mNumImageViews - 1u;
             if( !mRenderSystem->isReverseDepth() )
                 mClearValues[attachmentIdx].depthStencil.depth = static_cast<float>( mDepth.clearDepth );
             else
             {
                 mClearValues[attachmentIdx].depthStencil.depth =
-                    static_cast<float>( 1.0 - mDepth.clearDepth );
+                    static_cast<float>( Real( 1.0 ) - mDepth.clearDepth );
             }
         }
     }
@@ -660,34 +670,13 @@ namespace Ogre
     void VulkanRenderPassDescriptor::setClearStencil( uint32 clearStencil )
     {
         RenderPassDescriptor::setClearStencil( clearStencil );
-        if( mDepth.texture || mStencil.texture )
+        if( ( mDepth.texture || mStencil.texture ) &&
+            mSharedFboItor != mRenderSystem->_getFrameBufferDescMap().end() )
         {
-            size_t attachmentIdx = mNumImageViews - 1u;
+            size_t attachmentIdx = mSharedFboItor->second.mNumImageViews - 1u;
             mClearValues[attachmentIdx].depthStencil.stencil = clearStencil;
         }
     }
-    //-----------------------------------------------------------------------------------
-    void VulkanRenderPassDescriptor::setClearColour( const ColourValue &clearColour )
-    {
-        const size_t numColourEntries = mNumColourEntries;
-        size_t attachmentIdx = 0u;
-        for( size_t i = 0u; i < numColourEntries; ++i )
-        {
-            mColour[i].clearColour = clearColour;
-            mClearValues[attachmentIdx].color =
-                getClearColour( clearColour, mColour[i].texture->getPixelFormat() );
-            ++attachmentIdx;
-            if( mColour->resolveTexture )
-                ++attachmentIdx;
-        }
-    }
-
-    uint32 VulkanRenderPassDescriptor::willSwitchTo( VulkanRenderPassDescriptor *newDesc,
-                                                     bool warnIfRtvWasFlushed ) const
-    {
-        return 0;
-    }
-#if VULKAN_DISABLED
     //-----------------------------------------------------------------------------------
     uint32 VulkanRenderPassDescriptor::checkForClearActions( VulkanRenderPassDescriptor *other ) const
     {
@@ -725,13 +714,29 @@ namespace Ogre
         return entriesToFlush;
     }
     //-----------------------------------------------------------------------------------
+    void VulkanRenderPassDescriptor::setClearColour( const ColourValue &clearColour )
+    {
+        const size_t numColourEntries = mNumColourEntries;
+        size_t attachmentIdx = 0u;
+        for( size_t i = 0u; i < numColourEntries; ++i )
+        {
+            mColour[i].clearColour = clearColour;
+            mClearValues[attachmentIdx].color =
+                getClearColour( clearColour, mColour[i].texture->getPixelFormat() );
+            ++attachmentIdx;
+            if( mColour->resolveTexture )
+                ++attachmentIdx;
+        }
+    }
+    //-----------------------------------------------------------------------------------
     uint32 VulkanRenderPassDescriptor::willSwitchTo( VulkanRenderPassDescriptor *newDesc,
                                                      bool warnIfRtvWasFlushed ) const
     {
         uint32 entriesToFlush = 0;
 
-        if( !newDesc || this->mSharedFboItor != newDesc->mSharedFboItor || this->mInformationOnly ||
-            newDesc->mInformationOnly )
+        if( !newDesc ||                                         //
+            this->mSharedFboItor != newDesc->mSharedFboItor ||  //
+            this->mInformationOnly || newDesc->mInformationOnly )
         {
             entriesToFlush = RenderPassDescriptor::All;
         }
@@ -744,28 +749,6 @@ namespace Ogre
         return entriesToFlush;
     }
     //-----------------------------------------------------------------------------------
-    bool VulkanRenderPassDescriptor::cannotInterruptRendering( void ) const
-    {
-        bool cannotInterrupt = false;
-
-        for( size_t i = 0; i < mNumColourEntries && !cannotInterrupt; ++i )
-        {
-            if( mColour[i].storeAction != StoreAction::Store &&
-                mColour[i].storeAction != StoreAction::StoreAndMultisampleResolve )
-            {
-                cannotInterrupt = true;
-            }
-        }
-
-        cannotInterrupt |= ( mDepth.texture && mDepth.storeAction != StoreAction::Store &&
-                             mDepth.storeAction != StoreAction::StoreAndMultisampleResolve ) ||
-                           ( mStencil.texture && mStencil.storeAction != StoreAction::Store &&
-                             mStencil.storeAction != StoreAction::StoreAndMultisampleResolve );
-
-        return cannotInterrupt;
-    }
-#endif
-    //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::performLoadActions( bool renderingWasInterrupted )
     {
         if( mInformationOnly )
@@ -773,8 +756,10 @@ namespace Ogre
 
         VkCommandBuffer cmdBuffer = mQueue->mCurrentCmdBuffer;
 
+        const VulkanFrameBufferDescValue &fboDesc = mSharedFboItor->second;
+
         size_t fboIdx = 0u;
-        if( !mWindowImageViews.empty() )
+        if( !fboDesc.mWindowImageViews.empty() )
         {
             VulkanTextureGpuWindow *textureVulkan =
                 static_cast<VulkanTextureGpuWindow *>( mColour[0].texture );
@@ -832,8 +817,8 @@ namespace Ogre
 
         VkRenderPassBeginInfo passBeginInfo;
         makeVkStruct( passBeginInfo, VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO );
-        passBeginInfo.renderPass = mRenderPass;
-        passBeginInfo.framebuffer = mFramebuffers[fboIdx];
+        passBeginInfo.renderPass = fboDesc.mRenderPass;
+        passBeginInfo.framebuffer = fboDesc.mFramebuffers[fboIdx];
         passBeginInfo.renderArea.offset.x = 0;
         passBeginInfo.renderArea.offset.y = 0;
         passBeginInfo.renderArea.extent.width = mTargetWidth;
@@ -844,6 +829,8 @@ namespace Ogre
         if( renderingWasInterrupted )
         {
             TODO_use_render_pass_that_can_load;
+            OGRE_EXCEPT( Exception::ERR_NOT_IMPLEMENTED, "TODO_use_render_pass_that_can_load",
+                         "VulkanRenderPassDescriptor::performLoadActions" );
         }
 
         vkCmdBeginRenderPass( cmdBuffer, &passBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
@@ -852,6 +839,9 @@ namespace Ogre
     void VulkanRenderPassDescriptor::performStoreActions( bool isInterruptingRendering )
     {
         if( mInformationOnly )
+            return;
+
+        if( mQueue->getEncoderState() != VulkanQueue::EncoderGraphicsOpen )
             return;
 
         vkCmdEndRenderPass( mQueue->mCurrentCmdBuffer );
@@ -876,10 +866,39 @@ namespace Ogre
         // since mCurrentRenderPassDescriptor probably doesn't even point to 'this'
         mQueue->endAllEncoders( false );
     }
-#if VULKAN_DISABLED
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
-    VulkanFrameBufferDescValue::VulkanFrameBufferDescValue() : refCount( 0 ) {}
-#endif
+    VulkanFrameBufferDescKey::VulkanFrameBufferDescKey() : FrameBufferDescKey() {}
+    //-----------------------------------------------------------------------------------
+    VulkanFrameBufferDescKey::VulkanFrameBufferDescKey( const RenderPassDescriptor &desc ) :
+        FrameBufferDescKey( desc )
+    {
+        // Base class ignores these. We can't.
+        for( size_t i = 0; i < numColourEntries; ++i )
+        {
+            colour[i].loadAction = desc.mColour[i].loadAction;
+            colour[i].storeAction = desc.mColour[i].storeAction;
+        }
+
+        depth.loadAction = desc.mDepth.loadAction;
+        depth.storeAction = desc.mDepth.storeAction;
+        stencil.loadAction = desc.mStencil.loadAction;
+        stencil.storeAction = desc.mStencil.storeAction;
+    }
+    //-----------------------------------------------------------------------------------
+    bool VulkanFrameBufferDescKey::operator<( const VulkanFrameBufferDescKey &other ) const
+    {
+        return FrameBufferDescKey::operator<( other );
+    }
+    //-----------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------
+    VulkanFrameBufferDescValue::VulkanFrameBufferDescValue() :
+        refCount( 0u ),
+        mNumImageViews( 0u ),
+        mRenderPass( 0 )
+    {
+        memset( mImageViews, 0, sizeof( mImageViews ) );
+    }
 }  // namespace Ogre

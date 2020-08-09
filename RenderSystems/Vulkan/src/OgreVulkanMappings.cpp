@@ -500,11 +500,13 @@ namespace Ogre
                        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
                        : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         case ResourceLayout::Uav:
-            return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            return VK_IMAGE_LAYOUT_GENERAL;
         case ResourceLayout::CopySrc:
             return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         case ResourceLayout::CopyDst:
             return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        case ResourceLayout::PresentReady:
+            return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         }
 
         return VK_IMAGE_LAYOUT_UNDEFINED;
