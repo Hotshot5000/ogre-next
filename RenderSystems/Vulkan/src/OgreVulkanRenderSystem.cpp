@@ -1384,8 +1384,9 @@ namespace Ogre
             return;
 
         VulkanVaoManager *vaoManager = static_cast<VulkanVaoManager *>( mVaoManager );
-        vaoManager->bindDrawIdVertexBuffer( mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer,
-                                            mPso->vertexShader->getDrawIdLocation() );
+        if( mShaderSyntax == HLSL )
+            vaoManager->bindDrawIdVertexBuffer( mActiveDevice->mGraphicsQueue.mCurrentCmdBuffer,
+                                                mPso->vertexShader->getDrawIdLocation() );
         VulkanRootLayout *rootLayout = mPso->rootLayout;
         rootLayout->bind( mDevice, vaoManager, mGlobalTable );
         mTableDirty = false;
