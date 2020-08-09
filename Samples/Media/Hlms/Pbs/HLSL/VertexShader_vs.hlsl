@@ -52,9 +52,9 @@ struct PS_INPUT
 };
 
 // START UNIFORM D3D DECLARATION
-Buffer<float4> worldMatBuf : register(t0);
+Buffer<float4> worldMatBuf : vulkan_layout( ogre_T0 );
 @property( hlms_pose )
-	Buffer<float4> poseBuf : register(t@value(poseBuf));
+	Buffer<float4> poseBuf : vulkan_layout( ogre_t@value(poseBuf) );//register(t@value(poseBuf));
 @end
 // END UNIFORM D3D DECLARATION
 

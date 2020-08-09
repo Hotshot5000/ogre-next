@@ -7,8 +7,8 @@
 @insertpiece( custom_vs_uniformDeclaration )
 
 // START UNIFORM D3D DECLARATION
-Buffer<float4> worldMatBuf : register(t0);
-@property( texture_matrix )Buffer<float4> animationMatrixBuf : register(t1);@end
+Buffer<float4> worldMatBuf : vulkan_layout( ogre_T0 );
+@property( texture_matrix )Buffer<float4> animationMatrixBuf : vulkan_layout( ogre_T1 );@end
 // END UNIFORM D3D DECLARATION
 
 struct VS_INPUT

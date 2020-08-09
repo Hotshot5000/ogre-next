@@ -12,15 +12,15 @@ struct PS_INPUT
 @property( !hlms_shadowcaster || alpha_test )
 	@foreach( num_textures, n )
 		@property( is_texture@n_array )
-			Texture2DArray textureMapsArray@n : register(t@value(textureMapsArray@n));
+			Texture2DArray textureMapsArray@n : vulkan_layout( ogre_t@value(textureMapsArray@n) );
 		@else
-			Texture2D textureMaps@n : register(t@value(textureMaps@n));
+			Texture2D textureMaps@n : vulkan_layout( ogre_t@value(textureMaps@n) );
 		@end
 	@end
 @end
 
 @foreach( num_samplers, n )
-	SamplerState samplerState@n : register(s@counter(samplerStateStart));@end
+	SamplerState samplerState@n : vulkan_layout( ogre_s@counter(samplerStateStart) );@end
 
 @insertpiece( DeclOutputType )
 

@@ -25,6 +25,8 @@ struct PS_INPUT
 @insertpiece( VStoPS_block )
 };
 
+@pset( currSampler, samplerStateStart )
+
 @property( !hlms_shadowcaster )
 
 @property( !hlms_render_depth_only )
@@ -38,66 +40,66 @@ struct PS_INPUT
 
 @property( hlms_use_prepass )
 	@property( !hlms_use_prepass_msaa )
-		Texture2D<unorm float4> gBuf_normals			: register(t@value(gBuf_normals));
-		Texture2D<unorm float2> gBuf_shadowRoughness	: register(t@value(gBuf_shadowRoughness));
+		Texture2D<unorm float4> gBuf_normals			: vulkan_layout( ogre_t@value(gBuf_normals) );
+		Texture2D<unorm float2> gBuf_shadowRoughness	: vulkan_layout( ogre_t@value(gBuf_shadowRoughness) );
 	@else
-		Texture2DMS<unorm float4> gBuf_normals			: register(t@value(gBuf_normals));
-		Texture2DMS<unorm float2> gBuf_shadowRoughness	: register(t@value(gBuf_shadowRoughness));
-		Texture2DMS<float> gBuf_depthTexture			: register(t@value(gBuf_depthTexture));
+		Texture2DMS<unorm float4> gBuf_normals			: vulkan_layout( ogre_t@value(gBuf_normals) );
+		Texture2DMS<unorm float2> gBuf_shadowRoughness	: vulkan_layout( ogre_t@value(gBuf_shadowRoughness) );
+		Texture2DMS<float> gBuf_depthTexture			: vulkan_layout( ogre_t@value(gBuf_depthTexture) );
 	@end
 
 	@property( hlms_use_ssr )
-		Texture2D<float4> ssrTexture : register(t@value(ssrTexture));
+		Texture2D<float4> ssrTexture : vulkan_layout( ogre_t@value(ssrTexture) );
 	@end
 @end
 
 @property( hlms_ss_refractions_available )
 	@property( !hlms_use_prepass || !hlms_use_prepass_msaa )
 		@property( !hlms_use_prepass_msaa )
-			Texture2D<float> gBuf_depthTexture			: register(t@value(gBuf_depthTexture));
+			Texture2D<float> gBuf_depthTexture			: vulkan_layout( ogre_t@value(gBuf_depthTexture) );
 			#define depthTextureNoMsaa gBuf_depthTexture
 		@else
-			Texture2D<float> depthTextureNoMsaa			: register(t@value(depthTextureNoMsaa));
+			Texture2D<float> depthTextureNoMsaa			: vulkan_layout( ogre_t@value(depthTextureNoMsaa) );
 		@end
 	@end
-	Texture2D		refractionMap			: register(t@value(refractionMap));
-	SamplerState	refractionMapSampler	: register(s@value(refractionMap));
+	Texture2D		refractionMap			: vulkan_layout( ogre_t@value(refractionMap) );
+	SamplerState	refractionMapSampler	: vulkan( layout( ogre_s@value(refractionMap) );
 @end
 
 @insertpiece( DeclPlanarReflTextures )
 @insertpiece( DeclAreaApproxTextures )
 
 @property( hlms_forwardplus )
-    Buffer<uint> f3dGrid : register(t@value(f3dGrid));
-    Buffer<float4> f3dLightList : register(t@value(f3dLightList));
+    Buffer<uint> f3dGrid : vulkan_layout( ogre_T@value(f3dGrid) );
+    Buffer<float4> f3dLightList : vulkan_layout( ogre_T@value(f3dLightList) );
 @end
 
 @property( irradiance_volumes )
-	Texture3D<float4>	irradianceVolume		: register(t@value(irradianceVolume));
-	SamplerState		irradianceVolumeSampler	: register(s@value(irradianceVolume));
+	Texture3D<float4>	irradianceVolume		: vulkan_layout( ogre_t@value(irradianceVolume) );
+	SamplerState		irradianceVolumeSampler	: vulkan_layout( ogre_s@value(irradianceVolume) );
 @end
 
 @foreach( num_textures, n )
-	Texture2DArray textureMaps@n : register(t@value(textureMaps@n));@end
+	Texture2DArray textureMaps@n : vulkan_layout( ogre_t@value(textureMaps@n) );@end
 
 @property( use_envprobe_map )
 	@property( !hlms_enable_cubemaps_auto )
-		TextureCube	texEnvProbeMap : register(t@value(texEnvProbeMap));
+		TextureCube	texEnvProbeMap : vulkan_layout( ogre_t@value(texEnvProbeMap) );
 	@else
 		@property( !hlms_cubemaps_use_dpm )
-			TextureCubeArray	texEnvProbeMap : register(t@value(texEnvProbeMap));
+			TextureCubeArray	texEnvProbeMap : vulkan_layout( ogre_t@value(texEnvProbeMap) );
 		@else
-			@property( use_envprobe_map )Texture2DArray	texEnvProbeMap : register(t@value(texEnvProbeMap));@end
+			@property( use_envprobe_map )Texture2DArray	texEnvProbeMap : vulkan_layout( ogre_t@value(texEnvProbeMap) );@end
 			@insertpiece( DeclDualParaboloidFunc )
 		@end
 	@end
-	@property( envMapRegSampler < samplerStateStart )
-		SamplerState samplerState@value(envMapRegSampler) : register(s@value(envMapRegSampler));
+	@property( envMapRegSampler < currSampler )
+		SamplerState samplerState@value(envMapRegSampler) : vulkan_layout( ogre_s@value(currSampler) );
 	@end
 @end
 
 @foreach( num_samplers, n )
-	SamplerState samplerState@value(samplerStateStart) : register(s@counter(samplerStateStart));@end
+	SamplerState samplerState@value(currSampler) : vulkan_layout( ogre_s@value(currSampler) );@end
 
 @property( use_parallax_correct_cubemaps )
 	@insertpiece( DeclParallaxLocalCorrect )
@@ -161,9 +163,9 @@ struct PS_INPUT
 @insertpiece( DeclShadowCasterMacros )
 
 @foreach( num_textures, n )
-	Texture2DArray textureMaps@n : register(t@value(textureMaps@n));@end
+	Texture2DArray textureMaps@n : vulkan_layout( ogre_t@value(textureMaps@n) );@end
 @foreach( num_samplers, n )
-	SamplerState samplerState@value(samplerStateStart) : register(s@counter(samplerStateStart));@end
+	SamplerState samplerState@value(currSampler) : vulkan_layout( ogre_s@value(currSampler) );@end
 
 @property( hlms_shadowcaster_point || exponential_shadow_maps )
 	@insertpiece( PassStructDecl )

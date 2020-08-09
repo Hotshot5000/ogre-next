@@ -33,7 +33,6 @@ THE SOFTWARE.
 #include "OgreVulkanPrerequisites.h"
 
 #include "OgreHeaderPrefix.h"
-#include "OgreVulkanDescriptorSetLayout.h"
 
 namespace Ogre
 {
