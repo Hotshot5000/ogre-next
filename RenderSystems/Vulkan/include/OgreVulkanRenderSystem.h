@@ -48,6 +48,7 @@ namespace Ogre
     }
 
     class VulkanHlmsPso;
+    class VulkanSupport;
 
     class _OgreVulkanExport VulkanPixelFormatToShaderType : public PixelFormatToShaderType
     {
@@ -68,8 +69,6 @@ namespace Ogre
         bool mInitialized;
         v1::HardwareBufferManager *mHardwareBufferManager;
 
-        ConfigOptionMap mOptions;
-
         VulkanPixelFormatToShaderType mPixelFormatToShaderType;
 
         VkBuffer mIndirectBuffer;
@@ -82,6 +81,7 @@ namespace Ogre
 
         VkInstance mVkInstance;
         ShaderSyntax mShaderSyntax;
+        VulkanSupport *mVulkanSupport;
 
         // TODO: AutoParamsBuffer probably belongs to MetalDevice (because it's per device?)
         typedef vector<ConstBufferPacked *>::type ConstBufferPackedVec;
@@ -148,8 +148,10 @@ namespace Ogre
 
         virtual const String &getName( void ) const;
         virtual const String &getFriendlyName( void ) const;
-        virtual ConfigOptionMap &getConfigOptions( void ) { return mOptions; }
-        virtual void setConfigOption( const String &name, const String &value ) {}
+        void refreshConfig();
+        void initConfigOptions();
+        virtual ConfigOptionMap &getConfigOptions( void );
+        virtual void setConfigOption( const String &name, const String &value );
 
         virtual HardwareOcclusionQuery *createHardwareOcclusionQuery( void );
 
@@ -312,6 +314,9 @@ namespace Ogre
         virtual void _descriptorSetUavCreated( DescriptorSetUav *newSet ) override;
         virtual void _descriptorSetUavDestroyed( DescriptorSetUav *set ) override;
 
+
+        SampleDescription validateSampleDescription( const SampleDescription &sampleDesc,
+            PixelFormatGpu format ) override;
         VulkanDevice *getVulkanDevice() const { return mDevice; }
         void _notifyDeviceStalled();
 
