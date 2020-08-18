@@ -2038,14 +2038,15 @@ namespace Ogre
                     attachments[attachmentIdx].samples = VK_SAMPLE_COUNT_1_BIT;
                     attachments[attachmentIdx].format =
                         VulkanMappings::get( passPso.resolveColourFormat[i] );
+                    attachments[attachmentIdx].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                     attachments[attachmentIdx].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                    attachments[attachmentIdx].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    attachments[attachmentIdx].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
                     resolveAttachRefs[numColourAttachments].attachment = attachmentIdx;
                     resolveAttachRefs[numColourAttachments].layout =
                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
                     ++attachmentIdx;
-                    ++numColourAttachments;
+                    // ++numColourAttachments;
                 }
             }
         }
