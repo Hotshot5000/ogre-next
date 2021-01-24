@@ -1,5 +1,13 @@
 var NAVTREEINDEX64 =
 {
+"class_ogre_1_1_default_shadow_camera_setup.html#a33706dc2e3d61f4f0b2419d9cc259c76":[5,2,12,15,0],
+"class_ogre_1_1_default_shadow_camera_setup.html#a421b197ca3a38da17e2eb1531a645fa2":[5,0,1,15,11],
+"class_ogre_1_1_default_shadow_camera_setup.html#a421b197ca3a38da17e2eb1531a645fa2":[5,2,12,15,11],
+"class_ogre_1_1_default_shadow_camera_setup.html#a4663dca3e570aa2e7f0134c9221ad6ea":[5,0,1,15,1],
+"class_ogre_1_1_default_shadow_camera_setup.html#a4663dca3e570aa2e7f0134c9221ad6ea":[5,2,12,15,1],
+"class_ogre_1_1_default_shadow_camera_setup.html#a4be37baef81876985aa1071ad5acc6dd":[5,0,1,15,14],
+"class_ogre_1_1_default_shadow_camera_setup.html#a4be37baef81876985aa1071ad5acc6dd":[5,2,12,15,14],
+"class_ogre_1_1_default_shadow_camera_setup.html#a595ea4c05da8aa987d3800e65d23355d":[5,0,1,15,9],
 "class_ogre_1_1_default_shadow_camera_setup.html#a595ea4c05da8aa987d3800e65d23355d":[5,2,12,15,9],
 "class_ogre_1_1_default_shadow_camera_setup.html#a5e701a58a1dbd0a22810faec87e9a59a":[5,0,1,15,4],
 "class_ogre_1_1_default_shadow_camera_setup.html#a5e701a58a1dbd0a22810faec87e9a59a":[5,2,12,15,4],
@@ -241,13 +249,5 @@ var NAVTREEINDEX64 =
 "class_ogre_1_1_default_zone.html#aaf68e536e6d17124c59628ac9ecb592d":[7,0,0,294,6],
 "class_ogre_1_1_default_zone.html#aafb8aa342ed1f865aeaef12ac5ef6f12":[7,0,0,294,43],
 "class_ogre_1_1_default_zone.html#ab6ecad657b5c528554153b425d1961db":[7,0,0,294,25],
-"class_ogre_1_1_default_zone.html#ab78a921e54419be677839cdf15d1f0b8":[7,0,0,294,38],
-"class_ogre_1_1_default_zone.html#abc8ebac2f46f22bb525856ec91be771e":[7,0,0,294,49],
-"class_ogre_1_1_default_zone.html#abf2c82ac1e74ccd3852d3a332a8c4c99":[7,0,0,294,53],
-"class_ogre_1_1_default_zone.html#ac1fa831a0caf1f7defd52047322434f0":[7,0,0,294,21],
-"class_ogre_1_1_default_zone.html#ac4955afa0014db1b4ab2a8aa3745f99e":[7,0,0,294,19],
-"class_ogre_1_1_default_zone.html#ac4bdf968b7b9af8a5239a27da73d5711":[7,0,0,294,36],
-"class_ogre_1_1_default_zone.html#acb46d4b0a597156d9ba5abc39d127792":[7,0,0,294,32],
-"class_ogre_1_1_default_zone.html#accc5449350478d04f943d3a313704198":[7,0,0,294,5],
-"class_ogre_1_1_default_zone.html#acd3a9d0ba7a59f8697021195fd4925ef":[7,0,0,294,51]
+"class_ogre_1_1_default_zone.html#ab78a921e54419be677839cdf15d1f0b8":[7,0,0,294,38]
 };

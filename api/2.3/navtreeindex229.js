@@ -1,5 +1,13 @@
 var NAVTREEINDEX229 =
 {
+"class_ogre_1_1v1_1_1_mesh_serializer_impl.html#aea6ea6e2afa3985a9c9c30a860c3f777":[5,2,11,125,4],
+"class_ogre_1_1v1_1_1_mesh_serializer_impl.html#afa2943846ba6a2b5824a12857139cf5e":[5,2,11,125,13],
+"class_ogre_1_1v1_1_1_mesh_serializer_impl.html#afe28627c34b8cb67317103c4c7e581f7":[5,2,11,125,1],
+"class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html":[5,2,11,126],
+"class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html#a1c727e879a260c37b00ce5505fe8e144":[5,2,11,126,7],
+"class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html#a421b197ca3a38da17e2eb1531a645fa2":[5,2,11,126,11],
+"class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html#a4be37baef81876985aa1071ad5acc6dd":[5,2,11,126,14],
+"class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html#a5122d5a3161fb5fd819d9a0521fe9d39":[5,2,11,126,0],
 "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html#a5122d5a3161fb5fd819d9a0521fe9d39a10ce3b8f55cba526f6bc8237d8b25cc3":[5,2,11,126,0,2],
 "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html#a5122d5a3161fb5fd819d9a0521fe9d39a7f044c7683a7374276db6e7060f51240":[5,2,11,126,0,1],
 "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html#a5122d5a3161fb5fd819d9a0521fe9d39aed60ca999861d8939cf57f19090c70ef":[5,2,11,126,0,0],
@@ -241,13 +249,5 @@ var NAVTREEINDEX229 =
 "class_ogre_1_1v1_1_1_metal_hardware_buffer_manager.html#af806a0585b212d4b179e77770b22eaef":[7,0,0,3,112,6],
 "class_ogre_1_1v1_1_1_metal_hardware_buffer_manager.html#afa2943846ba6a2b5824a12857139cf5e":[7,0,0,3,112,32],
 "class_ogre_1_1v1_1_1_metal_hardware_buffer_manager.html#afae0e3c4fb95f96b60147cde62b0bacb":[7,0,0,3,112,21],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager.html#affc9ded1625ecbd07556ba24a15b6429":[7,0,0,3,112,9],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html":[7,0,0,3,113],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html#a08297892d344182b4daa24b1b6bde626":[7,0,0,3,113,12],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html#a09c24edf06c085c0d4493eb027f830cb":[7,0,0,3,113,32],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html#a0eba9f8ea7d54f17715f711715469e64":[7,0,0,3,113,15],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html#a0faf37b7a7058759419241006a7c490f":[7,0,0,3,113,8],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html#a1c727e879a260c37b00ce5505fe8e144":[7,0,0,3,113,24],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html#a22bab93b88c2f774a037a782522e5f0e":[7,0,0,3,113,18],
-"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html#a24b2659c2deb2d47f36024b28b2b4d87":[7,0,0,3,113,14]
+"class_ogre_1_1v1_1_1_metal_hardware_buffer_manager.html#affc9ded1625ecbd07556ba24a15b6429":[7,0,0,3,112,9]
 };

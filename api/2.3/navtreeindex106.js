@@ -1,5 +1,13 @@
 var NAVTREEINDEX106 =
 {
+"class_ogre_1_1_light.html#ab152c8f646a835c2f88585ad4fe0413a":[5,0,1,23,53],
+"class_ogre_1_1_light.html#ab152c8f646a835c2f88585ad4fe0413a":[5,2,12,23,53],
+"class_ogre_1_1_light.html#ab2d58aba9bb1591a393a4a23f4a89142":[5,0,1,23,73],
+"class_ogre_1_1_light.html#ab2d58aba9bb1591a393a4a23f4a89142":[5,2,12,23,73],
+"class_ogre_1_1_light.html#ab3fe0289fbcabb17897c53445fa29339":[5,0,1,23,16],
+"class_ogre_1_1_light.html#ab3fe0289fbcabb17897c53445fa29339":[5,2,12,23,16],
+"class_ogre_1_1_light.html#ab55eab7ca8e96a3bbb3f69a4095bf067":[5,0,1,23,128],
+"class_ogre_1_1_light.html#ab55eab7ca8e96a3bbb3f69a4095bf067":[5,2,12,23,128],
 "class_ogre_1_1_light.html#ab703ec1f1cf82763b0ac9c4b1e51a17b":[5,0,1,23,159],
 "class_ogre_1_1_light.html#ab703ec1f1cf82763b0ac9c4b1e51a17b":[5,2,12,23,159],
 "class_ogre_1_1_light.html#ab78a921e54419be677839cdf15d1f0b8":[5,0,1,23,106],
@@ -241,13 +249,5 @@ var NAVTREEINDEX106 =
 "class_ogre_1_1_linear_force_affector_factory.html#a8357fe4fb4849772b94baa4bf47c7ded":[7,0,0,596,1],
 "class_ogre_1_1_linear_force_affector_factory.html#a93e6a86dde5483c053ca0f2a85bbfd6c":[7,0,0,596,4],
 "class_ogre_1_1_linear_force_affector_factory.html#ab78a921e54419be677839cdf15d1f0b8":[7,0,0,596,8],
-"class_ogre_1_1_linear_force_affector_factory.html#ac4bdf968b7b9af8a5239a27da73d5711":[7,0,0,596,6],
-"class_ogre_1_1_linear_force_affector_factory.html#acb46d4b0a597156d9ba5abc39d127792":[7,0,0,596,2],
-"class_ogre_1_1_linear_force_affector_factory.html#afa2943846ba6a2b5824a12857139cf5e":[7,0,0,596,9],
-"class_ogre_1_1_lod0_stripifier.html":[7,0,0,600],
-"class_ogre_1_1_lod0_stripifier.html#a94f191280507c1253370ddca21113c87":[7,0,0,600,1],
-"class_ogre_1_1_lod0_stripifier.html#aa593f9fb11eedbbe253a4d8f210176b5":[7,0,0,600,3],
-"class_ogre_1_1_lod0_stripifier.html#aaf8b57b5395eed707f960a10a1856d1d":[7,0,0,600,2],
-"class_ogre_1_1_lod_collapse_cost.html":[7,0,0,601],
-"class_ogre_1_1_lod_collapse_cost.html#a0544405a072903833e93500006036743":[7,0,0,601,0]
+"class_ogre_1_1_linear_force_affector_factory.html#ac4bdf968b7b9af8a5239a27da73d5711":[7,0,0,596,6]
 };
