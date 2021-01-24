@@ -43,6 +43,13 @@ THE SOFTWARE.
 
 namespace Ogre
 {
+
+    struct ExtensionHeader  // Helper struct to link extensions together
+    {
+        VkStructureType sType;
+        void *pNext;
+    };
+
     VulkanDevice::VulkanDevice( VkInstance instance, uint32 deviceIdx,
                                 VulkanRenderSystem *renderSystem ) :
         mInstance( instance ),
@@ -116,7 +123,7 @@ namespace Ogre
             appInfo.pApplicationName = appName.c_str();
         appInfo.pEngineName = "Ogre3D Vulkan Engine";
         appInfo.engineVersion = OGRE_VERSION;
-        appInfo.apiVersion = VK_MAKE_VERSION( 1, 0, 2 );
+        appInfo.apiVersion = VK_MAKE_VERSION( 1, 1, 0 );
 
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
@@ -178,7 +185,7 @@ namespace Ogre
         mPhysicalDevice = pd[deviceIdx];
 
         vkGetPhysicalDeviceMemoryProperties( mPhysicalDevice, &mDeviceMemoryProperties );
-        vkGetPhysicalDeviceFeatures( mPhysicalDevice, &mDeviceFeatures );
+        vkGetPhysicalDeviceFeatures( mPhysicalDevice, &mDeviceFeatures );        
 
         mSupportedStages = 0xFFFFFFFF;
         if( !mDeviceFeatures.geometryShader )
@@ -293,7 +300,83 @@ namespace Ogre
             queueCreateInfo[i].pQueuePriorities = queuePriorities[i].begin();
         }
 
+        makeVkStruct( mDeviceFeatures2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 );
+        makeVkStruct( mDeviceProperties2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 );        
+
+        VkPhysicalDeviceMultiviewFeatures multiview;
+        makeVkStruct( multiview, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES );        
+        VkPhysicalDevice16BitStorageFeatures t16BitStorage;
+        makeVkStruct( t16BitStorage, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES );
+        VkPhysicalDeviceSamplerYcbcrConversionFeatures samplerYcbcrConversion;
+        makeVkStruct( samplerYcbcrConversion,
+                      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES );
+        VkPhysicalDeviceProtectedMemoryFeatures protectedMemory;
+        makeVkStruct( protectedMemory, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES );
+        VkPhysicalDeviceShaderDrawParameterFeatures drawParameters;
+        makeVkStruct( drawParameters, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES );
+        VkPhysicalDeviceVariablePointerFeatures variablePointers;
+        makeVkStruct( variablePointers, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES );
+        
+        multiview.pNext = &t16BitStorage;
+        t16BitStorage.pNext = &samplerYcbcrConversion;
+        samplerYcbcrConversion.pNext = &protectedMemory;
+        protectedMemory.pNext = &drawParameters;
+        drawParameters.pNext = &variablePointers;
+        variablePointers.pNext = 0;
+
+        VkPhysicalDeviceMaintenance3Properties maintenance3;
+        makeVkStruct( maintenance3, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES );
+        VkPhysicalDeviceIDProperties deviceID{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES };
+        makeVkStruct( deviceID, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES );
+        VkPhysicalDeviceMultiviewProperties multiviewProp;
+        makeVkStruct( multiviewProp, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES );
+        VkPhysicalDeviceProtectedMemoryProperties protectedMemoryProp;
+        makeVkStruct( protectedMemoryProp, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES );
+        VkPhysicalDevicePointClippingProperties pointClipping;
+        makeVkStruct( pointClipping, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES );
+        VkPhysicalDeviceSubgroupProperties subgroup;
+        makeVkStruct( subgroup, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES );
+        makeVkStruct( mRTPipelineProps,
+                      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR );
+
+        maintenance3.pNext = &deviceID;
+        deviceID.pNext = &multiviewProp;
+        multiviewProp.pNext = &protectedMemoryProp;
+        protectedMemoryProp.pNext = &pointClipping;
+        pointClipping.pNext = &subgroup;
+        subgroup.pNext = &mRTPipelineProps;
+        mRTPipelineProps.pNext = 0;
+
+
+        mDeviceFeatures2.pNext = &multiview;
+        mDeviceProperties2.pNext = &maintenance3;
+
         extensions.push_back( VK_KHR_SWAPCHAIN_EXTENSION_NAME );
+        extensions.push_back( VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME );
+        extensions.push_back( VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME );
+        extensions.push_back( VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME );
+        extensions.push_back( VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME );
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR physicalDeviceAS;
+        makeVkStruct( physicalDeviceAS,
+                      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR );
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeature;
+        makeVkStruct( rtPipelineFeature,
+                      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR );
+
+        extensions.push_back( VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME );
+        extensions.push_back( VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME );
+
+        extensions.push_back( VK_KHR_MAINTENANCE3_EXTENSION_NAME );
+        extensions.push_back( VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME );
+        extensions.push_back( VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME );
+        extensions.push_back( VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME );
+
+        extensions.push_back( VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME );
+        extensions.push_back( VK_KHR_SPIRV_1_4_EXTENSION_NAME );
+        extensions.push_back( VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME );
+
+        vkGetPhysicalDeviceFeatures2( mPhysicalDevice, &mDeviceFeatures2 );
+        vkGetPhysicalDeviceProperties2( mPhysicalDevice, &mDeviceProperties2 );
 
         VkDeviceCreateInfo createInfo;
         makeVkStruct( createInfo, VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO );
@@ -304,7 +387,12 @@ namespace Ogre
         createInfo.queueCreateInfoCount = static_cast<uint32>( queueCreateInfo.size() );
         createInfo.pQueueCreateInfos = &queueCreateInfo[0];
 
-        createInfo.pEnabledFeatures = &mDeviceFeatures;
+        createInfo.pEnabledFeatures = 0;
+        createInfo.pNext = &mDeviceFeatures2;
+
+        variablePointers.pNext = &physicalDeviceAS;
+        physicalDeviceAS.pNext = &rtPipelineFeature;
+        rtPipelineFeature.pNext = 0;
 
         VkResult result = vkCreateDevice( mPhysicalDevice, &createInfo, NULL, &mDevice );
         checkVkResult( result, "vkCreateDevice" );
@@ -361,6 +449,13 @@ namespace Ogre
         vkDeviceWaitIdle( mDevice );
 
         mRenderSystem->_notifyDeviceStalled();
+    }
+    //-------------------------------------------------------------------------
+    VkDeviceAddress VulkanDevice::getDeviceAddress( VkBuffer buf )
+    {
+        VkBufferDeviceAddressInfo bufInfo;
+        makeVkStruct( bufInfo, VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO );
+        return vkGetBufferDeviceAddress( mDevice, &bufInfo );
     }
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------

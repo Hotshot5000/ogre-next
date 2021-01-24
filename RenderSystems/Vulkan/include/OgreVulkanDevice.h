@@ -65,9 +65,13 @@ namespace Ogre
         // clang-format on
 
         VkPhysicalDeviceProperties mDeviceProperties;
+        VkPhysicalDeviceProperties2 mDeviceProperties2;
         VkPhysicalDeviceMemoryProperties mDeviceMemoryProperties;
         VkPhysicalDeviceFeatures mDeviceFeatures;
+        VkPhysicalDeviceFeatures2 mDeviceFeatures2;
         FastArray<VkQueueFamilyProperties> mQueueProps;
+
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR mRTPipelineProps;
 
         VulkanVaoManager *mVaoManager;
         VulkanRenderSystem *mRenderSystem;
@@ -109,6 +113,8 @@ namespace Ogre
 
         /// Waits for the GPU to finish all pending commands.
         void stall( void );
+
+        VkDeviceAddress getDeviceAddress( VkBuffer buf );
     };
 
     // Mask away read flags from srcAccessMask
