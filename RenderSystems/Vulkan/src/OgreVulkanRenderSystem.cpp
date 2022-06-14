@@ -610,8 +610,6 @@ namespace Ogre
         rsc->addShaderProfile( "glslvk" );
         rsc->addShaderProfile( "glsl" );
 
-        // mActiveDevice->mDeviceProperties2.
-
         if( rsc->getVendor() == GPU_QUALCOMM )
         {
 #ifdef OGRE_VK_WORKAROUND_ADRENO_D32_FLOAT
@@ -816,9 +814,6 @@ namespace Ogre
                 LML_CRITICAL );
         }
 #endif
-
-        // TODO RT make it configurable through addConfig().
-        reqInstanceExtensions.push_back( VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME );
 
         mVkInstance = VulkanDevice::createInstance(
             Root::getSingleton().getAppName(), reqInstanceExtensions, instanceLayers, dbgFunc, this );

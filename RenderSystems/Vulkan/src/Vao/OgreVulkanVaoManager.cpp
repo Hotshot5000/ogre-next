@@ -55,7 +55,6 @@ THE SOFTWARE.
 #include "OgreStringConverter.h"
 #include "OgreTimer.h"
 #include "OgreVulkanStagingTexture.h"
-#include "OgreVulkanMappings.h"
 
 #define TODO_implement
 #define TODO_whenImplemented_include_stagingBuffers
@@ -1314,47 +1313,6 @@ namespace Ogre
 
         VertexArrayObject *retVal = OGRE_NEW VertexArrayObject(
             itor->vaoName, renderQueueId, inputLayout, vertexBuffers, indexBuffer, opType );
-
-        // TODO RT check if RT enabled.
-        VkAccelerationStructureGeometryTrianglesDataKHR asGeometryTriangles;
-        makeVkStruct( asGeometryTriangles,
-                      VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR );
-
-        VulkanBufferInterface *vertexBufferIntf = static_cast<VulkanBufferInterface *>( retVal->getBaseVertexBuffer()->getBufferInterface() );
-        VkDeviceAddress vertexBufferAddr = mDevice->getDeviceAddress( vertexBufferIntf->getVboName() );
-        VulkanBufferInterface *indexBufferIntf = static_cast<VulkanBufferInterface *>( indexBuffer->getBufferInterface() );
-        VkDeviceAddress indexBufferAddr = mDevice->getDeviceAddress( indexBufferIntf->getVboName() );
-
-        VkDeviceOrHostAddressConstKHR vertexBufferDeviceOrHostAddr;
-        vertexBufferDeviceOrHostAddr.deviceAddress = vertexBufferAddr;
-
-        VkDeviceOrHostAddressConstKHR indexBufferDeviceOrHostAddr;
-        indexBufferDeviceOrHostAddr.deviceAddress = indexBufferAddr;
-
-        size_t bufferIdx, elemOffset;
-        const VertexElement2 *vertexElement = retVal->findBySemantic( VES_POSITION, bufferIdx, elemOffset );
-
-        asGeometryTriangles.vertexFormat = VulkanMappings::get( vertexElement->mType );
-        asGeometryTriangles.vertexData = vertexBufferDeviceOrHostAddr;
-        asGeometryTriangles.vertexStride = retVal->getBaseVertexBuffer()->getBytesPerElement();
-        asGeometryTriangles.maxVertex = static_cast<uint32>(retVal->getBaseVertexBuffer()->getNumElements()); // maxVertex is 32 bit.
-        asGeometryTriangles.indexType = static_cast<VkIndexType>( indexBuffer->getIndexType() );
-        asGeometryTriangles.indexData = indexBufferDeviceOrHostAddr;
-
-        VkAccelerationStructureGeometryKHR asGeometry;
-        makeVkStruct( asGeometry, VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR );
-        asGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-
-        VkAccelerationStructureGeometryDataKHR asGeometryData;
-        asGeometryData.triangles = asGeometryTriangles;
-        asGeometry.geometry = asGeometryData;
-        asGeometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-
-        VkAccelerationStructureBuildRangeInfoKHR asBuildRangeInfo;
-        asBuildRangeInfo.primitiveCount = retVal->getPrimitiveCount();
-        asBuildRangeInfo.primitiveOffset = 0;
-        asBuildRangeInfo.firstVertex = 0;
-        asBuildRangeInfo.transformOffset = 0;
 
         return retVal;
     }
