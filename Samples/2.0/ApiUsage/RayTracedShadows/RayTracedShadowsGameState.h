@@ -35,6 +35,18 @@ namespace Demo
     {
         ScreenSpaceReflections *mScreenSpaceReflections;
         Ogre::HlmsPbsDatablock *mMaterials[4];
+        
+        Ogre::SceneNode *mSceneNode[16];
+
+        Ogre::SceneNode *mLightNodes[3];
+
+        bool mAnimateObjects;
+
+        size_t mNumSpheres;
+        Ogre::uint8 mTransparencyMode;
+        float mTransparencyValue;
+        
+        void setTransparencyToMaterials();
 
         void generateDebugText( float timeSinceLast, Ogre::String &outText ) override;
 

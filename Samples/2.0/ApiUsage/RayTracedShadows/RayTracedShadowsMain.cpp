@@ -59,13 +59,14 @@ namespace Demo
                 originalDataFolder += "/";
 
             const char *c_locations[4] = {
+                "2.0/scripts/materials/PbsMaterials",
                 "2.0/scripts/materials/RayTracedShadows",
 //                "2.0/scripts/materials/ScreenSpaceReflections/GLSL",
 //                "2.0/scripts/materials/ScreenSpaceReflections/HLSL",
                 "2.0/scripts/materials/RayTracedShadows/Metal",
             };
 
-            for( size_t i = 0; i < 2; ++i )
+            for( size_t i = 0; i < 3; ++i )
             {
                 Ogre::String dataFolder = originalDataFolder + c_locations[i];
                 addResourceLocation( dataFolder, getMediaReadArchiveType(), "General" );
