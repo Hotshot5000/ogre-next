@@ -19,6 +19,7 @@ file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/IrradianceField/*.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/LightProfiles/*.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Vct/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/RTShadows/*.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../Common/include/*.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../Common/include/*.inl"
 )
@@ -30,6 +31,7 @@ file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/IrradianceField/*.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/LightProfiles/*.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/Vct/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/RTShadows/*.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../Common/src/*.cpp"
 )
 

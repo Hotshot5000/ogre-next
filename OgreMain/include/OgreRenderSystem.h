@@ -1165,6 +1165,8 @@ namespace Ogre
 
         /** Returns whether or not a Gpu program of the given type is currently bound. */
         virtual bool isGpuProgramBound( GpuProgramType gptype );
+        
+        virtual void createAccelerationStructure( VertexArrayObject *vao ) {}
 
         VaoManager *getVaoManager() const { return mVaoManager; }
 

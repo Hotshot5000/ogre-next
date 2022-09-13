@@ -7487,6 +7487,8 @@ namespace Ogre{
                                 mShadowNodeDef->setDefaultTechnique( SHADOWMAP_FOCUSED );
                             else if( str == "pssm" )
                                 mShadowNodeDef->setDefaultTechnique( SHADOWMAP_PSSM );
+                            else if( str == "rt" )
+                                mShadowNodeDef->setDefaultTechnique( SHADOWMAP_RT );
                             else
                             {
                                  compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS,
@@ -10503,6 +10505,42 @@ namespace Ogre{
                     }
 
                     passCompute->mJobName = jobName;
+                }
+                    break;
+                case ID_RT:
+                {
+                    if(prop->values.size() != 1)
+                    {
+                        compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line);
+                        return;
+                    }
+
+                    String RTType;
+                    if( !getString(prop->values.front(), &RTType) )
+                    {
+                        compiler->addError(ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line);
+                        return;
+                    }
+                    
+                    CompositorPassComputeDef::ComputeRayTracing rt = CompositorPassComputeDef::ComputeRayTracing::RT_NONE;
+                    if( RTType == "shadows" )
+                    {
+                        rt = CompositorPassComputeDef::ComputeRayTracing::RT_SHADOWS;
+                    }
+                    else if( RTType == "GI" )
+                    {
+                        rt = CompositorPassComputeDef::ComputeRayTracing::RT_GI;
+                    }
+                    else if( RTType == "reflections" )
+                    {
+                        rt = CompositorPassComputeDef::ComputeRayTracing::RT_REFLECTIONS;
+                    }
+                    else
+                    {
+                        compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line);
+                    }
+
+                    passCompute->mComputeRayTracing = rt;
                 }
                     break;
                 case ID_CAMERA:

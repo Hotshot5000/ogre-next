@@ -328,6 +328,8 @@ namespace Ogre
         void _notifyActiveComputeEnded();
         void _notifyNewCommandBuffer();
         void _notifyDeviceStalled();
+        
+        virtual void createAccelerationStructure( VertexArrayObject *vao );
     };
 }  // namespace Ogre
 

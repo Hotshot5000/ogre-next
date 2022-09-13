@@ -54,6 +54,7 @@ Copyright (c) 2000-2016 Torus Knot Software Ltd
 #include "Vao/OgreMetalUavBufferPacked.h"
 #include "Vao/OgreMetalVaoManager.h"
 #include "Vao/OgreVertexArrayObject.h"
+#include "Vao/OgreVertexBufferDownloadHelper.h"
 
 #import <Foundation/NSEnumerator.h>
 #import <Metal/Metal.h>
@@ -2788,5 +2789,170 @@ namespace Ogre
             if( mActiveRenderEncoder )
                 [mActiveRenderEncoder setStencilReferenceValue:refValue];
         }
+    }
+    MTLResourceOptions getManagedBufferStorageMode() {
+    #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
+        return MTLResourceStorageModeManaged;
+    #else
+        return MTLResourceStorageModeShared;
+    #endif
+    }
+    //-------------------------------------------------------------------------
+    void MetalRenderSystem::createAccelerationStructure( VertexArrayObject *vao )
+    {
+        MTLResourceOptions options = getManagedBufferStorageMode();
+        
+        size_t vertexStart = 0u;
+        size_t numVertices = vao->getBaseVertexBuffer()->getNumElements();
+
+        VertexBufferPacked *vertexBuffer = vao->getBaseVertexBuffer();
+        IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
+        
+        VertexBufferDownloadHelper downloadHelper;
+        {
+            VertexElementSemanticFullArray semanticsToDownload;
+            semanticsToDownload.push_back( VES_POSITION );
+//            semanticsToDownload.push_back( VES_NORMAL );
+//            semanticsToDownload.push_back( VES_TEXTURE_COORDINATES );
+
+            
+            
+            downloadHelper.queueDownload( vao, semanticsToDownload,
+                                          vertexStart,
+                                          numVertices );
+        }
+        const VertexBufferDownloadHelper::DownloadData *downloadData =
+            downloadHelper.getDownloadData().data();
+        
+        VertexElement2 dummy( VET_FLOAT1, VES_TEXTURE_COORDINATES );
+        VertexElement2 origElements[3] = {
+            downloadData[0].origElements ? *downloadData[0].origElements : dummy,
+            downloadData[1].origElements ? *downloadData[1].origElements : dummy,
+            downloadData[2].origElements ? *downloadData[2].origElements : dummy,
+        };
+
+        // Map the buffers we started downloading in countBuffersSize
+        uint8 const *srcData[1];
+        downloadHelper.map( srcData );
+
+        id<MTLBuffer> vertexPositionBuffer = [mActiveDevice->mDevice newBufferWithLength:numVertices * sizeof(vector_float3) options:options];
+        void *vertexBufferContents = vertexPositionBuffer.contents;
+
+        for( size_t vertexIdx = 0; vertexIdx < numVertices; ++vertexIdx )
+        {
+            Vector4 pos =
+                downloadHelper.getVector4( srcData[0] + downloadData[0].srcOffset, origElements[0] );
+            Vector3 normal( Vector3::UNIT_Y );
+            Vector2 uv( Vector2::ZERO );
+
+            if( srcData[1] )
+            {
+                normal = downloadHelper.getNormal( srcData[1] + downloadData[1].srcOffset,
+                                                   origElements[1] );
+            }
+            if( srcData[2] )
+            {
+                uv = downloadHelper
+                         .getVector4( srcData[2] + downloadData[2].srcOffset, origElements[2] )
+                         .xy();
+            }
+
+            *vertexBufferContents++ = static_cast<float>( pos.x );
+            *vertexBufferContents++ = static_cast<float>( pos.y );
+            *vertexBufferContents++ = static_cast<float>( pos.z );
+
+//            *vertexBufferContents++ = static_cast<float>( normal.x );
+//            *vertexBufferContents++ = static_cast<float>( normal.y );
+//            *vertexBufferContents++ = static_cast<float>( normal.z );
+//
+//            *vertexBufferContents++ = static_cast<float>( uv.x );
+//            *vertexBufferContents++ = static_cast<float>( uv.y );
+
+            srcData[0] += downloadData[0].srcBytesPerVertex;
+//            srcData[1] += downloadData[1].srcBytesPerVertex;
+//            srcData[2] += downloadData[2].srcBytesPerVertex;
+        }
+
+        _primitiveAccelerationStructures = [[NSMutableArray alloc] init];
+
+        // Create a primitive acceleration structure for each piece of geometry in the scene.
+        uint32 primitiveCount = vao->getPrimitiveCount();
+        for (NSUInteger i = 0; i < primitiveCount; i++) {
+            
+            MTLAccelerationStructureTriangleGeometryDescriptor *geometryDescriptor = [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];
+
+            descriptor.vertexBuffer = vertexPositionBuffer;
+            descriptor.vertexStride = sizeof(float3);
+            descriptor.triangleCount = numVertices;
+
+            // Assign each piece of geometry a consecutive slot in the intersection function table.
+            geometryDescriptor.intersectionFunctionTableOffset = i;
+
+            // Create a primitive acceleration structure descriptor to contain the single piece
+            // of acceleration structure geometry.
+            MTLPrimitiveAccelerationStructureDescriptor *accelDescriptor = [MTLPrimitiveAccelerationStructureDescriptor descriptor];
+
+            accelDescriptor.geometryDescriptors = @[ geometryDescriptor ];
+
+            // Build the acceleration structure.
+            id <MTLAccelerationStructure> accelerationStructure = [self newAccelerationStructureWithDescriptor:accelDescriptor];
+
+            // Add the acceleration structure to the array of primitive acceleration structures.
+            [_primitiveAccelerationStructures addObject:accelerationStructure];
+        }
+
+        // Allocate a buffer of acceleration structure instance descriptors. Each descriptor represents
+        // an instance of one of the primitive acceleration structures created above, with its own
+        // transformation matrix.
+        _instanceBuffer = [_device newBufferWithLength:sizeof(MTLAccelerationStructureInstanceDescriptor) * _scene.instances.count options:options];
+
+        MTLAccelerationStructureInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureInstanceDescriptor *)_instanceBuffer.contents;
+
+        // Fill out instance descriptors.
+        for (NSUInteger instanceIndex = 0; instanceIndex < _scene.instances.count; instanceIndex++) {
+            GeometryInstance *instance = _scene.instances[instanceIndex];
+
+            NSUInteger geometryIndex = [_scene.geometries indexOfObject:instance.geometry];
+
+            // Map the instance to its acceleration structure.
+            instanceDescriptors[instanceIndex].accelerationStructureIndex = (uint32_t)geometryIndex;
+
+            // Mark the instance as opaque if it doesn't have an intersection function so that the
+            // ray intersector doesn't attempt to execute a function that doesn't exist.
+            instanceDescriptors[instanceIndex].options = instance.geometry.intersectionFunctionName == nil ? MTLAccelerationStructureInstanceOptionOpaque : 0;
+
+            // Metal adds the geometry intersection function table offset and instance intersection
+            // function table offset together to determine which intersection function to execute.
+            // The sample mapped geometries directly to their intersection functions above, so it
+            // sets the instance's table offset to 0.
+            instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
+
+            // Set the instance mask, which the sample uses to filter out intersections between rays
+            // and geometry. For example, it uses masks to prevent light sources from being visible
+            // to secondary rays, which would result in their contribution being double-counted.
+            instanceDescriptors[instanceIndex].mask = (uint32_t)instance.mask;
+
+            // Copy the first three rows of the instance transformation matrix. Metal assumes that
+            // the bottom row is (0, 0, 0, 1).
+            // This allows instance descriptors to be tightly packed in memory.
+            for (int column = 0; column < 4; column++)
+                for (int row = 0; row < 3; row++)
+                    instanceDescriptors[instanceIndex].transformationMatrix.columns[column][row] = instance.transform.columns[column][row];
+        }
+
+#if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
+        [_instanceBuffer didModifyRange:NSMakeRange(0, _instanceBuffer.length)];
+#endif
+
+        // Create an instance acceleration structure descriptor.
+        MTLInstanceAccelerationStructureDescriptor *accelDescriptor = [MTLInstanceAccelerationStructureDescriptor descriptor];
+
+        accelDescriptor.instancedAccelerationStructures = _primitiveAccelerationStructures;
+        accelDescriptor.instanceCount = _scene.instances.count;
+        accelDescriptor.instanceDescriptorBuffer = _instanceBuffer;
+
+        // Finally, create the instance acceleration structure containing all of the instances
+        // in the scene.
+        _instanceAccelerationStructure = [self newAccelerationStructureWithDescriptor:accelDescriptor];
     }
 }

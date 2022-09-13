@@ -117,6 +117,14 @@ namespace Ogre
             }
         };
         typedef vector<BufferSource>::type BufferSourceVec;
+        
+        enum ComputeRayTracing
+        {
+            RT_NONE,
+            RT_SHADOWS,
+            RT_GI,
+            RT_REFLECTIONS
+        };
 
     protected:
         TextureSources     mTextureSources;
@@ -126,13 +134,15 @@ namespace Ogre
 
     public:
         /// Name of the HlmsComputeJob to run.
-        IdString mJobName;
-        IdString mCameraName;
+        IdString          mJobName;
+        IdString          mCameraName;
+        ComputeRayTracing mComputeRayTracing;
 
         CompositorPassComputeDef( CompositorNodeDef   *parentNodeDef,
                                   CompositorTargetDef *parentTargetDef ) :
             CompositorPassDef( PASS_COMPUTE, parentTargetDef ),
-            mParentNodeDef( parentNodeDef )
+            mParentNodeDef( parentNodeDef ),
+            mComputeRayTracing( RT_NONE )
         {
         }
 

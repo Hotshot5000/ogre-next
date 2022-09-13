@@ -1360,6 +1360,7 @@ namespace Ogre
         mIds["keep_previous_uavs"] = ID_KEEP_PREVIOUS_UAV;
 
         mIds["job"] = ID_JOB;
+        mIds["rt"] = ID_RT;
 
         mIds["mipmap_method"] = ID_MIPMAP_METHOD;
         mIds["api_default"] = ID_API_DEFAULT;

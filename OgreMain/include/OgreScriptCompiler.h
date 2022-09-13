@@ -1061,6 +1061,7 @@ namespace Ogre
 
                     //Used by PASS_COMPUTE
                     ID_JOB,
+                    ID_RT,
 
                     //Used by PASS_MIPMAP
                     ID_MIPMAP_METHOD,

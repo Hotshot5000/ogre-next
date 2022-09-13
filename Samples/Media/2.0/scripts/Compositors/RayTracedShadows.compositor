@@ -1,0 +1,132 @@
+compositor_node DepthPrePassNode
+{
+	//texture gBufferNormals			target_width target_height PFG_R10G10B10A2_UNORM	msaa_auto explicit_resolve
+	//texture gBufferShadowRoughness	target_width target_height PFG_RG16_UNORM			msaa_auto explicit_resolve
+	texture gBufferDepthBuffer		target_width target_height PFG_D32_FLOAT			msaa_auto
+
+	rtv mrtGBuffer
+	{
+		//colour	gBufferNormals gBufferShadowRoughness
+		depth	gBufferDepthBuffer
+	}
+
+	target mrtGBuffer
+	{
+		pass render_scene
+		{
+			load
+			{
+				all clear
+				clear_colour 1 1 1 1
+			}
+			store
+			{
+				//Do not resolve
+				depth store
+			}
+
+			overlays	off
+
+			is_prepass	on
+		}
+	}
+
+	out 0 gBufferDepthBuffer
+	//out 1 gBufferNormals
+	//out 2 gBufferShadowRoughness
+}
+
+compositor_node RayTracedShadowsRenderingNode
+{
+	in 0 gBufferDepthBuffer
+	//in 1 gBufferNormals
+	//in 2 gBufferShadowRoughness
+	//in 3 resolvedDepthBuffer
+	in 1 rt_renderwindow
+ 
+    texture shadowTexture target_width target_height PFG_RGBA8_UNORM depth_pool 0 uav
+
+    target
+    {
+        pass compute
+        {
+            job    IntersectionTestJob
+            
+            //uav # textureName read write allow_write_after_write
+            input 0 gBufferDepthBuffer
+            uav 0 shadowTexture    write
+            
+        }
+    }
+
+    target rt_renderwindow
+    {
+        pass clear
+        {
+            colour_value 0.2 0.4 0.6 1
+        }
+        pass render_quad
+        {
+            material Ogre/Copy/4xFP32
+            input 0 shadowTexture
+        }
+        pass render_scene
+        {
+            /*load
+            {
+                all                clear
+                clear_colour    0.2 0.4 0.6 1
+            }*/
+            store
+            {
+                colour    store_or_resolve
+                depth    dont_care
+                stencil    dont_care
+            }
+            overlays    on
+            //shadows        RayTracedShadowNode
+
+            profiling_id "Main Render"
+        }
+    }
+
+	
+}
+
+compositor_node_shadow RayTracedShadowNode
+{
+	technique pssm
+
+	texture atlas 3072 2048 PFG_D32_FLOAT
+
+	num_splits		3
+	pssm_lambda		0.95
+	shadow_map 0 atlas uv 0.000000000000000 0.0 0.666666666666667 1.0 light 0 split 0
+	shadow_map 1 atlas uv 0.666666666666667 0.0 0.333333333333333 0.5 light 0 split 1
+	shadow_map 2 atlas uv 0.666666666666667 0.5 0.333333333333333 0.5 light 0 split 2
+
+	target atlas
+	{
+		pass clear
+		{
+			colour_value 1 1 1 1
+		}
+	}
+
+	shadow_map_target_type directional
+	{
+		shadow_map 0 1 2
+		{
+			pass render_scene
+			{
+			}
+		}
+	}
+}
+
+workspace RayTracedShadowsWorkspace
+{
+	connect			DepthPrePassNode	0	RayTracedShadowsRenderingNode	0
+	connect_output												RayTracedShadowsRenderingNode	1
+}
+
