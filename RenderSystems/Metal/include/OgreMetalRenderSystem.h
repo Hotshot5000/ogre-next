@@ -329,7 +329,7 @@ namespace Ogre
         void _notifyNewCommandBuffer();
         void _notifyDeviceStalled();
         
-        virtual void createAccelerationStructure( VertexArrayObject *vao );
+        virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform );
     };
 }  // namespace Ogre
 

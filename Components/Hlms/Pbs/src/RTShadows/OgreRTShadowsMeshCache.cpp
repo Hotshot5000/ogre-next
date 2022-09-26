@@ -95,7 +95,7 @@ namespace Ogre
 
                 IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
                 
-                RenderSystem *renderSystem = Root::getSingleton().getRenderSystem();
+                
             }
             
             ++itor;
@@ -128,6 +128,8 @@ namespace Ogre
             ++itemItor;
         }
         
+        RenderSystem *renderSystem = Root::getSingleton().getRenderSystem();
+        renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform );
         
 //        MeshCacheMap::iterator itor = mMeshCaches.begin();
 //        MeshCacheMap::iterator end = mMeshCaches.end();

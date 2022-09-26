@@ -2798,118 +2798,131 @@ namespace Ogre
     #endif
     }
     //-------------------------------------------------------------------------
-    void MetalRenderSystem::createAccelerationStructure( VertexArrayObject *vao )
+    void MetalRenderSystem::createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
         
-        size_t vertexStart = 0u;
-        size_t numVertices = vao->getBaseVertexBuffer()->getNumElements();
-
-        VertexBufferPacked *vertexBuffer = vao->getBaseVertexBuffer();
-        IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
+        std::vector<VertexArrayObject *>::iterator vaoIt = meshVaos.begin();
+        std::vector<VertexArrayObject *>::iterator vaoEnd = meshVaos.end();
         
-        VertexBufferDownloadHelper downloadHelper;
+        while( vaoIt != vaoEnd )
         {
-            VertexElementSemanticFullArray semanticsToDownload;
-            semanticsToDownload.push_back( VES_POSITION );
-//            semanticsToDownload.push_back( VES_NORMAL );
-//            semanticsToDownload.push_back( VES_TEXTURE_COORDINATES );
+            VertexArrayObject *vao = *vaoIt;
+            size_t vertexStart = 0u;
+            size_t numVertices = vao->getBaseVertexBuffer()->getNumElements();
 
+            VertexBufferPacked *vertexBuffer = vao->getBaseVertexBuffer();
+            IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
             
+            VertexBufferDownloadHelper downloadHelper;
+            {
+                VertexElementSemanticFullArray semanticsToDownload;
+                semanticsToDownload.push_back( VES_POSITION );
+    //            semanticsToDownload.push_back( VES_NORMAL );
+    //            semanticsToDownload.push_back( VES_TEXTURE_COORDINATES );
+
+                
+                
+                downloadHelper.queueDownload( vao, semanticsToDownload,
+                                              vertexStart,
+                                              numVertices );
+            }
+            const VertexBufferDownloadHelper::DownloadData *downloadData =
+                downloadHelper.getDownloadData().data();
             
-            downloadHelper.queueDownload( vao, semanticsToDownload,
-                                          vertexStart,
-                                          numVertices );
+            VertexElement2 dummy( VET_FLOAT1, VES_TEXTURE_COORDINATES );
+            VertexElement2 origElements[3] = {
+                downloadData[0].origElements ? *downloadData[0].origElements : dummy,
+                downloadData[1].origElements ? *downloadData[1].origElements : dummy,
+                downloadData[2].origElements ? *downloadData[2].origElements : dummy,
+            };
+
+            // Map the buffers we started downloading in countBuffersSize
+            uint8 const *srcData[1];
+            downloadHelper.map( srcData );
+
+            id<MTLBuffer> vertexPositionBuffer = [mActiveDevice->mDevice newBufferWithLength:numVertices * sizeof(vector_float3) options:options];
+            void *vertexBufferContents = vertexPositionBuffer.contents;
+
+            for( size_t vertexIdx = 0; vertexIdx < numVertices; ++vertexIdx )
+            {
+                Vector4 pos =
+                    downloadHelper.getVector4( srcData[0] + downloadData[0].srcOffset, origElements[0] );
+                Vector3 normal( Vector3::UNIT_Y );
+                Vector2 uv( Vector2::ZERO );
+
+                if( srcData[1] )
+                {
+                    normal = downloadHelper.getNormal( srcData[1] + downloadData[1].srcOffset,
+                                                       origElements[1] );
+                }
+                if( srcData[2] )
+                {
+                    uv = downloadHelper
+                             .getVector4( srcData[2] + downloadData[2].srcOffset, origElements[2] )
+                             .xy();
+                }
+
+                *vertexBufferContents++ = static_cast<float>( pos.x );
+                *vertexBufferContents++ = static_cast<float>( pos.y );
+                *vertexBufferContents++ = static_cast<float>( pos.z );
+
+    //            *vertexBufferContents++ = static_cast<float>( normal.x );
+    //            *vertexBufferContents++ = static_cast<float>( normal.y );
+    //            *vertexBufferContents++ = static_cast<float>( normal.z );
+    //
+    //            *vertexBufferContents++ = static_cast<float>( uv.x );
+    //            *vertexBufferContents++ = static_cast<float>( uv.y );
+
+                srcData[0] += downloadData[0].srcBytesPerVertex;
+    //            srcData[1] += downloadData[1].srcBytesPerVertex;
+    //            srcData[2] += downloadData[2].srcBytesPerVertex;
+            }
+            
+            _primitiveAccelerationStructures = [[NSMutableArray alloc] init];
+
+            // Create a primitive acceleration structure for each piece of geometry in the scene.
+            uint32 primitiveCount = vao->getPrimitiveCount();
+            for (NSUInteger i = 0; i < primitiveCount; i++) {
+                
+                MTLAccelerationStructureTriangleGeometryDescriptor *geometryDescriptor = [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];
+
+                descriptor.vertexBuffer = vertexPositionBuffer;
+                descriptor.vertexStride = sizeof(float3);
+                descriptor.triangleCount = numVertices;
+
+                // Assign each piece of geometry a consecutive slot in the intersection function table.
+                geometryDescriptor.intersectionFunctionTableOffset = i;
+
+                // Create a primitive acceleration structure descriptor to contain the single piece
+                // of acceleration structure geometry.
+                MTLPrimitiveAccelerationStructureDescriptor *accelDescriptor = [MTLPrimitiveAccelerationStructureDescriptor descriptor];
+
+                accelDescriptor.geometryDescriptors = @[ geometryDescriptor ];
+
+                // Build the acceleration structure.
+                id <MTLAccelerationStructure> accelerationStructure = [self newAccelerationStructureWithDescriptor:accelDescriptor];
+
+                // Add the acceleration structure to the array of primitive acceleration structures.
+                [_primitiveAccelerationStructures addObject:accelerationStructure];
+            }
+            
+            ++vaoIt;
         }
-        const VertexBufferDownloadHelper::DownloadData *downloadData =
-            downloadHelper.getDownloadData().data();
         
-        VertexElement2 dummy( VET_FLOAT1, VES_TEXTURE_COORDINATES );
-        VertexElement2 origElements[3] = {
-            downloadData[0].origElements ? *downloadData[0].origElements : dummy,
-            downloadData[1].origElements ? *downloadData[1].origElements : dummy,
-            downloadData[2].origElements ? *downloadData[2].origElements : dummy,
-        };
+        
 
-        // Map the buffers we started downloading in countBuffersSize
-        uint8 const *srcData[1];
-        downloadHelper.map( srcData );
-
-        id<MTLBuffer> vertexPositionBuffer = [mActiveDevice->mDevice newBufferWithLength:numVertices * sizeof(vector_float3) options:options];
-        void *vertexBufferContents = vertexPositionBuffer.contents;
-
-        for( size_t vertexIdx = 0; vertexIdx < numVertices; ++vertexIdx )
-        {
-            Vector4 pos =
-                downloadHelper.getVector4( srcData[0] + downloadData[0].srcOffset, origElements[0] );
-            Vector3 normal( Vector3::UNIT_Y );
-            Vector2 uv( Vector2::ZERO );
-
-            if( srcData[1] )
-            {
-                normal = downloadHelper.getNormal( srcData[1] + downloadData[1].srcOffset,
-                                                   origElements[1] );
-            }
-            if( srcData[2] )
-            {
-                uv = downloadHelper
-                         .getVector4( srcData[2] + downloadData[2].srcOffset, origElements[2] )
-                         .xy();
-            }
-
-            *vertexBufferContents++ = static_cast<float>( pos.x );
-            *vertexBufferContents++ = static_cast<float>( pos.y );
-            *vertexBufferContents++ = static_cast<float>( pos.z );
-
-//            *vertexBufferContents++ = static_cast<float>( normal.x );
-//            *vertexBufferContents++ = static_cast<float>( normal.y );
-//            *vertexBufferContents++ = static_cast<float>( normal.z );
-//
-//            *vertexBufferContents++ = static_cast<float>( uv.x );
-//            *vertexBufferContents++ = static_cast<float>( uv.y );
-
-            srcData[0] += downloadData[0].srcBytesPerVertex;
-//            srcData[1] += downloadData[1].srcBytesPerVertex;
-//            srcData[2] += downloadData[2].srcBytesPerVertex;
-        }
-
-        _primitiveAccelerationStructures = [[NSMutableArray alloc] init];
-
-        // Create a primitive acceleration structure for each piece of geometry in the scene.
-        uint32 primitiveCount = vao->getPrimitiveCount();
-        for (NSUInteger i = 0; i < primitiveCount; i++) {
-            
-            MTLAccelerationStructureTriangleGeometryDescriptor *geometryDescriptor = [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];
-
-            descriptor.vertexBuffer = vertexPositionBuffer;
-            descriptor.vertexStride = sizeof(float3);
-            descriptor.triangleCount = numVertices;
-
-            // Assign each piece of geometry a consecutive slot in the intersection function table.
-            geometryDescriptor.intersectionFunctionTableOffset = i;
-
-            // Create a primitive acceleration structure descriptor to contain the single piece
-            // of acceleration structure geometry.
-            MTLPrimitiveAccelerationStructureDescriptor *accelDescriptor = [MTLPrimitiveAccelerationStructureDescriptor descriptor];
-
-            accelDescriptor.geometryDescriptors = @[ geometryDescriptor ];
-
-            // Build the acceleration structure.
-            id <MTLAccelerationStructure> accelerationStructure = [self newAccelerationStructureWithDescriptor:accelDescriptor];
-
-            // Add the acceleration structure to the array of primitive acceleration structures.
-            [_primitiveAccelerationStructures addObject:accelerationStructure];
-        }
+        
 
         // Allocate a buffer of acceleration structure instance descriptors. Each descriptor represents
         // an instance of one of the primitive acceleration structures created above, with its own
         // transformation matrix.
-        _instanceBuffer = [_device newBufferWithLength:sizeof(MTLAccelerationStructureInstanceDescriptor) * _scene.instances.count options:options];
+        _instanceBuffer = [_device newBufferWithLength:sizeof(MTLAccelerationStructureInstanceDescriptor) * instanceMeshIndex.size() options:options];
 
         MTLAccelerationStructureInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureInstanceDescriptor *)_instanceBuffer.contents;
 
         // Fill out instance descriptors.
-        for (NSUInteger instanceIndex = 0; instanceIndex < _scene.instances.count; instanceIndex++) {
+        for (NSUInteger instanceIndex = 0; instanceIndex < instanceMeshIndex.size(); instanceIndex++) {
             GeometryInstance *instance = _scene.instances[instanceIndex];
 
             NSUInteger geometryIndex = [_scene.geometries indexOfObject:instance.geometry];
@@ -2948,7 +2961,7 @@ namespace Ogre
         MTLInstanceAccelerationStructureDescriptor *accelDescriptor = [MTLInstanceAccelerationStructureDescriptor descriptor];
 
         accelDescriptor.instancedAccelerationStructures = _primitiveAccelerationStructures;
-        accelDescriptor.instanceCount = _scene.instances.count;
+        accelDescriptor.instanceCount = instanceMeshIndex.size();
         accelDescriptor.instanceDescriptorBuffer = _instanceBuffer;
 
         // Finally, create the instance acceleration structure containing all of the instances
