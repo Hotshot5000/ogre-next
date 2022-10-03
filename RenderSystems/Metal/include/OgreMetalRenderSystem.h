@@ -121,6 +121,13 @@ namespace Ogre
         MetalDeviceList     mDeviceList;
         MetalDevice        *mActiveDevice;
         __unsafe_unretained id<MTLRenderCommandEncoder> mActiveRenderEncoder;
+        
+        id <MTLAccelerationStructure> _instanceAccelerationStructure;
+        NSMutableArray *_primitiveAccelerationStructures;
+        
+        id <MTLBuffer> _instanceBuffer;
+        
+        id <MTLIntersectionFunctionTable> _intersectionFunctionTable;
 
         MetalDevice          mDevice;
         dispatch_semaphore_t mMainGpuSyncSemaphore;
@@ -329,7 +336,9 @@ namespace Ogre
         void _notifyNewCommandBuffer();
         void _notifyDeviceStalled();
         
-        virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform );
+        id<MTLAccelerationStructure> createAccelerationStructureWithDescriptor( MTLAccelerationStructureDescriptor *descriptor );
+        
+        virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform ) override;
     };
 }  // namespace Ogre
 
