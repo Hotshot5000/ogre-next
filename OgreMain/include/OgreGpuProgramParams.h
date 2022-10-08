@@ -31,7 +31,6 @@ Copyright (c) 2000-2014 Torus Knot Software Ltd
 #include "OgrePrerequisites.h"
 
 // Precompiler options
-#include "OgreAny.h"
 #include "OgreIteratorWrappers.h"
 #include "OgreSerializer.h"
 #include "OgreSharedPtr.h"
@@ -1336,7 +1335,7 @@ namespace Ogre
             ACT_PACKED_TEXTURE_SIZE,
 
             /** Provides the current transform matrix of the texture unit (index determined by
-               setAutoConstant call), as seen by the fixed-function pipeline.
+               setAutoConstant call), as it used to be seen by the now-removed fixed-function pipeline.
             */
             ACT_TEXTURE_MATRIX,
 

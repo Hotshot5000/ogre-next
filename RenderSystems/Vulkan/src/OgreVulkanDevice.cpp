@@ -53,10 +53,145 @@ namespace Ogre
         mPresentQueue( 0 ),
         mVaoManager( 0 ),
         mRenderSystem( renderSystem ),
-        mSupportedStages( 0xFFFFFFFF )
+        mSupportedStages( 0xFFFFFFFF ),
+        mIsExternal( false )
     {
         memset( &mDeviceMemoryProperties, 0, sizeof( mDeviceMemoryProperties ) );
         createPhysicalDevice( deviceIdx );
+    }
+    //-------------------------------------------------------------------------
+    VulkanDevice::VulkanDevice( VkInstance instance, const VulkanExternalDevice &externalDevice,
+                                VulkanRenderSystem *renderSystem ) :
+        mInstance( instance ),
+        mPhysicalDevice( externalDevice.physicalDevice ),
+        mDevice( externalDevice.device ),
+        mPresentQueue( 0 ),
+        mVaoManager( 0 ),
+        mRenderSystem( renderSystem ),
+        mSupportedStages( 0xFFFFFFFF ),
+        mIsExternal( true )
+    {
+        LogManager::getSingleton().logMessage( "Creating Vulkan Device from External VkVulkan handle" );
+
+        memset( &mDeviceMemoryProperties, 0, sizeof( mDeviceMemoryProperties ) );
+
+        vkGetPhysicalDeviceMemoryProperties( mPhysicalDevice, &mDeviceMemoryProperties );
+
+        // mDeviceExtraFeatures gets initialized later, once we analyzed all the extensions
+        memset( &mDeviceExtraFeatures, 0, sizeof( mDeviceExtraFeatures ) );
+        fillDeviceFeatures();
+
+        mSupportedStages = 0xFFFFFFFF;
+        if( !mDeviceFeatures.geometryShader )
+            mSupportedStages ^= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+        if( !mDeviceFeatures.tessellationShader )
+        {
+            mSupportedStages ^= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+                                VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+        }
+
+        {
+            uint32 numQueues;
+            vkGetPhysicalDeviceQueueFamilyProperties( mPhysicalDevice, &numQueues, NULL );
+            if( numQueues == 0u )
+            {
+                OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR, "Vulkan device is reporting 0 queues!",
+                             "VulkanDevice::createDevice" );
+            }
+            mQueueProps.resize( numQueues );
+            vkGetPhysicalDeviceQueueFamilyProperties( mPhysicalDevice, &numQueues, &mQueueProps[0] );
+        }
+
+        mPresentQueue = externalDevice.presentQueue;
+        mGraphicsQueue.setExternalQueue( this, VulkanQueue::Graphics, externalDevice.graphicsQueue );
+        {
+            // Filter wrongly-provided extensions
+            uint32 numExtensions = 0;
+            vkEnumerateDeviceExtensionProperties( mPhysicalDevice, 0, &numExtensions, 0 );
+
+            FastArray<VkExtensionProperties> availableExtensions;
+            availableExtensions.resize( numExtensions );
+            vkEnumerateDeviceExtensionProperties( mPhysicalDevice, 0, &numExtensions,
+                                                  availableExtensions.begin() );
+            std::set<String> extensions;
+            for( size_t i = 0u; i < numExtensions; ++i )
+            {
+                const String extensionName = availableExtensions[i].extensionName;
+                LogManager::getSingleton().logMessage( "Found device extension: " + extensionName );
+                extensions.insert( extensionName );
+            }
+
+            FastArray<VkExtensionProperties> deviceExtensionsCopy = externalDevice.deviceExtensions;
+            FastArray<VkExtensionProperties>::iterator itor = deviceExtensionsCopy.begin();
+            FastArray<VkExtensionProperties>::iterator endt = deviceExtensionsCopy.end();
+
+            while( itor != endt )
+            {
+                if( extensions.find( itor->extensionName ) == extensions.end() )
+                {
+                    LogManager::getSingleton().logMessage(
+                        "[Vulkan][INFO] External Device claims extension " +
+                        String( itor->extensionName ) +
+                        " is present but it's not. This is normal. Ignoring." );
+                    itor = efficientVectorRemove( deviceExtensionsCopy, itor );
+                    endt = deviceExtensionsCopy.end();
+                }
+                else
+                {
+                    ++itor;
+                }
+            }
+
+            mDeviceExtensions.reserve( deviceExtensionsCopy.size() );
+            itor = deviceExtensionsCopy.begin();
+            while( itor != endt )
+            {
+                LogManager::getSingleton().logMessage( "Externally requested Device Extension: " +
+                                                       String( itor->extensionName ) );
+                mDeviceExtensions.push_back( itor->extensionName );
+                ++itor;
+            }
+
+            std::sort( mDeviceExtensions.begin(), mDeviceExtensions.end() );
+        }
+
+        // Initialize mDeviceExtraFeatures
+        if( hasInstanceExtension( VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME ) )
+        {
+            VkPhysicalDeviceFeatures2 deviceFeatures2;
+            makeVkStruct( deviceFeatures2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 );
+            VkPhysicalDevice16BitStorageFeatures _16BitStorageFeatures;
+            makeVkStruct( _16BitStorageFeatures,
+                          VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES );
+            VkPhysicalDeviceShaderFloat16Int8Features shaderFloat16Int8Features;
+            makeVkStruct( shaderFloat16Int8Features,
+                          VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES );
+
+            PFN_vkGetPhysicalDeviceFeatures2KHR GetPhysicalDeviceFeatures2KHR =
+                (PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(
+                    mInstance, "vkGetPhysicalDeviceFeatures2KHR" );
+
+            void **lastNext = &deviceFeatures2.pNext;
+
+            if( this->hasDeviceExtension( VK_KHR_16BIT_STORAGE_EXTENSION_NAME ) )
+            {
+                *lastNext = &_16BitStorageFeatures;
+                lastNext = &_16BitStorageFeatures.pNext;
+            }
+            if( this->hasDeviceExtension( VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME ) )
+            {
+                *lastNext = &shaderFloat16Int8Features;
+                lastNext = &shaderFloat16Int8Features.pNext;
+            }
+
+            GetPhysicalDeviceFeatures2KHR( mPhysicalDevice, &deviceFeatures2 );
+
+            mDeviceExtraFeatures.storageInputOutput16 = _16BitStorageFeatures.storageInputOutput16;
+            mDeviceExtraFeatures.shaderFloat16 = shaderFloat16Int8Features.shaderFloat16;
+            mDeviceExtraFeatures.shaderInt8 = shaderFloat16Int8Features.shaderInt8;
+        }
+
+        initUtils( mDevice );
     }
     //-------------------------------------------------------------------------
     VulkanDevice::~VulkanDevice()
@@ -74,6 +209,74 @@ namespace Ogre
             mDevice = 0;
             mPhysicalDevice = 0;
         }
+    }
+    //-------------------------------------------------------------------------
+    void VulkanDevice::fillDeviceFeatures()
+    {
+#define VK_DEVICEFEATURE_ENABLE_IF( x ) \
+    if( features.x ) \
+    mDeviceFeatures.x = features.x
+
+        VkPhysicalDeviceFeatures features;
+        vkGetPhysicalDeviceFeatures( mPhysicalDevice, &features );
+
+        // Don't opt in to features we don't want / need.
+        memset( &mDeviceFeatures, 0, sizeof( mDeviceFeatures ) );
+        // VK_DEVICEFEATURE_ENABLE_IF( robustBufferAccess );
+        VK_DEVICEFEATURE_ENABLE_IF( fullDrawIndexUint32 );
+        VK_DEVICEFEATURE_ENABLE_IF( imageCubeArray );
+        VK_DEVICEFEATURE_ENABLE_IF( independentBlend );
+        VK_DEVICEFEATURE_ENABLE_IF( geometryShader );
+        VK_DEVICEFEATURE_ENABLE_IF( tessellationShader );
+        VK_DEVICEFEATURE_ENABLE_IF( sampleRateShading );
+        VK_DEVICEFEATURE_ENABLE_IF( dualSrcBlend );
+        // VK_DEVICEFEATURE_ENABLE_IF( logicOp );
+        VK_DEVICEFEATURE_ENABLE_IF( multiDrawIndirect );
+        VK_DEVICEFEATURE_ENABLE_IF( drawIndirectFirstInstance );
+        VK_DEVICEFEATURE_ENABLE_IF( depthClamp );
+        VK_DEVICEFEATURE_ENABLE_IF( depthBiasClamp );
+        VK_DEVICEFEATURE_ENABLE_IF( fillModeNonSolid );
+        VK_DEVICEFEATURE_ENABLE_IF( depthBounds );
+        // VK_DEVICEFEATURE_ENABLE_IF( wideLines );
+        // VK_DEVICEFEATURE_ENABLE_IF( largePoints );
+        VK_DEVICEFEATURE_ENABLE_IF( alphaToOne );
+        VK_DEVICEFEATURE_ENABLE_IF( multiViewport );
+        VK_DEVICEFEATURE_ENABLE_IF( samplerAnisotropy );
+        VK_DEVICEFEATURE_ENABLE_IF( textureCompressionETC2 );
+        VK_DEVICEFEATURE_ENABLE_IF( textureCompressionASTC_LDR );
+        VK_DEVICEFEATURE_ENABLE_IF( textureCompressionBC );
+        // VK_DEVICEFEATURE_ENABLE_IF( occlusionQueryPrecise );
+        // VK_DEVICEFEATURE_ENABLE_IF( pipelineStatisticsQuery );
+        VK_DEVICEFEATURE_ENABLE_IF( vertexPipelineStoresAndAtomics );
+        VK_DEVICEFEATURE_ENABLE_IF( fragmentStoresAndAtomics );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderTessellationAndGeometryPointSize );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderImageGatherExtended );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderStorageImageExtendedFormats );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderStorageImageMultisample );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderStorageImageReadWithoutFormat );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderStorageImageWriteWithoutFormat );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderUniformBufferArrayDynamicIndexing );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderSampledImageArrayDynamicIndexing );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderStorageBufferArrayDynamicIndexing );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderStorageImageArrayDynamicIndexing );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderClipDistance );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderCullDistance );
+        // VK_DEVICEFEATURE_ENABLE_IF( shaderFloat64 );
+        // VK_DEVICEFEATURE_ENABLE_IF( shaderInt64 );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderInt16 );
+        // VK_DEVICEFEATURE_ENABLE_IF( shaderResourceResidency );
+        VK_DEVICEFEATURE_ENABLE_IF( shaderResourceMinLod );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseBinding );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseResidencyBuffer );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseResidencyImage2D );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseResidencyImage3D );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseResidency2Samples );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseResidency4Samples );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseResidency8Samples );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseResidency16Samples );
+        // VK_DEVICEFEATURE_ENABLE_IF( sparseResidencyAliased );
+        VK_DEVICEFEATURE_ENABLE_IF( variableMultisampleRate );
+        // VK_DEVICEFEATURE_ENABLE_IF( inheritedQueries );
     }
     //-------------------------------------------------------------------------
     void VulkanDevice::destroyQueues( FastArray<VulkanQueue> &queueArray )
@@ -161,6 +364,25 @@ namespace Ogre
         return instance;
     }
     //-------------------------------------------------------------------------
+    void VulkanDevice::addExternalInstanceExtensions( FastArray<VkExtensionProperties> &extensions )
+    {
+        msInstanceExtensions.clear();
+        msInstanceExtensions.reserve( extensions.size() );
+
+        FastArray<VkExtensionProperties>::const_iterator itor = extensions.begin();
+        FastArray<VkExtensionProperties>::const_iterator endt = extensions.end();
+
+        while( itor != endt )
+        {
+            LogManager::getSingleton().logMessage( "Externally requested Instance Extension: " +
+                                                   String( itor->extensionName ) );
+            msInstanceExtensions.push_back( itor->extensionName );
+            ++itor;
+        }
+
+        std::sort( msInstanceExtensions.begin(), msInstanceExtensions.end() );
+    }
+    //-------------------------------------------------------------------------
     void VulkanDevice::createPhysicalDevice( uint32 deviceIdx )
     {
         VkResult result = VK_SUCCESS;
@@ -201,7 +423,7 @@ namespace Ogre
 
         // mDeviceExtraFeatures gets initialized later, once we analyzed all the extensions
         memset( &mDeviceExtraFeatures, 0, sizeof( mDeviceExtraFeatures ) );
-        vkGetPhysicalDeviceFeatures( mPhysicalDevice, &mDeviceFeatures );
+        fillDeviceFeatures();
 
         mSupportedStages = 0xFFFFFFFF;
         if( !mDeviceFeatures.geometryShader )
@@ -382,6 +604,7 @@ namespace Ogre
             createInfo.pNext = &deviceFeatures2;
 
             GetPhysicalDeviceFeatures2KHR( mPhysicalDevice, &deviceFeatures2 );
+            deviceFeatures2.features = mDeviceFeatures;
 
             mDeviceExtraFeatures.storageInputOutput16 = _16BitStorageFeatures.storageInputOutput16;
             mDeviceExtraFeatures.shaderFloat16 = shaderFloat16Int8Features.shaderFloat16;
@@ -410,9 +633,21 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void VulkanDevice::initQueues()
     {
+        if( !mIsExternal )
+        {
+            VkQueue queue = 0;
+            vkGetDeviceQueue( mDevice, mGraphicsQueue.mFamilyIdx, mGraphicsQueue.mQueueIdx, &queue );
+            mGraphicsQueue.init( mDevice, queue, mRenderSystem );
+
+            TODO_findRealPresentQueue;
+            mPresentQueue = mGraphicsQueue.mQueue;
+        }
+        else
+        {
+            mGraphicsQueue.init( mDevice, mGraphicsQueue.mQueue, mRenderSystem );
+        }
+
         VkQueue queue = 0;
-        vkGetDeviceQueue( mDevice, mGraphicsQueue.mFamilyIdx, mGraphicsQueue.mQueueIdx, &queue );
-        mGraphicsQueue.init( mDevice, queue, mRenderSystem );
 
         FastArray<VulkanQueue>::iterator itor = mComputeQueues.begin();
         FastArray<VulkanQueue>::iterator endt = mComputeQueues.end();
@@ -433,9 +668,6 @@ namespace Ogre
             itor->init( mDevice, queue, mRenderSystem );
             ++itor;
         }
-
-        TODO_findRealPresentQueue;
-        mPresentQueue = mGraphicsQueue.mQueue;
     }
     //-------------------------------------------------------------------------
     void VulkanDevice::commitAndNextCommandBuffer( SubmissionType::SubmissionType submissionType )

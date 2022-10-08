@@ -3450,26 +3450,6 @@ namespace Ogre{
                                            "cubic_texture must have at most 7 arguments");
                     }
                     break;
-                case ID_TEX_COORD_SET:
-                    if(prop->values.empty())
-                    {
-                        compiler->addError(ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line);
-                    }
-                    else if(prop->values.size() > 1)
-                    {
-                        compiler->addError(ScriptCompiler::CE_FEWERPARAMETERSEXPECTED, prop->file, prop->line,
-                                           "tex_coord_set must have at most 1 argument");
-                    }
-                    else
-                    {
-                        uint32 val = 0;
-                        if(getUInt(prop->values.front(), &val))
-                            mUnit->setTextureCoordSet(val);
-                        else
-                            compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line,
-                                               prop->values.front()->getValue() + " is not supported as an integer argument");
-                    }
-                    break;
                 case ID_TEX_ADDRESS_MODE:
                     {
                         if(prop->values.empty())
@@ -6524,7 +6504,7 @@ namespace Ogre{
                     if( depthBufferId == DepthBuffer::POOL_INVALID )
                     {
                         if( PixelFormatGpuUtils::isDepth( format ) )
-                            depthBufferId = DepthBuffer::POOL_NON_SHAREABLE;
+                            depthBufferId = DepthBuffer::NO_POOL_EXPLICIT_RTV;
                         else if( format == PFG_NULL )
                             depthBufferId = DepthBuffer::POOL_NO_DEPTH;
                         else
@@ -7507,6 +7487,8 @@ namespace Ogre{
                                 mShadowNodeDef->setDefaultTechnique( SHADOWMAP_FOCUSED );
                             else if( str == "pssm" )
                                 mShadowNodeDef->setDefaultTechnique( SHADOWMAP_PSSM );
+                            else if( str == "rt" )
+                                mShadowNodeDef->setDefaultTechnique( SHADOWMAP_RT );
                             else
                             {
                                  compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS,
@@ -7983,11 +7965,11 @@ namespace Ogre{
                     break;
                 case ID_DEPTH:
                     translateRenderTargetViewEntry( mRtv->depthAttachment, prop, compiler, false );
-                    mRtv->depthBufferId = DepthBuffer::POOL_NON_SHAREABLE;
+                    mRtv->depthBufferId = DepthBuffer::NO_POOL_EXPLICIT_RTV;
                     break;
                 case ID_STENCIL:
                     translateRenderTargetViewEntry( mRtv->stencilAttachment, prop, compiler, false );
-                    mRtv->depthBufferId = DepthBuffer::POOL_NON_SHAREABLE;
+                    mRtv->depthBufferId = DepthBuffer::NO_POOL_EXPLICIT_RTV;
                     break;
                 case ID_DEPTH_STENCIL:
                     translateRenderTargetViewEntry( mRtv->depthAttachment, prop, compiler, false );
@@ -8778,7 +8760,7 @@ namespace Ogre{
                         else
                         {
                             compiler->addError(ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line,
-                                               "Number expected, followed by dont_care|load|clear|clear_on_tilers");
+                                               "Number expected, followed by 4 floats");
                         }
                     }
                 }
@@ -8933,7 +8915,7 @@ namespace Ogre{
                         else
                         {
                             compiler->addError(ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line,
-                                               "Expected dont_care|store|clear|clear_on_tilers" );
+                                               "Expected dont_care|store|resolve|store_or_resolve|store_and_resolve" );
                         }
                     }
                     else
@@ -8956,7 +8938,7 @@ namespace Ogre{
                         else
                         {
                             compiler->addError(ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line,
-                                               "Number expected, followed by dont_care|store|clear|clear_on_tilers");
+                                               "Number expected, followed by dont_care|store|resolve|store_or_resolve|store_and_resolve");
                         }
                     }
                 }
@@ -8976,7 +8958,7 @@ namespace Ogre{
                     else
                     {
                         compiler->addError(ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line,
-                                           "Expected dont_care|store|clear|clear_on_tilers" );
+                                           "Expected dont_care|store|resolve|store_or_resolve|store_and_resolve" );
                     }
                 }
                     break;
@@ -8995,7 +8977,7 @@ namespace Ogre{
                     else
                     {
                         compiler->addError(ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line,
-                                           "Expected dont_care|store|clear|clear_on_tilers" );
+                                           "Expected dont_care|store|resolve|store_or_resolve|store_and_resolve" );
                     }
                 }
                     break;
@@ -10525,6 +10507,42 @@ namespace Ogre{
                     passCompute->mJobName = jobName;
                 }
                     break;
+                case ID_RT:
+                {
+                    if(prop->values.size() != 1)
+                    {
+                        compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line);
+                        return;
+                    }
+
+                    String RTType;
+                    if( !getString(prop->values.front(), &RTType) )
+                    {
+                        compiler->addError(ScriptCompiler::CE_STRINGEXPECTED, prop->file, prop->line);
+                        return;
+                    }
+                    
+                    CompositorPassComputeDef::ComputeRayTracing rt = CompositorPassComputeDef::ComputeRayTracing::RT_NONE;
+                    if( RTType == "shadows" )
+                    {
+                        rt = CompositorPassComputeDef::ComputeRayTracing::RT_SHADOWS;
+                    }
+                    else if( RTType == "GI" )
+                    {
+                        rt = CompositorPassComputeDef::ComputeRayTracing::RT_GI;
+                    }
+                    else if( RTType == "reflections" )
+                    {
+                        rt = CompositorPassComputeDef::ComputeRayTracing::RT_REFLECTIONS;
+                    }
+                    else
+                    {
+                        compiler->addError(ScriptCompiler::CE_INVALIDPARAMETERS, prop->file, prop->line);
+                    }
+
+                    passCompute->mComputeRayTracing = rt;
+                }
+                    break;
                 case ID_CAMERA:
                 {
                     if(prop->values.empty())
@@ -11131,7 +11149,7 @@ namespace Ogre{
             CompositorPassProvider* passProv = compMgr->getCompositorPassProvider();
             if (passProv)
             {
-                passProv->translateCustomPass(node, mPassDef);
+                passProv->translateCustomPass( compiler, node, customId, mPassDef );
             }
         }
         else

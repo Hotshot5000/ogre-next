@@ -19,6 +19,7 @@ file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/IrradianceField/*.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/LightProfiles/*.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/Vct/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/RTShadows/*.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../Common/include/*.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../Common/include/*.inl"
 )
@@ -30,6 +31,7 @@ file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/IrradianceField/*.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/LightProfiles/*.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/Vct/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/RTShadows/*.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/../Common/src/*.cpp"
 )
 
@@ -53,13 +55,15 @@ endif()
 ogre_config_framework(${OGRE_NEXT}HlmsPbs)
 ogre_config_component(${OGRE_NEXT}HlmsPbs)
 
+message(STATUS "OGRE_NEXT_PREFIX: ${OGRE_NEXT_PREFIX}")
+
 install (DIRECTORY include/
-        DESTINATION include/OGRE/Hlms/Pbs
+        DESTINATION include/${OGRE_NEXT_PREFIX}/Hlms/Pbs
         FILES_MATCHING PATTERN "*.h"
         )
 
 # also install HLMS Common folder
 install (DIRECTORY ../Common/include/
-        DESTINATION include/OGRE/Hlms/Common
+        DESTINATION include/${OGRE_NEXT_PREFIX}/Hlms/Common
         FILES_MATCHING PATTERN "*.h" PATTERN "*.inl"
         )

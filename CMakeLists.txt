@@ -48,6 +48,19 @@ if (APPLE AND NOT ANDROID)
   set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
 endif ()
 
+# This option needs to be set now
+# OgreAddTargets and OgreConfigTargets make use of OGRE_NEXT and OGRE_NEXT_PREFIX
+option(OGRE_USE_NEW_PROJECT_NAME
+	"Libraries containing Ogre name will be called OgreNext, e.g. 'OgreNext.dll' instead of 'Ogre.dll'"
+	FALSE)
+
+if( OGRE_USE_NEW_PROJECT_NAME )
+	set( OGRE_NEXT "OgreNext" )
+	set( OGRE_NEXT_PREFIX "OGRE-Next")
+else()
+	set( OGRE_NEXT "Ogre" )
+	set( OGRE_NEXT_PREFIX "OGRE" )
+endif()
 
 project(OGRE-Next)
 # capture ogre location, and at the same time hide legacy cache variables
@@ -282,16 +295,6 @@ if (APPLE AND OGRE_BUILD_RENDERSYSTEM_METAL)
   endif ()
 endif (APPLE AND OGRE_BUILD_RENDERSYSTEM_METAL)
 
-# This option needs to be set now
-option(OGRE_USE_NEW_PROJECT_NAME
-	"Libraries containing Ogre name will be called OgreNext, e.g. 'OgreNext.dll' instead of 'Ogre.dll'"
-	FALSE)
-if( OGRE_USE_NEW_PROJECT_NAME )
-	set( OGRE_NEXT "OgreNext" )
-else()
-	set( OGRE_NEXT "Ogre" )
-endif()
-
 # Find dependencies
 include(Dependencies)
 # definitions for samples
@@ -443,7 +446,9 @@ cmake_dependent_option(OGRE_STATIC "Static build" FALSE "" TRUE)
 cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_D3D11 "Build Direct3D11 RenderSystem" TRUE "WIN32;DirectX11_FOUND OR WINDOWS_STORE OR WINDOWS_PHONE" FALSE)
 cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_GL3PLUS "Build OpenGL 3+ RenderSystem" TRUE "OPENGL_FOUND; NOT OGRE_BUILD_RENDERSYSTEM_GLES; NOT OGRE_BUILD_RENDERSYSTEM_GLES2;NOT WINDOWS_STORE;NOT WINDOWS_PHONE;NOT OGRE_BUILD_PLATFORM_APPLE_IOS" FALSE)
 cmake_dependent_option(OGRE_GLSUPPORT_USE_EGL_HEADLESS "Use EGL. Required if you want to use GL3+ headless support (e.g. rendering on the Cloud without X11). If more than one GLSUPPORT is enabled, interface can be selected at runtime" FALSE "OGRE_BUILD_RENDERSYSTEM_GL3PLUS;EGL_FOUND" FALSE)
-cmake_dependent_option(OGRE_CONFIG_UNIX_NO_X11 "Avoid X11 dependencies as much as possible. OGRE_GLSUPPORT_USE_GLX won't be available" FALSE "OGRE_GLSUPPORT_USE_EGL_HEADLESS;UNIX" FALSE)
+if( UNIX AND (NOT OGRE_BUILD_RENDERSYSTEM_GL3PLUS OR OGRE_GLSUPPORT_USE_EGL_HEADLESS) )
+	option(OGRE_CONFIG_UNIX_NO_X11 "Avoid X11 dependencies as much as possible. OGRE_GLSUPPORT_USE_GLX & OGRE_VULKAN_WINDOW_XCB won't be available" FALSE)
+endif()
 cmake_dependent_option(OGRE_GLSUPPORT_USE_GLX "Use GLX (Default / Native window). If more than one GLSUPPORT is enabled, interface can be selected at runtime" TRUE "OGRE_BUILD_RENDERSYSTEM_GL3PLUS;UNIX;NOT APPLE;NOT OGRE_CONFIG_UNIX_NO_X11" FALSE)
 cmake_dependent_option(OGRE_GLSUPPORT_USE_WGL "Use WGL (Default / Native window). If more than one GLSUPPORT is enabled, interface can be selected at runtime" TRUE "OGRE_BUILD_RENDERSYSTEM_GL3PLUS;WIN32" FALSE)
 cmake_dependent_option(OGRE_GLSUPPORT_USE_COCOA "Use Cocoa (Default / Native window). If more than one GLSUPPORT is enabled, interface can be selected at runtime" TRUE "OGRE_BUILD_RENDERSYSTEM_GL3PLUS;APPLE" FALSE)
@@ -456,6 +461,13 @@ if( OGRE_GLSUPPORT_USE_EGL_HEADLESS )
 endif()
 cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_GLES2 "Build OpenGL ES 2.x RenderSystem" FALSE "OPENGLES2_FOUND;NOT WINDOWS_STORE;NOT WINDOWS_PHONE" FALSE)
 cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_VULKAN "Build Vulkan RenderSystem" TRUE "Vulkan_FOUND" FALSE)
+cmake_dependent_option(OGRE_VULKAN_WINDOW_NULL "Allow headless support. If more than one OGRE_VULKAN_WINDOW is enabled, interface can be selected at runtime" FALSE "OGRE_BUILD_RENDERSYSTEM_VULKAN" FALSE)
+cmake_dependent_option(OGRE_VULKAN_WINDOW_WIN32 "Use Win32 (Default / Native window). If more than one OGRE_VULKAN_WINDOW is enabled, interface can be selected at runtime" TRUE "OGRE_BUILD_RENDERSYSTEM_VULKAN;WIN32" FALSE)
+cmake_dependent_option(OGRE_VULKAN_WINDOW_XCB "Use X11 / xcb (Default / Native window). If more than one OGRE_VULKAN_WINDOW is enabled, interface can be selected at runtime" TRUE "OGRE_BUILD_RENDERSYSTEM_VULKAN;UNIX;NOT ANDROID;NOT OGRE_CONFIG_UNIX_NO_X11" FALSE)
+cmake_dependent_option(OGRE_VULKAN_WINDOW_ANDROID "Use Android (Default / 'ANative' window). If more than one OGRE_VULKAN_WINDOW is enabled, interface can be selected at runtime" TRUE "OGRE_BUILD_RENDERSYSTEM_VULKAN;ANDROID" FALSE)
+if( OGRE_BUILD_RENDERSYSTEM_VULKAN AND OGRE_CONFIG_UNIX_NO_X11 )
+	set(OGRE_VULKAN_WINDOW_NULL ON CACHE BOOL "Forced on due to OGRE_CONFIG_UNIX_NO_X11" FORCE)
+endif()
 if( APPLE )
     option(OGRE_BUILD_PLATFORM_APPLE_IOS "Build For iOS (Apple only)" FALSE)
     option(OGRE_BUILD_RENDERSYSTEM_METAL "Build Metal RenderSystem (Apple only)" TRUE)

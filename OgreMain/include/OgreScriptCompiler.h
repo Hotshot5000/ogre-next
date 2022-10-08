@@ -810,7 +810,6 @@ namespace Ogre
         ID_CUBIC_TEXTURE,
             ID_SEPARATE_UV,
             ID_COMBINED_UVW,
-        ID_TEX_COORD_SET,
         ID_TEX_ADDRESS_MODE,
             ID_WRAP,
             ID_CLAMP,
@@ -1062,6 +1061,7 @@ namespace Ogre
 
                     //Used by PASS_COMPUTE
                     ID_JOB,
+                    ID_RT,
 
                     //Used by PASS_MIPMAP
                     ID_MIPMAP_METHOD,

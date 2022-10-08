@@ -22,6 +22,7 @@ differences have diverged long enough.
 |-------|-----------------|
 | Linux |[![CI](https://github.com/OGRECave/ogre-next/actions/workflows/linux.build.yml/badge.svg)](https://github.com/OGRECave/ogre-next/actions/workflows/linux.build.yml)|
 | MSVC | [![Build status](https://ci.appveyor.com/api/projects/status/github/OGRECave/ogre-next?branch=master&svg=true)](https://ci.appveyor.com/project/MatiasNGoldberg/ogre-next/branch/master)|
+| Clang-Format Style Consistency |[![CI](https://github.com/OGRECave/ogre-next/actions/workflows/clang-format.yml/badge.svg)](https://github.com/OGRECave/ogre-next/actions/workflows/clang-format.yml)|
 
 ## Supported Backends
 
@@ -123,7 +124,7 @@ For a list of samples and their demonstrated features, refer to the [samples sec
 Debian-based. Run:
 
 ```
-sudo apt-get install libfreetype6-dev libfreeimage-dev libzzip-dev libxrandr-dev libxaw7-dev freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev doxygen graphviz python-clang-4.0 libsdl2-dev cmake ninja-build git
+sudo apt-get install libfreetype6-dev libfreeimage-dev libzzip-dev libxrandr-dev libxaw7-dev freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev libx11-xcb-dev libxcb-keysyms1-dev doxygen graphviz python-clang libsdl2-dev cmake ninja-build git
 ```
 
 Arch-based Run:

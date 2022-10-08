@@ -589,7 +589,7 @@ namespace Ogre
         + height
         + fullScreen
         + miscParams
-		.
+        .
         See _createRenderWindow for details about each member.
         @param
         createdWindows This array will hold the created render windows.
@@ -787,6 +787,9 @@ namespace Ogre
         virtual void endRenderPassDescriptor();
 
     protected:
+        void debugLogPso( const HlmsPso *pso );
+        void debugLogPso( const HlmsComputePso *pso );
+
         /// Reads DepthBuffer::AvailableDepthFormats and alters DepthBuffer::DefaultDepthBufferFormat
         void selectDepthBufferFormat( const uint8 supportedFormats );
 
@@ -1162,6 +1165,8 @@ namespace Ogre
 
         /** Returns whether or not a Gpu program of the given type is currently bound. */
         virtual bool isGpuProgramBound( GpuProgramType gptype );
+        
+        virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform ) {}
 
         VaoManager *getVaoManager() const { return mVaoManager; }
 

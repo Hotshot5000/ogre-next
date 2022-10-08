@@ -43,16 +43,40 @@ compositor_node RayTracedShadowsRenderingNode
 	//in 2 gBufferShadowRoughness
 	//in 3 resolvedDepthBuffer
 	in 1 rt_renderwindow
+ 
+    texture shadowTexture target_width target_height PFG_RGBA8_UNORM depth_pool 0 uav
+
+    target
+    {
+        pass compute
+        {
+            job    IntersectionTestJob
+            
+            //uav # textureName read write allow_write_after_write
+            input 0 gBufferDepthBuffer
+            uav 0 shadowTexture    write
+            
+        }
+    }
 
     target rt_renderwindow
     {
+        pass clear
+        {
+            colour_value 0.2 0.4 0.6 1
+        }
+        pass render_quad
+        {
+            material Ogre/Copy/4xFP32
+            input 0 shadowTexture
+        }
         pass render_scene
         {
-            load
+            /*load
             {
                 all                clear
                 clear_colour    0.2 0.4 0.6 1
-            }
+            }*/
             store
             {
                 colour    store_or_resolve
@@ -60,7 +84,7 @@ compositor_node RayTracedShadowsRenderingNode
                 stencil    dont_care
             }
             overlays    on
-            //shadows        PbsMaterialsShadowNode
+            //shadows        RayTracedShadowNode
 
             profiling_id "Main Render"
         }

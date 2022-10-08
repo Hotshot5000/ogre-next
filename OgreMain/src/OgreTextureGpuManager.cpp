@@ -408,6 +408,8 @@ namespace Ogre
         if( mIgnoreSRgbPreference )
             textureFlags &= static_cast<uint32>( ~TextureFlags::PrefersLoadingFromFileAsSRGB );
 
+        filters = mTextureGpuManagerListener->getFiltersFor( name, aliasName, filters );
+
         TextureGpu *retVal = createTextureImpl( pageOutStrategy, idName, textureFlags, initialType );
         retVal->setTexturePoolId( poolId );
         retVal->_setSourceType( TextureSourceType::Standard );
@@ -2640,7 +2642,7 @@ namespace Ogre
                 try
                 {
                     if( data )
-                        img->load( data );
+                        img->load2( data, loadRequest.name );
                 }
                 catch( Exception &e )
                 {

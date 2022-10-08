@@ -49,7 +49,8 @@ namespace Ogre
         SHADOWMAP_UNIFORM,  // Default
         SHADOWMAP_PLANEOPTIMAL,
         SHADOWMAP_FOCUSED,
-        SHADOWMAP_PSSM
+        SHADOWMAP_PSSM,
+        SHADOWMAP_RT
     };
 
     /// Local texture definition
