@@ -114,14 +114,14 @@ namespace Ogre
             MeshCacheMap::iterator meshCacheIt = mMeshCaches.find( item->getMesh()->getName() );
             if( meshCacheIt != mMeshCaches.end() )
             {
-                
+                const ShadowsCachedMesh &cachedMesh = meshCacheIt->second;
+                instanceMeshIndex.push_back( cachedMesh.meshIndex );
+                const Ogre::Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
+                instanceTransform.push_back( transform );
             }
             else
             {
-                const ShadowsCachedMesh &cachedMesh = meshCacheIt->second;
-                instanceMeshIndex.push_back( cachedMesh.meshIndex );
-                const Ogre::Matrix4 transform = item->getParentSceneNode()->_getFullTransform();
-                instanceTransform.push_back( transform );
+                
             }
             
             

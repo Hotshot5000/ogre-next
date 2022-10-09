@@ -27,6 +27,7 @@
 namespace Ogre
 {
     class HlmsPbsDatablock;
+    class RTShadows;
 }
 
 namespace Demo
@@ -34,6 +35,7 @@ namespace Demo
     class RayTracedShadowsGameState : public TutorialGameState
     {
         ScreenSpaceReflections *mScreenSpaceReflections;
+        Ogre::RTShadows *mRTShadows;
         Ogre::HlmsPbsDatablock *mMaterials[4];
         
         Ogre::SceneNode *mSceneNode[16];

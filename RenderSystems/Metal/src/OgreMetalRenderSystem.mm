@@ -2890,6 +2890,7 @@ namespace Ogre
         
         std::vector<VertexArrayObject *>::iterator vaoIt = meshVaos.begin();
         std::vector<VertexArrayObject *>::iterator vaoEnd = meshVaos.end();
+        size_t intersectionTableOffset = 0;
         
         while( vaoIt != vaoEnd )
         {
@@ -2899,6 +2900,9 @@ namespace Ogre
 
             VertexBufferPacked *vertexBuffer = vao->getBaseVertexBuffer();
             IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
+            MetalBufferInterface *bufferInterface = static_cast<MetalBufferInterface *>( indexBuffer->getBufferInterface() );
+            id<MTLBuffer> vboName = bufferInterface->getVboName();
+            size_t indexBufferOffset = indexBuffer->_getInternalBufferStart();
             
             VertexBufferDownloadHelper downloadHelper;
             {
@@ -2917,17 +2921,17 @@ namespace Ogre
                 downloadHelper.getDownloadData().data();
             
             VertexElement2 dummy( VET_FLOAT1, VES_TEXTURE_COORDINATES );
-            VertexElement2 origElements[3] = {
-                downloadData[0].origElements ? *downloadData[0].origElements : dummy,
-                downloadData[1].origElements ? *downloadData[1].origElements : dummy,
-                downloadData[2].origElements ? *downloadData[2].origElements : dummy,
+            VertexElement2 origElements[1] = {
+                downloadData[0].origElements ? *downloadData[0].origElements : dummy
+//                downloadData[1].origElements ? *downloadData[1].origElements : dummy,
+//                downloadData[2].origElements ? *downloadData[2].origElements : dummy,
             };
 
             // Map the buffers we started downloading in countBuffersSize
             uint8 const *srcData[1];
             downloadHelper.map( srcData );
 
-            id<MTLBuffer> vertexPositionBuffer = [mActiveDevice->mDevice newBufferWithLength:numVertices * sizeof(vector_float3) options:options];
+            id<MTLBuffer> vertexPositionBuffer = [mActiveDevice->mDevice newBufferWithLength:numVertices * 3 options:options];
             float *vertexBufferContents = reinterpret_cast<float *>(vertexPositionBuffer.contents);
 
             for( size_t vertexIdx = 0; vertexIdx < numVertices; ++vertexIdx )
@@ -2969,16 +2973,19 @@ namespace Ogre
 
             // Create a primitive acceleration structure for each piece of geometry in the scene.
             uint32 primitiveCount = vao->getPrimitiveCount();
-            for (NSUInteger i = 0; i < primitiveCount; i++) {
+//            for (NSUInteger i = 0; i < primitiveCount; i++) {
                 
                 MTLAccelerationStructureTriangleGeometryDescriptor *geometryDescriptor = [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];
 
                 geometryDescriptor.vertexBuffer = vertexPositionBuffer;
                 geometryDescriptor.vertexStride = sizeof(float) * 3;
-                geometryDescriptor.triangleCount = numVertices;
+                geometryDescriptor.triangleCount = primitiveCount;//2;//numVertices;
+                geometryDescriptor.indexType = indexBuffer->getIndexType() == IT_16BIT ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
+                geometryDescriptor.indexBufferOffset = indexBufferOffset;
+                geometryDescriptor.indexBuffer = vboName;
 
                 // Assign each piece of geometry a consecutive slot in the intersection function table.
-                geometryDescriptor.intersectionFunctionTableOffset = i;
+                geometryDescriptor.intersectionFunctionTableOffset = intersectionTableOffset++;
 
                 // Create a primitive acceleration structure descriptor to contain the single piece
                 // of acceleration structure geometry.
@@ -2991,7 +2998,7 @@ namespace Ogre
 
                 // Add the acceleration structure to the array of primitive acceleration structures.
                 [_primitiveAccelerationStructures addObject:accelerationStructure];
-            }
+//            }
             
             ++vaoIt;
         }
@@ -3052,6 +3059,6 @@ namespace Ogre
 
         // Finally, create the instance acceleration structure containing all of the instances
         // in the scene.
-        _instanceAccelerationStructure = [self newAccelerationStructureWithDescriptor:accelDescriptor];
+        _instanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
     }
 }

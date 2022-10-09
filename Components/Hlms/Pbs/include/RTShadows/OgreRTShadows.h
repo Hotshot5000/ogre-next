@@ -35,15 +35,19 @@ THE SOFTWARE.
 
 namespace Ogre
 {
+    class RTShadowsMeshCache;
+    
     class _OgreHlmsPbsExport RTShadows
     {
     private:
         typedef FastArray<Item *> ItemArray;
         ItemArray  mItems;
+        RTShadowsMeshCache *mMeshCache;
         
         bool mFirstBuild;
     public:
         RTShadows();
+        ~RTShadows();
         /** Adds all items in SceneManager that match visibilityFlags
         @param sceneManager
             SceneManager ptr
@@ -64,6 +68,8 @@ namespace Ogre
         void updateAS();
         
         void update( SceneManager *sceneManager );
+        
+        RTShadowsMeshCache *getMeshCache() { return mMeshCache; }
     };
 }
 

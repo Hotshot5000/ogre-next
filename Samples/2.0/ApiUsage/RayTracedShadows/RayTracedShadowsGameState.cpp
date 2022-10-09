@@ -31,6 +31,9 @@
 
 #include "OgreForward3D.h"
 
+#include "RTShadows/OgreRTShadows.h"
+#include "RTShadows/OgreRTShadowsMeshCache.h"
+
 using namespace Demo;
 
 namespace Demo
@@ -57,10 +60,16 @@ namespace Demo
 //        ScreenSpaceReflections::setupSSRValues( 1.0 );
 //        mScreenSpaceReflections =
 //            new ScreenSpaceReflections( 0, mGraphicsSystem->getRoot()->getRenderSystem() );
+        mRTShadows = new Ogre::RTShadows();
+        mRTShadows->init();
+        Ogre::RTShadowsMeshCache *meshCache = mRTShadows->getMeshCache();
 
         // Setup a scene similar to that of PBS sample, except
         // we apply the cubemap to everything via C++ code
         Ogre::SceneManager *sceneManager = mGraphicsSystem->getSceneManager();
+        Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
+        Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
+        assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
 
 //        {
 //            Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
@@ -146,6 +155,8 @@ namespace Demo
             // Set the new samplerblock. The Hlms system will
             // automatically create the API block if necessary
             datablock->setSamplerblock( Ogre::PBSM_ROUGHNESS, samplerblock );
+            meshCache->addMeshToCache(planeMesh, sceneManager, renderSystem, hlmsManager, item);
+            meshCache->updateAS();
         }
 
         for( int i = 0; i < 4; ++i )

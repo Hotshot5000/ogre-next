@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include "OgreStableHeaders.h"
 
 #include "RTShadows/OgreRTShadows.h"
+#include "RTShadows/OgreRTShadowsMeshCache.h"
 #include "Math/Array/OgreBooleanMask.h"
 #include "OgreItem.h"
 #include "OgreSceneManager.h"
@@ -36,9 +37,16 @@ THE SOFTWARE.
 namespace Ogre
 {
     RTShadows::RTShadows() :
+        mMeshCache(0),
         mFirstBuild(true)
     {
         
+    }
+    //-------------------------------------------------------------------------
+    RTShadows::~RTShadows()
+    {
+        if( mMeshCache )
+            delete mMeshCache;
     }
     //-------------------------------------------------------------------------
     void RTShadows::addAllItems( SceneManager *sceneManager,
@@ -114,7 +122,7 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void RTShadows::init()
     {
-        
+        mMeshCache = new RTShadowsMeshCache();
     }
     //-------------------------------------------------------------------------
     void RTShadows::updateAS()
