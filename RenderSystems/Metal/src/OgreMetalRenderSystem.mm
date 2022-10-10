@@ -2975,29 +2975,29 @@ namespace Ogre
             uint32 primitiveCount = vao->getPrimitiveCount();
 //            for (NSUInteger i = 0; i < primitiveCount; i++) {
                 
-                MTLAccelerationStructureTriangleGeometryDescriptor *geometryDescriptor = [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];
+            MTLAccelerationStructureTriangleGeometryDescriptor *geometryDescriptor = [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];
 
-                geometryDescriptor.vertexBuffer = vertexPositionBuffer;
-                geometryDescriptor.vertexStride = sizeof(float) * 3;
-                geometryDescriptor.triangleCount = primitiveCount;//2;//numVertices;
-                geometryDescriptor.indexType = indexBuffer->getIndexType() == IT_16BIT ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
-                geometryDescriptor.indexBufferOffset = indexBufferOffset;
-                geometryDescriptor.indexBuffer = vboName;
+            geometryDescriptor.vertexBuffer = vertexPositionBuffer;
+            geometryDescriptor.vertexStride = sizeof(float) * 3;
+            geometryDescriptor.triangleCount = primitiveCount;//2;//numVertices;
+            geometryDescriptor.indexType = indexBuffer->getIndexType() == IT_16BIT ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
+            geometryDescriptor.indexBufferOffset = indexBufferOffset;
+            geometryDescriptor.indexBuffer = vboName;
 
-                // Assign each piece of geometry a consecutive slot in the intersection function table.
-                geometryDescriptor.intersectionFunctionTableOffset = intersectionTableOffset++;
+            // Assign each piece of geometry a consecutive slot in the intersection function table.
+            geometryDescriptor.intersectionFunctionTableOffset = intersectionTableOffset++;
 
-                // Create a primitive acceleration structure descriptor to contain the single piece
-                // of acceleration structure geometry.
-                MTLPrimitiveAccelerationStructureDescriptor *accelDescriptor = [MTLPrimitiveAccelerationStructureDescriptor descriptor];
+            // Create a primitive acceleration structure descriptor to contain the single piece
+            // of acceleration structure geometry.
+            MTLPrimitiveAccelerationStructureDescriptor *accelDescriptor = [MTLPrimitiveAccelerationStructureDescriptor descriptor];
 
-                accelDescriptor.geometryDescriptors = @[ geometryDescriptor ];
+            accelDescriptor.geometryDescriptors = @[ geometryDescriptor ];
 
-                // Build the acceleration structure.
-                id <MTLAccelerationStructure> accelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
+            // Build the acceleration structure.
+            id <MTLAccelerationStructure> accelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
 
-                // Add the acceleration structure to the array of primitive acceleration structures.
-                [_primitiveAccelerationStructures addObject:accelerationStructure];
+            // Add the acceleration structure to the array of primitive acceleration structures.
+            [_primitiveAccelerationStructures addObject:accelerationStructure];
 //            }
             
             ++vaoIt;
