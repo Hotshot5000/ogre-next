@@ -53,6 +53,7 @@ namespace Ogre
      */
 
     class HlmsPbsDatablock;
+    class RTShadows;
 
     /** Physically based shading implementation specfically designed for
         OpenGL 3+, D3D11 and other RenderSystems which support uniform buffers.
@@ -156,6 +157,7 @@ namespace Ogre
         IrradianceVolume *mIrradianceVolume;
         VctLighting      *mVctLighting;
         IrradianceField  *mIrradianceField;
+        RTShadows        *mRTShadows;
 #ifdef OGRE_BUILD_COMPONENT_PLANAR_REFLECTIONS
         // TODO: After texture refactor it should be possible to abstract this,
         // so we don't have to be aware of PlanarReflections class.
@@ -435,6 +437,9 @@ namespace Ogre
 
         void         setVctLighting( VctLighting *vctLighting ) { mVctLighting = vctLighting; }
         VctLighting *getVctLighting() { return mVctLighting; }
+        
+        void setRTShadows( RTShadows *rtShadows ) { mRTShadows = rtShadows; }
+        RTShadows *getRTShadows() { return mRTShadows; }
 
         void setIrradianceField( IrradianceField *irradianceField )
         {

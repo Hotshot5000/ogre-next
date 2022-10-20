@@ -65,6 +65,7 @@ THE SOFTWARE.
 #include "Vao/OgreVaoManager.h"
 #include "Vao/OgreVertexArrayObject.h"
 #include "Vct/OgreVctLighting.h"
+#include "RTShadows/OgreRTShadows.h"
 
 #ifdef OGRE_BUILD_COMPONENT_PLANAR_REFLECTIONS
 #    include "OgrePlanarReflections.h"
@@ -286,6 +287,7 @@ namespace Ogre
         mIrradianceVolume( 0 ),
         mVctLighting( 0 ),
         mIrradianceField( 0 ),
+        mRTShadows( 0 ),
 #ifdef OGRE_BUILD_COMPONENT_PLANAR_REFLECTIONS
         mPlanarReflections( 0 ),
         mPlanarReflectionsSamplerblock( 0 ),
