@@ -3,6 +3,23 @@
 using namespace metal;
 using namespace raytracing;
 
+struct Light
+{
+    
+        float4 position;    //.w contains the objLightMask
+        float4 diffuse;        //.w contains numNonCasterDirectionalLights
+    float3 specular;
+
+    float3 attenuation;
+    //Spotlights:
+    //  spotDirection.xyz is direction
+    //  spotParams.xyz contains falloff params
+    float4 spotDirection;
+    float4 spotParams;
+
+#define lightTexProfileIdx spotDirection.w
+};
+
 kernel void main_metal
 (
     texture2d<@insertpiece(texture0_pf_type), access::read> depthBuffer [[texture(0)]],
