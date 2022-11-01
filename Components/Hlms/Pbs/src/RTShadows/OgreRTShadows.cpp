@@ -33,14 +33,62 @@ THE SOFTWARE.
 #include "Math/Array/OgreBooleanMask.h"
 #include "OgreItem.h"
 #include "OgreSceneManager.h"
+#include "Compositor/OgreCompositorManager2.h"
+#include "OgreHlmsCompute.h"
+#include "OgreHlmsComputeJob.h"
 
 namespace Ogre
 {
-    RTShadows::RTShadows() :
-        mMeshCache(0),
-        mFirstBuild(true)
+    RTShadows::RTShadows( RenderSystem *renderSystem, HlmsManager *hlmsManager ) :
+        mMeshCache( 0 ),
+        mSceneManager( 0 ),
+        mCompositorManager( 0 ),
+        mRenderSystem( renderSystem ),
+        mVaoManager( renderSystem->getVaoManager() ),
+        mHlmsManager( hlmsManager ),
+        mShadowIntersectionJob( 0 ),
+        mFirstBuild( true )
     {
+        HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
+
+        mShadowIntersectionJob = hlmsCompute->findComputeJobNoThrow( "RT/IntersectionTestJob" );
+
+#if OGRE_NO_JSON
+        OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
+                     "To use RTShadows, Ogre must be build with JSON support "
+                     "and you must include the resources bundled at "
+                     "Samples/Media/RT",
+                     "RTShadows::RTShadows" );
+#endif
+        if( !mShadowIntersectionJob )
+        {
+            OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
+                         "To use RTShadows, you must include the resources bundled at "
+                         "Samples/Media/RT\n"
+                         "Could not find RT/IntersectionTestJob",
+                         "RTShadows::RTShadows" );
+        }
         
+        char tmpBuffer[128];
+        LwString texName( LwString::FromEmptyPointer( tmpBuffer, sizeof( tmpBuffer ) ) );
+        texName.a( "VctLighting_", names[i], "/Id", getId() );
+        TextureGpu *texture = textureManager->createTexture(
+            texName.c_str(), GpuPageOutStrategy::Discard, texFlags, TextureTypes::Type3D );
+        if( i == 0u )
+        {
+            texture->setResolution( width, height, depth );
+            texture->setNumMipmaps( numMipsMain );
+        }
+        else
+        {
+            texture->setResolution( widthAniso, heightAniso, depthAniso );
+            texture->setNumMipmaps( numMipsAniso );
+        }
+        texture->setPixelFormat( PFG_RGBA8_UNORM_SRGB );
+        texture->scheduleTransitionTo( GpuResidency::Resident );
+        
+        mShadowTex = mVaoManager->createUavBuffer( totalNumMeshes, sizeof( float ) * 4u * 2u,
+                                                  BB_FLAG_READONLY, 0, false );
     }
     //-------------------------------------------------------------------------
     RTShadows::~RTShadows()
@@ -130,8 +178,53 @@ namespace Ogre
         
     }
     //-------------------------------------------------------------------------
+    void RTShadows::setAutoUpdate( CompositorManager2 *compositorManager,
+                                              SceneManager *sceneManager )
+    {
+        if( compositorManager && !mCompositorManager )
+        {
+            mSceneManager = sceneManager;
+            mCompositorManager = compositorManager;
+            compositorManager->addListener( this );
+        }
+        else if( !compositorManager && mCompositorManager )
+        {
+            mCompositorManager->removeListener( this );
+            mSceneManager = 0;
+            mCompositorManager = 0;
+        }
+    }
+    //-------------------------------------------------------------------------
+    void RTShadows::allWorkspacesBeforeBeginUpdate()
+    {
+        update( mSceneManager );
+    }
+    //-------------------------------------------------------------------------
     void RTShadows::update( SceneManager *sceneManager )
     {
+        HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
         
+        DescriptorSetTexture2::BufferSlot texBufSlot(
+            DescriptorSetTexture2::BufferSlot::makeEmpty() );
+        texBufSlot.buffer = mGpuPartitionedSubMeshes;
+        mShadowIntersectionJob->setTexBuffer( 0, texBufSlot );
+        
+        DescriptorSetUav::BufferSlot bufferSlot( DescriptorSetUav::BufferSlot::makeEmpty() );
+        bufferSlot.buffer = compressedVf ? mVertexBufferCompressed : mVertexBufferUncompressed;
+        bufferSlot.access = ResourceAccess::Read;
+        mShadowIntersectionJob->_setUavBuffer( 0, bufferSlot );
+        
+        uint32 meshRange[2] = { meshStart, meshStart + numMeshes[i] };
+
+        paramMeshRange.setManualValue( meshRange, 2u );
+
+        ShaderParams &shaderParams = mShadowIntersectionJob->getShaderParams( "default" );
+        shaderParams.mParams.clear();
+        shaderParams.mParams.push_back( paramMeshRange );
+        shaderParams.setDirty();
+
+        mShadowIntersectionJob->analyzeBarriers( mResourceTransitions );
+        mRenderSystem->executeResourceTransition( mResourceTransitions );
+        hlmsCompute->dispatch( mShadowIntersectionJob, 0, 0 );
     }
 }

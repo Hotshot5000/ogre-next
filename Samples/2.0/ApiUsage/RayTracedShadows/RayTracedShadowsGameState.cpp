@@ -70,6 +70,9 @@ namespace Demo
         Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
         Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
+        
+        mRTShadows->setAutoUpdate( mGraphicsSystem->getRoot()->getCompositorManager2(),
+                                           mGraphicsSystem->getSceneManager() );
 
 //        {
 //            Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();

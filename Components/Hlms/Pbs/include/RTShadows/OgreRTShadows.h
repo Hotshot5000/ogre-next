@@ -31,22 +31,34 @@ THE SOFTWARE.
 
 #include "OgreHlmsPbsPrerequisites.h"
 
+#include "Compositor/OgreCompositorWorkspaceListener.h"
+
 #include "OgreHeaderPrefix.h"
 
 namespace Ogre
 {
     class RTShadowsMeshCache;
     
-    class _OgreHlmsPbsExport RTShadows
+    class _OgreHlmsPbsExport RTShadows : public CompositorWorkspaceListener
     {
     private:
         typedef FastArray<Item *> ItemArray;
         ItemArray  mItems;
         RTShadowsMeshCache *mMeshCache;
         
+        SceneManager       *mSceneManager;
+        CompositorManager2 *mCompositorManager;
+        RenderSystem       *mRenderSystem;
+        VaoManager         *mVaoManager;
+        HlmsManager        *mHlmsManager;
+        
+        HlmsComputeJob *mShadowIntersectionJob;
+        
+        UavBufferPacked *mShadowTex;
+        
         bool mFirstBuild;
     public:
-        RTShadows();
+        RTShadows( RenderSystem *renderSystem, HlmsManager *hlmsManager );
         ~RTShadows();
         /** Adds all items in SceneManager that match visibilityFlags
         @param sceneManager
@@ -68,6 +80,18 @@ namespace Ogre
         void updateAS();
         
         void update( SceneManager *sceneManager );
+        
+        /// CompositorWorkspaceListener override
+        void allWorkspacesBeforeBeginUpdate() override;
+        
+        /// Register against the CompositorManager to call RTShadows::update
+        /// automatically when the CompositorManager is about to render (recommended)
+        ///
+        /// You still must call setCameraPosition every frame though (or whenever the camera
+        /// changes)
+        ///
+        /// Set to nullptr to disable auto update
+        void setAutoUpdate( CompositorManager2 *compositorManager, SceneManager *sceneManager );
         
         RTShadowsMeshCache *getMeshCache() { return mMeshCache; }
     };

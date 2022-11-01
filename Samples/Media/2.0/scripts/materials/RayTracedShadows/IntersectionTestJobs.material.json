@@ -1,7 +1,7 @@
 {
     "compute" :
     {
-        "IntersectionTestJob" :
+        "RT/IntersectionTestJob" :
         {
             "threads_per_group" : [16, 16, 1],
             "thread_groups" : [32, 32, 1],
