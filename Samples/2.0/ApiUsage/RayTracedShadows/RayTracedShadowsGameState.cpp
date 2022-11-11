@@ -34,6 +34,12 @@
 #include "RTShadows/OgreRTShadows.h"
 #include "RTShadows/OgreRTShadowsMeshCache.h"
 
+#include "OgreWindow.h"
+
+#include "Compositor/OgreCompositorWorkspace.h"
+#include "Compositor/OgreCompositorManager2.h"
+#include "Compositor/OgreCompositorNode.h"
+
 using namespace Demo;
 
 namespace Demo
@@ -60,15 +66,22 @@ namespace Demo
 //        ScreenSpaceReflections::setupSSRValues( 1.0 );
 //        mScreenSpaceReflections =
 //            new ScreenSpaceReflections( 0, mGraphicsSystem->getRoot()->getRenderSystem() );
-        mRTShadows = new Ogre::RTShadows();
+        Ogre::SceneManager *sceneManager = mGraphicsSystem->getSceneManager();
+        Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
+        Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
+        Ogre::Camera *camera = mGraphicsSystem->getCamera();
+        Ogre::CompositorWorkspace *workspace = mGraphicsSystem->getCompositorWorkspace();
+        const Ogre::CompositorWorkspaceDef *workspaceDef = workspace->getDefinition();
+        Ogre::CompositorManager2 *compositorMgr = workspaceDef->getCompositorManager();
+        
+        mRTShadows = new Ogre::RTShadows( mGraphicsSystem->getRenderWindow()->getTexture(),
+                                         renderSystem, hlmsManager, camera, workspace );
         mRTShadows->init();
         Ogre::RTShadowsMeshCache *meshCache = mRTShadows->getMeshCache();
 
         // Setup a scene similar to that of PBS sample, except
         // we apply the cubemap to everything via C++ code
-        Ogre::SceneManager *sceneManager = mGraphicsSystem->getSceneManager();
-        Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
-        Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
+        
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
         
         mRTShadows->setAutoUpdate( mGraphicsSystem->getRoot()->getCompositorManager2(),
@@ -309,6 +322,7 @@ namespace Demo
     //-----------------------------------------------------------------------------------
     void RayTracedShadowsGameState::destroyScene()
     {
+        delete mRTShadows;
 //        delete mScreenSpaceReflections;
 //        mScreenSpaceReflections = 0;
     }

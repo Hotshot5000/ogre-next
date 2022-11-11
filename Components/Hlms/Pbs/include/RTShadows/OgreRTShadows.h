@@ -51,15 +51,23 @@ namespace Ogre
         RenderSystem       *mRenderSystem;
         VaoManager         *mVaoManager;
         HlmsManager        *mHlmsManager;
+        Camera             *mCamera;
+        CompositorWorkspace *mWorkspace;
+        TextureGpu         *mRenderWindow;
+        TextureGpu         *mShadowTexture;
+        TextureGpu         *mDepthTexture;
         
-        HlmsComputeJob *mShadowIntersectionJob;
+        HlmsComputeJob     *mShadowIntersectionJob;
         
-        UavBufferPacked *mShadowTex;
+        UavBufferPacked    *mShadowTex;
+        
+        ResourceTransitionArray mResourceTransitions;
         
         bool mFirstBuild;
     public:
-        RTShadows( RenderSystem *renderSystem, HlmsManager *hlmsManager );
-        ~RTShadows();
+        RTShadows( TextureGpu *renderWindow, RenderSystem *renderSystem, HlmsManager *hlmsManager, Camera *camera,
+                  CompositorWorkspace *workspace);
+        virtual ~RTShadows();
         /** Adds all items in SceneManager that match visibilityFlags
         @param sceneManager
             SceneManager ptr

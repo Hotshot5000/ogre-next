@@ -27,7 +27,7 @@ kernel void main_metal
  
  
     constant float2 &projectionParams    [[buffer(PARAMETER_SLOT)]], // TODO PARAMTER_SLOT should be const buffer??
-    device AreaLight *areaLights, // TODO replace with correct light source.
+    device Light *lights, // TODO replace with correct light source.
  
     instance_acceleration_structure accelerationStructure,
     intersection_function_table<triangle_data, instancing> intersectionFunctionTable,

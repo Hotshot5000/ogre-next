@@ -44,13 +44,13 @@ compositor_node RayTracedShadowsRenderingNode
 	//in 3 resolvedDepthBuffer
 	in 1 rt_renderwindow
  
-    texture shadowTexture target_width target_height PFG_RGBA8_UNORM depth_pool 0 uav
+    texture shadowTexture target_width target_height PFG_RGBA8_UNORM keep_content depth_pool 0 uav
 
     target
     {
         pass compute
         {
-            job    IntersectionTestJob
+            job    RT/IntersectionTestJob
             
             //uav # textureName read write allow_write_after_write
             input 0 gBufferDepthBuffer

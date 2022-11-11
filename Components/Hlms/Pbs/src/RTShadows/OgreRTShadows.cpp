@@ -36,16 +36,25 @@ THE SOFTWARE.
 #include "Compositor/OgreCompositorManager2.h"
 #include "OgreHlmsCompute.h"
 #include "OgreHlmsComputeJob.h"
+#include "OgreWindow.h"
+#include "Vao/OgreVaoManager.h"
+#include "Compositor/OgreCompositorWorkspace.h"
+#include "Compositor/OgreCompositorNode.h"
+
 
 namespace Ogre
 {
-    RTShadows::RTShadows( RenderSystem *renderSystem, HlmsManager *hlmsManager ) :
+    RTShadows::RTShadows( TextureGpu *renderWindow, RenderSystem *renderSystem, HlmsManager *hlmsManager, Camera *camera,
+                         CompositorWorkspace *workspace) :
         mMeshCache( 0 ),
         mSceneManager( 0 ),
         mCompositorManager( 0 ),
         mRenderSystem( renderSystem ),
         mVaoManager( renderSystem->getVaoManager() ),
         mHlmsManager( hlmsManager ),
+        mCamera( camera ),
+        mWorkspace( workspace ),
+        mRenderWindow( renderWindow ),
         mShadowIntersectionJob( 0 ),
         mFirstBuild( true )
     {
@@ -69,26 +78,32 @@ namespace Ogre
                          "RTShadows::RTShadows" );
         }
         
-        char tmpBuffer[128];
-        LwString texName( LwString::FromEmptyPointer( tmpBuffer, sizeof( tmpBuffer ) ) );
-        texName.a( "VctLighting_", names[i], "/Id", getId() );
-        TextureGpu *texture = textureManager->createTexture(
-            texName.c_str(), GpuPageOutStrategy::Discard, texFlags, TextureTypes::Type3D );
-        if( i == 0u )
-        {
-            texture->setResolution( width, height, depth );
-            texture->setNumMipmaps( numMipsMain );
-        }
-        else
-        {
-            texture->setResolution( widthAniso, heightAniso, depthAniso );
-            texture->setNumMipmaps( numMipsAniso );
-        }
-        texture->setPixelFormat( PFG_RGBA8_UNORM_SRGB );
-        texture->scheduleTransitionTo( GpuResidency::Resident );
+        //uint32 textureSize = mRenderWindow->getWidth() * mRenderWindow->getHeight();
         
-        mShadowTex = mVaoManager->createUavBuffer( totalNumMeshes, sizeof( float ) * 4u * 2u,
-                                                  BB_FLAG_READONLY, 0, false );
+//        char tmpBuffer[128];
+//        LwString texName( LwString::FromEmptyPointer( tmpBuffer, sizeof( tmpBuffer ) ) );
+//        texName.a( "VctLighting_", names[i], "/Id", getId() );
+//        TextureGpu *texture = textureManager->createTexture(
+//            texName.c_str(), GpuPageOutStrategy::Discard, texFlags, TextureTypes::Type3D );
+//        if( i == 0u )
+//        {
+//            texture->setResolution( width, height, depth );
+//            texture->setNumMipmaps( numMipsMain );
+//        }
+//        else
+//        {
+//            texture->setResolution( widthAniso, heightAniso, depthAniso );
+//            texture->setNumMipmaps( numMipsAniso );
+//        }
+//        texture->setPixelFormat( PFG_RGBA8_UNORM_SRGB );
+//        texture->scheduleTransitionTo( GpuResidency::Resident );
+        
+//        mShadowTex = mVaoManager->createUavBuffer( textureSize, 4,
+//                                                  BP_TYPE_UAV, 0, false );
+        
+        Ogre::CompositorNode *shadowsNode = workspace->findNode( "RayTracedShadowsRenderingNode" );
+        mShadowTexture = shadowsNode->getDefinedTexture( "shadowTexture" );
+        mDepthTexture = shadowsNode->getDefinedTexture( "gBufferDepthBuffer" );
     }
     //-------------------------------------------------------------------------
     RTShadows::~RTShadows()
@@ -203,24 +218,26 @@ namespace Ogre
     void RTShadows::update( SceneManager *sceneManager )
     {
         HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
+        Ogre::Matrix4 viewProj = mCamera->getProjectionMatrix() * mCamera->Frustum::getViewMatrix();
         
-        DescriptorSetTexture2::BufferSlot texBufSlot(
-            DescriptorSetTexture2::BufferSlot::makeEmpty() );
-        texBufSlot.buffer = mGpuPartitionedSubMeshes;
-        mShadowIntersectionJob->setTexBuffer( 0, texBufSlot );
+//        DescriptorSetTexture2::TextureSlot texSlot(
+//            DescriptorSetTexture2::TextureSlot::makeEmpty() );
+//        texSlot.texture = mDepthTexture;
+//        mShadowIntersectionJob->setTexture( 0, texSlot );
         
-        DescriptorSetUav::BufferSlot bufferSlot( DescriptorSetUav::BufferSlot::makeEmpty() );
-        bufferSlot.buffer = compressedVf ? mVertexBufferCompressed : mVertexBufferUncompressed;
-        bufferSlot.access = ResourceAccess::Read;
-        mShadowIntersectionJob->_setUavBuffer( 0, bufferSlot );
+        DescriptorSetUav::TextureSlot bufferSlot( DescriptorSetUav::TextureSlot::makeEmpty() );
+        bufferSlot.texture = mShadowTexture;
+        bufferSlot.access = ResourceAccess::Write;
+        mShadowIntersectionJob->_setUavTexture( 0, bufferSlot );
         
-        uint32 meshRange[2] = { meshStart, meshStart + numMeshes[i] };
-
-        paramMeshRange.setManualValue( meshRange, 2u );
+        
 
         ShaderParams &shaderParams = mShadowIntersectionJob->getShaderParams( "default" );
         shaderParams.mParams.clear();
-        shaderParams.mParams.push_back( paramMeshRange );
+        shaderParams.mParams.push_back( ShaderParams::Param() );
+        ShaderParams::Param *p = &shaderParams.mParams.back();
+        p->name = "projectionParams";
+        p->setManualValue( viewProj );
         shaderParams.setDirty();
 
         mShadowIntersectionJob->analyzeBarriers( mResourceTransitions );
