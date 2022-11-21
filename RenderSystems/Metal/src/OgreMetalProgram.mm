@@ -213,6 +213,12 @@ namespace Ogre
             options.languageVersion = MTLLanguageVersion2_1;
         }
 #endif
+#if defined( __IPHONE_14_0 ) || defined( MAC_OS_X_VERSION_11_0 )
+        if( @available( iOS 14.0, macOS 11.0, tvOS 14.0, * ) )
+        {
+            options.languageVersion = MTLLanguageVersion2_3;
+        }
+#endif
 
         NSError *error;
         mLibrary = [mDevice->mDevice newLibraryWithSource:[NSString stringWithUTF8String:mSource.c_str()]
