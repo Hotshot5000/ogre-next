@@ -40,10 +40,34 @@ THE SOFTWARE.
 #include "Vao/OgreVaoManager.h"
 #include "Compositor/OgreCompositorWorkspace.h"
 #include "Compositor/OgreCompositorNode.h"
+#include "Vao/OgreConstBufferPacked.h"
 
 
 namespace Ogre
 {
+    struct RTInput
+    {
+        //float2 uv0;
+        float cameraDir[3];
+        float cameraPos[3];
+        float width;
+        float height;
+    };
+    
+    struct RTLight
+    {
+        float position[4];    //.w contains the objLightMask
+        float diffuse[4];        //.w contains numNonCasterDirectionalLights
+        float specular[3];
+
+        float attenuation[3];
+        //Spotlights:
+        //  spotDirection.xyz is direction
+        //  spotParams.xyz contains falloff params
+        float spotDirection[4];
+        float spotParams[4];
+    };
+    
     RTShadows::RTShadows( TextureGpu *renderWindow, RenderSystem *renderSystem, HlmsManager *hlmsManager, Camera *camera,
                          CompositorWorkspace *workspace) :
         mMeshCache( 0 ),
@@ -56,6 +80,7 @@ namespace Ogre
         mWorkspace( workspace ),
         mRenderWindow( renderWindow ),
         mShadowIntersectionJob( 0 ),
+        mLightsConstBuffer( 0 ),
         mFirstBuild( true )
     {
         HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
@@ -104,12 +129,32 @@ namespace Ogre
         Ogre::CompositorNode *shadowsNode = workspace->findNode( "RayTracedShadowsRenderingNode" );
         mShadowTexture = shadowsNode->getDefinedTexture( "shadowTexture" );
         mDepthTexture = shadowsNode->getDefinedTexture( "gBufferDepthBuffer" );
+        
+        mLightsConstBuffer = mVaoManager->createConstBuffer( sizeof( RTLight ) * 16u,
+                                                            BT_DYNAMIC_PERSISTENT, 0, false );
+        mInputDataConstBuffer = mVaoManager->createConstBuffer( sizeof( RTInput ),
+                                                            BT_DYNAMIC_PERSISTENT, 0, false );
     }
     //-------------------------------------------------------------------------
     RTShadows::~RTShadows()
     {
         if( mMeshCache )
             delete mMeshCache;
+        
+        if( mLightsConstBuffer )
+        {
+            if( mLightsConstBuffer->getMappingState() != MS_UNMAPPED )
+                mLightsConstBuffer->unmap( UO_UNMAP_ALL );
+            mVaoManager->destroyConstBuffer( mLightsConstBuffer );
+            mLightsConstBuffer = 0;
+        }
+        if( mInputDataConstBuffer )
+        {
+            if( mInputDataConstBuffer->getMappingState() != MS_UNMAPPED )
+                mInputDataConstBuffer->unmap( UO_UNMAP_ALL );
+            mVaoManager->destroyConstBuffer( mInputDataConstBuffer );
+            mInputDataConstBuffer = 0;
+        }
     }
     //-------------------------------------------------------------------------
     void RTShadows::addAllItems( SceneManager *sceneManager,
@@ -239,9 +284,101 @@ namespace Ogre
         p->name = "projectionParams";
         p->setManualValue( viewProj );
         shaderParams.setDirty();
+        
+        Ogre::Vector2 projectionAB = mCamera->getProjectionParamsAB();
+        // The division will keep "linearDepth" in the shader in the [0; 1] range.
+        projectionAB.y /= mCamera->getFarClipDistance();
+        shaderParams.mParams.push_back( ShaderParams::Param() );
+        p = &shaderParams.mParams.back();
+        p->name = "projectionParams";
+        p->setManualValue( Ogre::Vector4( projectionAB.x, projectionAB.y, 0, 0 ) );
+        shaderParams.setDirty();
+        
+        mShadowIntersectionJob->setConstBuffer( 1, mLightsConstBuffer );
+        
+        RTLight *RESTRICT_ALIAS rtLight = reinterpret_cast<RTLight *>(
+            mLightsConstBuffer->map( 0, mLightsConstBuffer->getNumElements() ) );
+        uint32 numCollectedLights = 0;
+        const uint32 maxNumLights =
+            static_cast<uint32>( mLightsConstBuffer->getNumElements() / sizeof( RTLight ) );
+        
+        // TODO Remove this when struct gets filled.
+        memset(rtLight, 0, mLightsConstBuffer->getNumElements());
+
+//        const uint32 lightMask = _lightMask & VisibilityFlags::RESERVED_VISIBILITY_FLAGS;
+
+        ObjectMemoryManager &memoryManager = sceneManager->_getLightMemoryManager();
+        const size_t numRenderQueues = memoryManager.getNumRenderQueues();
+        
+        for( size_t i = 0; i < numRenderQueues; ++i )
+        {
+            ObjectData objData;
+            const size_t totalObjs = memoryManager.getFirstObjectData( objData, i );
+
+            for( size_t j = 0; j < totalObjs && numCollectedLights < maxNumLights;
+                 j += ARRAY_PACKED_REALS )
+            {
+                for( size_t k = 0; k < ARRAY_PACKED_REALS && numCollectedLights < maxNumLights; ++k )
+                {
+                    uint32 *RESTRICT_ALIAS visibilityFlags = objData.mVisibilityFlags;
+
+                    if( visibilityFlags[k] & VisibilityFlags::LAYER_VISIBILITY /*&&
+                        visibilityFlags[k] & lightMask*/ )
+                    {
+                        Light *light = static_cast<Light *>( objData.mOwner[k] );
+                        if( light->getType() == Light::LT_DIRECTIONAL ||
+                            light->getType() == Light::LT_POINT ||
+                            light->getType() == Light::LT_SPOTLIGHT ||
+                            light->getType() == Light::LT_AREA_APPROX ||
+                            light->getType() == Light::LT_AREA_LTC )
+                        {
+                            addLight( rtLight, light );
+//                            autoMultiplierValue = std::max( autoMultiplierValue, maxVal );
+                            ++rtLight;
+                            ++numCollectedLights;
+                        }
+                    }
+                }
+
+                objData.advancePack();
+            }
+        }
+
+        mLightsConstBuffer->unmap( UO_KEEP_PERSISTENT );
+        
+        RTInput *RESTRICT_ALIAS rtInput = reinterpret_cast<RTInput *>(
+            mInputDataConstBuffer->map( 0, mInputDataConstBuffer->getNumElements() ) );
+        
+        const Ogre::Vector3 cameraPos = mCamera->getPosition();
+        Ogre::Vector3 cameraDir = mCamera->getRealDirection();
+        
+        
+        mInputDataConstBuffer->unmap( UO_KEEP_PERSISTENT );
 
         mShadowIntersectionJob->analyzeBarriers( mResourceTransitions );
         mRenderSystem->executeResourceTransition( mResourceTransitions );
         hlmsCompute->dispatch( mShadowIntersectionJob, 0, 0 );
+    }
+    //-------------------------------------------------------------------------
+    void RTShadows::addLight( RTLight *RESTRICT_ALIAS vctLight, Light *light )
+    {
+        const ColourValue diffuseColour = light->getDiffuseColour() * light->getPowerScale();
+        for( size_t i = 0; i < 3u; ++i )
+            vctLight->diffuse[i] = static_cast<float>( diffuseColour[i] );
+
+//        const Vector4 *lightDistThreshold =
+//            light->getCustomParameterNoThrow( msDistanceThresholdCustomParam );
+//        vctLight->diffuse[3] = lightDistThreshold
+//                                   ? ( lightDistThreshold->x * lightDistThreshold->x )
+//                                   : ( mDefaultLightDistThreshold * mDefaultLightDistThreshold );
+        
+        Light::LightTypes lightType = light->getType();
+        if( lightType == Light::LT_AREA_APPROX )
+            lightType = Light::LT_AREA_LTC;
+
+        Vector4 light4dVec = light->getAs4DVector();
+
+        for( size_t i = 0; i < 4u; ++i )
+            vctLight->position[i] = static_cast<float>( light4dVec[i] );
     }
 }

@@ -13,7 +13,7 @@
 using namespace metal;
 using namespace raytracing;
 
-struct PS_INPUT
+struct INPUT
 {
     //float2 uv0;
     float3 cameraDir;
@@ -48,8 +48,8 @@ kernel void main_metal
  
     constant float2 &projectionParams    [[buffer(PARAMETER_SLOT)]], // TODO PARAMTER_SLOT should be const buffer??
     
-    device Light *lights, // TODO replace with correct light source.
-    device PS_INPUT *inPs,
+    constant Light *lights, // TODO replace with correct light source.
+    constant INPUT *in,
  
     instance_acceleration_structure accelerationStructure,
     intersection_function_table<triangle_data, instancing> intersectionFunctionTable,
@@ -57,7 +57,7 @@ kernel void main_metal
 
 	ushort3 gl_LocalInvocationID	    [[thread_position_in_threadgroup]],
 	ushort3 gl_GlobalInvocationID	    [[thread_position_in_grid]],
-    ushort3 gl_GlobalThreadCount        [[threads_per_threadgroup]]
+    ushort3 gl_WorkGroupID              [[threads_per_threadgroup]]
 )
 {
     // The sample aligns the thread count to the threadgroup size. which means the thread count
@@ -65,16 +65,16 @@ kernel void main_metal
     // is referencing a pixel within the bounds of the texture.
     //if (gl_GlobalInvocationID.x < uniforms.width && gl_GlobalInvocationID.y < uniforms.height)
     //{
-        ushort3 pixelPos = ( gl_GlobalInvocationID * gl_GlobalThreadCount ) + gl_LocalInvocationID;
+        ushort3 pixelPos = ( gl_GlobalInvocationID * gl_WorkGroupID ) + gl_LocalInvocationID;
         float fDepth = depthTexture.read( pixelPos.xy );
         
         float linearDepth = projectionParams.y / (fDepth - projectionParams.x);
         
-        float3 viewSpacePosition = inPs->cameraDir * linearDepth;
+        float3 viewSpacePosition = in->cameraDir * linearDepth;
         
         //For this next line to work cameraPos would have to be an uniform in world space, and cameraDir
         //would have to be sent using the compositor setting "quad_normals camera_far_corners_world_space_centered"
-        float3 worldSpacePosition = inPs->cameraDir * linearDepth + inPs->cameraPos;
+        float3 worldSpacePosition = in->cameraDir * linearDepth + in->cameraPos;
         
         
         // The ray to cast.
@@ -93,7 +93,7 @@ kernel void main_metal
 //        pixel += r;
         
         // Map pixel coordinates to -1..1.
-        float2 uv = (float2)pixel / float2(inPs->width, inPs->height);
+        float2 uv = (float2)pixel / float2(in->width, in->height);
         uv = uv * 2.0f - 1.0f;
         
         // Create an intersector to test for intersection between the ray and the geometry in the scene.

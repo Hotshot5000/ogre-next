@@ -38,6 +38,7 @@ THE SOFTWARE.
 namespace Ogre
 {
     class RTShadowsMeshCache;
+    struct RTLight;
     
     class _OgreHlmsPbsExport RTShadows : public CompositorWorkspaceListener
     {
@@ -58,12 +59,17 @@ namespace Ogre
         TextureGpu         *mDepthTexture;
         
         HlmsComputeJob     *mShadowIntersectionJob;
+        ConstBufferPacked  *mLightsConstBuffer;
+        ConstBufferPacked  *mInputDataConstBuffer;
         
         UavBufferPacked    *mShadowTex;
         
         ResourceTransitionArray mResourceTransitions;
         
         bool mFirstBuild;
+        
+        void addLight( RTLight *RESTRICT_ALIAS vctLight, Light *light );
+        
     public:
         RTShadows( TextureGpu *renderWindow, RenderSystem *renderSystem, HlmsManager *hlmsManager, Camera *camera,
                   CompositorWorkspace *workspace);
