@@ -15,7 +15,7 @@ using namespace raytracing;
 
 struct INPUT
 {
-    //float2 uv0;
+    float2 projectionParams;
     float3 cameraDir;
     float3 cameraPos;
     float width;
@@ -46,7 +46,7 @@ kernel void main_metal
 	texture2d<float, access::write> shadowTexture [[texture(UAV_SLOT_START)]], // Destination
  
  
-    constant float2 &projectionParams    [[buffer(PARAMETER_SLOT)]], // TODO PARAMTER_SLOT should be const buffer??
+    //constant float2 &projectionParams    [[buffer(PARAMETER_SLOT)]], // TODO PARAMTER_SLOT should be const buffer??
     
     constant Light *lights, // TODO replace with correct light source.
     constant INPUT *in,
@@ -68,9 +68,9 @@ kernel void main_metal
         ushort3 pixelPos = ( gl_GlobalInvocationID * gl_WorkGroupID ) + gl_LocalInvocationID;
         float fDepth = depthTexture.read( pixelPos.xy );
         
-        float linearDepth = projectionParams.y / (fDepth - projectionParams.x);
+        float linearDepth = in->projectionParams.y / (fDepth - in->projectionParams.x);
         
-        float3 viewSpacePosition = in->cameraDir * linearDepth;
+        //float3 viewSpacePosition = in->cameraDir * linearDepth;
         
         //For this next line to work cameraPos would have to be an uniform in world space, and cameraDir
         //would have to be sent using the compositor setting "quad_normals camera_far_corners_world_space_centered"
@@ -121,7 +121,8 @@ kernel void main_metal
             
             if( intersection.type == intersection_type::triangle )
             {
-                // TODO black out the pixel for testing.
+                // TODO white out the pixel for testing.
+                shadowTexture.write(float4(1.0f, 1.0f, 1.0f, 1.0f), gl_GlobalInvocationID.xy);
             }
         //}
     //}

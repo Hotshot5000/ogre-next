@@ -85,6 +85,10 @@ namespace Ogre
         mCurrentAutoParamsBufferSpaceLeft( 0 ),
         mActiveDevice( 0 ),
         mActiveRenderEncoder( 0 ),
+        mInstanceAccelerationStructure( 0 ),
+        mPrimitiveAccelerationStructures( 0 ),
+        mAccelerationStructureInstanceBuffer( 0 ),
+        mIntersectionFunctionTable( 0 ),
         mDevice( this ),
         mMainGpuSyncSemaphore( 0 ),
         mMainSemaphoreAlreadyWaited( false ),
@@ -2578,6 +2582,13 @@ namespace Ogre
         case GPT_COMPUTE_PROGRAM:
             mActiveComputeGpuProgramParameters = params;
             shader = static_cast<MetalProgram *>( mComputePso->computeShader->_getBindingDelegate() );
+            if( mInstanceAccelerationStructure )
+            {
+                __unsafe_unretained id<MTLComputeCommandEncoder> computeEncoder =
+                    mActiveDevice->getComputeEncoder();
+                [computeEncoder setAccelerationStructure:mInstanceAccelerationStructure atBufferIndex:2];
+                [computeEncoder setIntersectionFunctionTable:mIntersectionFunctionTable atBufferIndex:3];
+            }
             break;
         default:
             break;
@@ -2969,7 +2980,7 @@ namespace Ogre
     //            srcData[2] += downloadData[2].srcBytesPerVertex;
             }
             
-            _primitiveAccelerationStructures = [[NSMutableArray alloc] init];
+            mPrimitiveAccelerationStructures = [[NSMutableArray alloc] init];
 
             // Create a primitive acceleration structure for each piece of geometry in the scene.
             uint32 primitiveCount = vao->getPrimitiveCount();
@@ -2997,7 +3008,7 @@ namespace Ogre
             id <MTLAccelerationStructure> accelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
 
             // Add the acceleration structure to the array of primitive acceleration structures.
-            [_primitiveAccelerationStructures addObject:accelerationStructure];
+            [mPrimitiveAccelerationStructures addObject:accelerationStructure];
 //            }
             
             ++vaoIt;
@@ -3010,9 +3021,9 @@ namespace Ogre
         // Allocate a buffer of acceleration structure instance descriptors. Each descriptor represents
         // an instance of one of the primitive acceleration structures created above, with its own
         // transformation matrix.
-        _instanceBuffer = [mActiveDevice->mDevice newBufferWithLength:sizeof(MTLAccelerationStructureInstanceDescriptor) * instanceMeshIndex.size() options:options];
+        mAccelerationStructureInstanceBuffer = [mActiveDevice->mDevice newBufferWithLength:sizeof(MTLAccelerationStructureInstanceDescriptor) * instanceMeshIndex.size() options:options];
 
-        MTLAccelerationStructureInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureInstanceDescriptor *)_instanceBuffer.contents;
+        MTLAccelerationStructureInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
 
         // Fill out instance descriptors.
         for (NSUInteger instanceIndex = 0; instanceIndex < instanceMeshIndex.size(); instanceIndex++) {
@@ -3047,18 +3058,18 @@ namespace Ogre
         }
 
 #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
-        [_instanceBuffer didModifyRange:NSMakeRange(0, _instanceBuffer.length)];
+        [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
 #endif
 
         // Create an instance acceleration structure descriptor.
         MTLInstanceAccelerationStructureDescriptor *accelDescriptor = [MTLInstanceAccelerationStructureDescriptor descriptor];
 
-        accelDescriptor.instancedAccelerationStructures = _primitiveAccelerationStructures;
+        accelDescriptor.instancedAccelerationStructures = mPrimitiveAccelerationStructures;
         accelDescriptor.instanceCount = instanceMeshIndex.size();
-        accelDescriptor.instanceDescriptorBuffer = _instanceBuffer;
+        accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
 
         // Finally, create the instance acceleration structure containing all of the instances
         // in the scene.
-        _instanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
+        mInstanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
     }
 }

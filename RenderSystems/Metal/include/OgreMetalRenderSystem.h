@@ -122,12 +122,12 @@ namespace Ogre
         MetalDevice        *mActiveDevice;
         __unsafe_unretained id<MTLRenderCommandEncoder> mActiveRenderEncoder;
         
-        id <MTLAccelerationStructure> _instanceAccelerationStructure;
-        NSMutableArray *_primitiveAccelerationStructures;
+        id<MTLAccelerationStructure> mInstanceAccelerationStructure;
+        NSMutableArray *mPrimitiveAccelerationStructures;
         
-        id <MTLBuffer> _instanceBuffer;
+        id<MTLBuffer> mAccelerationStructureInstanceBuffer;
         
-        id <MTLIntersectionFunctionTable> _intersectionFunctionTable;
+        id<MTLIntersectionFunctionTable> mIntersectionFunctionTable;
 
         MetalDevice          mDevice;
         dispatch_semaphore_t mMainGpuSyncSemaphore;

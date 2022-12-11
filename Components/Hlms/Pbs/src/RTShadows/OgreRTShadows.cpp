@@ -47,7 +47,7 @@ namespace Ogre
 {
     struct RTInput
     {
-        //float2 uv0;
+        float projectionParams[2];
         float cameraDir[3];
         float cameraPos[3];
         float width;
@@ -277,24 +277,24 @@ namespace Ogre
         
         
 
-        ShaderParams &shaderParams = mShadowIntersectionJob->getShaderParams( "default" );
-        shaderParams.mParams.clear();
-        shaderParams.mParams.push_back( ShaderParams::Param() );
-        ShaderParams::Param *p = &shaderParams.mParams.back();
-        p->name = "projectionParams";
-        p->setManualValue( viewProj );
-        shaderParams.setDirty();
-        
+//        ShaderParams &shaderParams = mShadowIntersectionJob->getShaderParams( "default" );
+//        shaderParams.mParams.clear();
+//        shaderParams.mParams.push_back( ShaderParams::Param() );
+//        ShaderParams::Param *p = &shaderParams.mParams.back();
+//        p->name = "projectionParams";
+//        p->setManualValue( viewProj );
+//        shaderParams.setDirty();
+//
         Ogre::Vector2 projectionAB = mCamera->getProjectionParamsAB();
         // The division will keep "linearDepth" in the shader in the [0; 1] range.
         projectionAB.y /= mCamera->getFarClipDistance();
-        shaderParams.mParams.push_back( ShaderParams::Param() );
-        p = &shaderParams.mParams.back();
-        p->name = "projectionParams";
-        p->setManualValue( Ogre::Vector4( projectionAB.x, projectionAB.y, 0, 0 ) );
-        shaderParams.setDirty();
+//        shaderParams.mParams.push_back( ShaderParams::Param() );
+//        p = &shaderParams.mParams.back();
+//        p->name = "projectionParams";
+//        p->setManualValue( Ogre::Vector4( projectionAB.x, projectionAB.y, 0, 0 ) );
+//        shaderParams.setDirty();
         
-        mShadowIntersectionJob->setConstBuffer( 1, mLightsConstBuffer );
+        mShadowIntersectionJob->setConstBuffer( 0, mLightsConstBuffer );
         
         RTLight *RESTRICT_ALIAS rtLight = reinterpret_cast<RTLight *>(
             mLightsConstBuffer->map( 0, mLightsConstBuffer->getNumElements() ) );
@@ -346,12 +346,27 @@ namespace Ogre
 
         mLightsConstBuffer->unmap( UO_KEEP_PERSISTENT );
         
+        mShadowIntersectionJob->setConstBuffer( 1, mInputDataConstBuffer );
+        
         RTInput *RESTRICT_ALIAS rtInput = reinterpret_cast<RTInput *>(
             mInputDataConstBuffer->map( 0, mInputDataConstBuffer->getNumElements() ) );
         
         const Ogre::Vector3 cameraPos = mCamera->getPosition();
         Ogre::Vector3 cameraDir = mCamera->getRealDirection();
         
+        rtInput->projectionParams[0] = projectionAB.x;
+        rtInput->projectionParams[1] = projectionAB.y;
+        
+        rtInput->cameraPos[0] = cameraPos.x;
+        rtInput->cameraPos[1] = cameraPos.y;
+        rtInput->cameraPos[2] = cameraPos.z;
+        
+        rtInput->cameraDir[0] = cameraDir.x;
+        rtInput->cameraDir[1] = cameraDir.y;
+        rtInput->cameraDir[2] = cameraDir.z;
+        
+        rtInput->width = mRenderWindow->getWidth();
+        rtInput->height = mRenderWindow->getHeight();
         
         mInputDataConstBuffer->unmap( UO_KEEP_PERSISTENT );
 
