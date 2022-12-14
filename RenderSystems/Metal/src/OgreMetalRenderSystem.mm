@@ -2588,6 +2588,10 @@ namespace Ogre
                     mActiveDevice->getComputeEncoder();
                 [computeEncoder setAccelerationStructure:mInstanceAccelerationStructure atBufferIndex:2];
                 [computeEncoder setIntersectionFunctionTable:mIntersectionFunctionTable atBufferIndex:3];
+                // Also mark primitive acceleration structures as used since only the instance acceleration
+                // structure references them.
+                for ( id<MTLAccelerationStructure> primitiveAccelerationStructure in mPrimitiveAccelerationStructures )
+                    [computeEncoder useResource:primitiveAccelerationStructure usage:MTLResourceUsageRead];
             }
             break;
         default:
@@ -2802,6 +2806,18 @@ namespace Ogre
                 [mActiveRenderEncoder setStencilReferenceValue:refValue];
         }
     }
+    //-------------------------------------------------------------------------
+    
+#define GEOMETRY_MASK_TRIANGLE 1
+#define GEOMETRY_MASK_SPHERE   2
+#define GEOMETRY_MASK_LIGHT    4
+
+#define GEOMETRY_MASK_GEOMETRY (GEOMETRY_MASK_TRIANGLE | GEOMETRY_MASK_SPHERE)
+
+#define RAY_MASK_PRIMARY   (GEOMETRY_MASK_GEOMETRY | GEOMETRY_MASK_LIGHT)
+#define RAY_MASK_SHADOW    GEOMETRY_MASK_GEOMETRY
+#define RAY_MASK_SECONDARY GEOMETRY_MASK_GEOMETRY
+    
     MTLResourceOptions getManagedBufferStorageMode() {
     #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
         return MTLResourceStorageModeManaged;
@@ -2913,7 +2929,7 @@ namespace Ogre
             IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
             MetalBufferInterface *bufferInterface = static_cast<MetalBufferInterface *>( indexBuffer->getBufferInterface() );
             id<MTLBuffer> vboName = bufferInterface->getVboName();
-            size_t indexBufferOffset = indexBuffer->_getInternalBufferStart();
+            size_t indexBufferOffset = indexBuffer->_getInternalBufferStart() * indexBuffer->getBytesPerElement();
             
             VertexBufferDownloadHelper downloadHelper;
             {
@@ -2989,8 +3005,10 @@ namespace Ogre
             MTLAccelerationStructureTriangleGeometryDescriptor *geometryDescriptor = [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];
 
             geometryDescriptor.vertexBuffer = vertexPositionBuffer;
-            geometryDescriptor.vertexStride = sizeof(float) * 3;
-            geometryDescriptor.triangleCount = primitiveCount;//2;//numVertices;
+            geometryDescriptor.vertexBufferOffset = 0;
+            geometryDescriptor.vertexStride = 0;//sizeof(float) * 3;
+            geometryDescriptor.vertexFormat = MTLAttributeFormatFloat3;
+            geometryDescriptor.triangleCount = 2;//numVertices;
             geometryDescriptor.indexType = indexBuffer->getIndexType() == IT_16BIT ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
             geometryDescriptor.indexBufferOffset = indexBufferOffset;
             geometryDescriptor.indexBuffer = vboName;
@@ -3046,7 +3064,7 @@ namespace Ogre
             // Set the instance mask, which the sample uses to filter out intersections between rays
             // and geometry. For example, it uses masks to prevent light sources from being visible
             // to secondary rays, which would result in their contribution being double-counted.
-//            instanceDescriptors[instanceIndex].mask = (uint32_t)instance.mask;
+            instanceDescriptors[instanceIndex].mask = (uint32_t) GEOMETRY_MASK_TRIANGLE;//(uint32_t)instance.mask;
 
             // Copy the first three rows of the instance transformation matrix. Metal assumes that
             // the bottom row is (0, 0, 0, 1).

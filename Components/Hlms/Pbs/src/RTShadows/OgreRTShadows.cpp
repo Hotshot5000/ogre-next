@@ -47,11 +47,17 @@ namespace Ogre
 {
     struct RTInput
     {
+        float invProjectionMat[16];
+        float invViewMat[16];
+        float cameraPos[4];
         float projectionParams[2];
-        float cameraDir[3];
-        float cameraPos[3];
         float width;
         float height;
+        
+//        float cameraDir[16];
+        
+        
+        
     };
     
     struct RTLight
@@ -263,7 +269,9 @@ namespace Ogre
     void RTShadows::update( SceneManager *sceneManager )
     {
         HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
-        Ogre::Matrix4 viewProj = mCamera->getProjectionMatrix() * mCamera->Frustum::getViewMatrix();
+        Ogre::Matrix4 invViewProj = (mCamera->getProjectionMatrix() * mCamera->Frustum::getViewMatrix()).inverse();
+        Ogre::Matrix4 invProjMat = mCamera->getProjectionMatrix().inverse();
+        Ogre::Matrix4 invViewMat = mCamera->Frustum::getViewMatrix().inverse();
         
 //        DescriptorSetTexture2::TextureSlot texSlot(
 //            DescriptorSetTexture2::TextureSlot::makeEmpty() );
@@ -351,22 +359,46 @@ namespace Ogre
         RTInput *RESTRICT_ALIAS rtInput = reinterpret_cast<RTInput *>(
             mInputDataConstBuffer->map( 0, mInputDataConstBuffer->getNumElements() ) );
         
-        const Ogre::Vector3 cameraPos = mCamera->getPosition();
-        Ogre::Vector3 cameraDir = mCamera->getRealDirection();
+        const Ogre::Vector3 cameraPos = mCamera->getDerivedPosition();
+//        const Ogre::Vector3 cameraDir = mCamera->getRealDirection();
+        const Vector3 *corners = mCamera->getWorldSpaceCorners();
+        
+        Vector3 cameraDirs[4];
+        cameraDirs[0] = corners[5] - cameraPos;
+        cameraDirs[1] = corners[6] - cameraPos;
+        cameraDirs[2] = corners[4] - cameraPos;
+        cameraDirs[3] = corners[7] - cameraPos;
         
         rtInput->projectionParams[0] = projectionAB.x;
         rtInput->projectionParams[1] = projectionAB.y;
         
+        //Camera Pos
         rtInput->cameraPos[0] = cameraPos.x;
         rtInput->cameraPos[1] = cameraPos.y;
         rtInput->cameraPos[2] = cameraPos.z;
         
-        rtInput->cameraDir[0] = cameraDir.x;
-        rtInput->cameraDir[1] = cameraDir.y;
-        rtInput->cameraDir[2] = cameraDir.z;
+        //Camera Dir
+//        rtInput->cameraDir[0] = cameraDirs[0].x;
+//        rtInput->cameraDir[1] = cameraDirs[0].y;
+//        rtInput->cameraDir[2] = cameraDirs[0].z;
+//
+//        rtInput->cameraDir[3] = cameraDirs[1].x;
+//        rtInput->cameraDir[4] = cameraDirs[1].y;
+//        rtInput->cameraDir[5] = cameraDirs[1].z;
+//
+//        rtInput->cameraDir[6] = cameraDirs[2].x;
+//        rtInput->cameraDir[7] = cameraDirs[2].y;
+//        rtInput->cameraDir[8] = cameraDirs[2].z;
+//
+//        rtInput->cameraDir[9] = cameraDirs[3].x;
+//        rtInput->cameraDir[10] = cameraDirs[3].y;
+//        rtInput->cameraDir[11] = cameraDirs[3].z;
         
         rtInput->width = mRenderWindow->getWidth();
         rtInput->height = mRenderWindow->getHeight();
+        
+        memcpy( rtInput->invProjectionMat, &invProjMat, 4 * 4 * sizeof( float ) );
+        memcpy( rtInput->invViewMat, &invViewMat, 4 * 4 * sizeof( float ) );
         
         mInputDataConstBuffer->unmap( UO_KEEP_PERSISTENT );
 

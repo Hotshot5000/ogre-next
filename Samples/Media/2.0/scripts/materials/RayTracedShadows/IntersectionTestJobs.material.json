@@ -20,19 +20,7 @@
             ],
 
 
-            "params" :
-            [
-                {
-                    "Comment0" :
-                    [
-                    "If 2nd parameter is a string, it's an auto parameter. If it's an array,",
-                    "it's manual. The 3rd parameter is optional. For auto params it's the",
-                    "extra param needed, for manual params valid options are int uint float"
-                    ]
-                },
-
-                ["cameraPos",       "camera_position"]
-            ],
+            
 
             "params_glsl" :
             [
