@@ -2924,6 +2924,20 @@ namespace Ogre
             VertexArrayObject *vao = *vaoIt;
             size_t vertexStart = 0u;
             size_t numVertices = vao->getBaseVertexBuffer()->getNumElements();
+            size_t numTriangles = 0;
+            
+            switch( vao->getOperationType() )
+            {
+            case OT_TRIANGLE_LIST:
+                numTriangles = (vao->getIndexBuffer()->getNumElements() / 3);
+                break;
+            case OT_TRIANGLE_STRIP:
+            case OT_TRIANGLE_FAN:
+                numTriangles = (vao->getIndexBuffer()->getNumElements() - 2);
+                break;
+            default:
+                break;
+            }
 
             VertexBufferPacked *vertexBuffer = vao->getBaseVertexBuffer();
             IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
@@ -3008,7 +3022,7 @@ namespace Ogre
             geometryDescriptor.vertexBufferOffset = 0;
             geometryDescriptor.vertexStride = 0;//sizeof(float) * 3;
             geometryDescriptor.vertexFormat = MTLAttributeFormatFloat3;
-            geometryDescriptor.triangleCount = 2;//numVertices;
+            geometryDescriptor.triangleCount = numTriangles;
             geometryDescriptor.indexType = indexBuffer->getIndexType() == IT_16BIT ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
             geometryDescriptor.indexBufferOffset = indexBufferOffset;
             geometryDescriptor.indexBuffer = vboName;
