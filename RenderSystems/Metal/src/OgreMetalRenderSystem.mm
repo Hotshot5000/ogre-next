@@ -2919,6 +2919,8 @@ namespace Ogre
         std::vector<VertexArrayObject *>::iterator vaoEnd = meshVaos.end();
         size_t intersectionTableOffset = 0;
         
+        mPrimitiveAccelerationStructures = [[NSMutableArray alloc] init];
+        
         while( vaoIt != vaoEnd )
         {
             VertexArrayObject *vao = *vaoIt;
@@ -3009,8 +3011,6 @@ namespace Ogre
     //            srcData[1] += downloadData[1].srcBytesPerVertex;
     //            srcData[2] += downloadData[2].srcBytesPerVertex;
             }
-            
-            mPrimitiveAccelerationStructures = [[NSMutableArray alloc] init];
 
             // Create a primitive acceleration structure for each piece of geometry in the scene.
             uint32 primitiveCount = vao->getPrimitiveCount();
