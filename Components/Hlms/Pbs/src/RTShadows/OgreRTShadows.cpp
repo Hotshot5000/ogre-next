@@ -49,7 +49,11 @@ namespace Ogre
     {
         float invProjectionMat[16];
         float invViewMat[16];
+        float cameraCorner[16];
         float cameraPos[4];
+        float cameraRight[4];
+        float cameraUp[4];
+        float cameraFront[4];
         float projectionParams[2];
         float width;
         float height;
@@ -269,9 +273,13 @@ namespace Ogre
     void RTShadows::update( SceneManager *sceneManager )
     {
         HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
-        Ogre::Matrix4 invViewProj = (mCamera->getProjectionMatrix() * mCamera->Frustum::getViewMatrix()).inverse();
-        Ogre::Matrix4 invProjMat = mCamera->getProjectionMatrix().inverse();
-        Ogre::Matrix4 invViewMat = mCamera->Frustum::getViewMatrix().inverse();
+        Ogre::Matrix4 viewProj = mCamera->getProjectionMatrixWithRSDepth() * mCamera->getViewMatrix( true );
+        Ogre::Matrix4 invViewProj = viewProj.inverse();
+        Ogre::Matrix4 invProjMat = mCamera->getProjectionMatrixWithRSDepth().inverse();
+        Ogre::Matrix4 invViewMat = mCamera->getViewMatrix( true ).inverse();
+        Ogre::Vector3 cameraRight = mCamera->getRight();
+        Ogre::Vector3 cameraUp = mCamera->getUp();
+        Ogre::Vector3 cameraFront = mCamera->getDirection();
         
 //        DescriptorSetTexture2::TextureSlot texSlot(
 //            DescriptorSetTexture2::TextureSlot::makeEmpty() );
@@ -344,6 +352,7 @@ namespace Ogre
 //                            autoMultiplierValue = std::max( autoMultiplierValue, maxVal );
                             ++rtLight;
                             ++numCollectedLights;
+                            break;
                         }
                     }
                 }
@@ -369,6 +378,26 @@ namespace Ogre
         cameraDirs[2] = corners[4] - cameraPos;
         cameraDirs[3] = corners[7] - cameraPos;
         
+        rtInput->cameraCorner[0] = cameraDirs[0].x;
+        rtInput->cameraCorner[1] = cameraDirs[0].y;
+        rtInput->cameraCorner[2] = cameraDirs[0].z;
+        rtInput->cameraCorner[3] = 1.0f;
+        
+        rtInput->cameraCorner[4] = cameraDirs[1].x;
+        rtInput->cameraCorner[5] = cameraDirs[1].y;
+        rtInput->cameraCorner[6] = cameraDirs[1].z;
+        rtInput->cameraCorner[7] = 1.0f;
+        
+        rtInput->cameraCorner[8] = cameraDirs[2].x;
+        rtInput->cameraCorner[9] = cameraDirs[2].y;
+        rtInput->cameraCorner[10] = cameraDirs[2].z;
+        rtInput->cameraCorner[11] = 1.0f;
+        
+        rtInput->cameraCorner[12] = cameraDirs[3].x;
+        rtInput->cameraCorner[13] = cameraDirs[3].y;
+        rtInput->cameraCorner[14] = cameraDirs[3].z;
+        rtInput->cameraCorner[15] = 1.0f;
+        
         rtInput->projectionParams[0] = projectionAB.x;
         rtInput->projectionParams[1] = projectionAB.y;
         
@@ -376,6 +405,22 @@ namespace Ogre
         rtInput->cameraPos[0] = cameraPos.x;
         rtInput->cameraPos[1] = cameraPos.y;
         rtInput->cameraPos[2] = cameraPos.z;
+        
+        //Camera right
+        rtInput->cameraRight[0] = cameraRight.x;
+        rtInput->cameraRight[1] = cameraRight.y;
+        rtInput->cameraRight[2] = cameraRight.z;
+        
+        //Camera up
+        rtInput->cameraUp[0] = cameraUp.x;
+        rtInput->cameraUp[1] = cameraUp.y;
+        rtInput->cameraUp[2] = cameraUp.z;
+        
+        //Camera right
+        rtInput->cameraFront[0] = cameraFront.x;
+        rtInput->cameraFront[1] = cameraFront.y;
+        rtInput->cameraFront[2] = cameraFront.z;
+        
         
         //Camera Dir
 //        rtInput->cameraDir[0] = cameraDirs[0].x;
@@ -397,8 +442,8 @@ namespace Ogre
         rtInput->width = mRenderWindow->getWidth();
         rtInput->height = mRenderWindow->getHeight();
         
-        memcpy( rtInput->invProjectionMat, &invProjMat, 4 * 4 * sizeof( float ) );
-        memcpy( rtInput->invViewMat, &invViewMat, 4 * 4 * sizeof( float ) );
+        memcpy( rtInput->invProjectionMat, &invViewProj, 4 * 4 * sizeof( float ) );
+        memcpy( rtInput->invViewMat, &viewProj, 4 * 4 * sizeof( float ) );
         
         mInputDataConstBuffer->unmap( UO_KEEP_PERSISTENT );
 
