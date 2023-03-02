@@ -50,7 +50,6 @@ namespace Ogre
         mAutomaticBatching( false ),
         mTextureType( TextureTypes::Type2D ),
         mTextureSrcMipmaps( 1u ),
-        mTextureCoordSetIndex( 0 ),
         mSamplerblock( 0 ),
         mTextureLoadFailed( false ),
         mIsAlpha( false ),
@@ -89,13 +88,12 @@ namespace Ogre
     }
 
     //-----------------------------------------------------------------------
-    TextureUnitState::TextureUnitState( Pass *parent, const String &texName, unsigned int texCoordSet ) :
+    TextureUnitState::TextureUnitState( Pass *parent, const String &texName ) :
         mCurrentFrame( 0 ),
         mAnimDuration( 0 ),
         mCubic( false ),
         mTextureType( TextureTypes::Type2D ),
         mTextureSrcMipmaps( 1u ),
-        mTextureCoordSetIndex( 0 ),
         mTextureLoadFailed( false ),
         mIsAlpha( false ),
         mHwGamma( false ),
@@ -120,7 +118,6 @@ namespace Ogre
         setColourOperation( LBO_MODULATE );
 
         setTextureName( texName );
-        setTextureCoordSet( texCoordSet );
 
         HlmsManager *hlmsManager = parent->_getDatablock()->getCreator()->getHlmsManager();
         HlmsSamplerblock samplerblock;
@@ -277,14 +274,6 @@ namespace Ogre
     //-----------------------------------------------------------------------
     void TextureUnitState::setContentType( TextureUnitState::ContentType ct )
     {
-        if( mContentType != ct && mParent )
-        {
-            if( mContentType == CONTENT_SHADOW )
-                mParent->removeShadowContentTypeLookup( mParent->getTextureUnitStateIndex( this ) );
-            else if( ct == CONTENT_SHADOW )
-                mParent->insertShadowContentTypeLookup( mParent->getTextureUnitStateIndex( this ) );
-        }
-
         mContentType = ct;
         if( ct == CONTENT_SHADOW || ct == CONTENT_COMPOSITOR )
         {
@@ -558,10 +547,6 @@ namespace Ogre
     //-----------------------------------------------------------------------
     bool TextureUnitState::isHardwareGammaEnabled() const { return mHwGamma; }
     //-----------------------------------------------------------------------
-    unsigned int TextureUnitState::getTextureCoordSet() const { return mTextureCoordSetIndex; }
-    //-----------------------------------------------------------------------
-    void TextureUnitState::setTextureCoordSet( unsigned int set ) { mTextureCoordSetIndex = set; }
-    //-----------------------------------------------------------------------
     void TextureUnitState::setColourOperationEx( LayerBlendOperationEx op, LayerBlendSource source1,
                                                  LayerBlendSource source2, const ColourValue &arg1,
                                                  const ColourValue &arg2, Real manualBlend )
@@ -648,7 +633,7 @@ namespace Ogre
         }
 
         // Record new effect
-        mEffects.insert( EffectMap::value_type( effect.type, effect ) );
+        mEffects.emplace( effect.type, effect );
     }
     //-----------------------------------------------------------------------
     void TextureUnitState::removeAllEffects()

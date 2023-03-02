@@ -362,8 +362,7 @@ namespace Ogre
             no matter what rendering API is being used - this is required for
             vertex and fragment programs for example. However, the resulting depth
             range may still vary between render systems since D3D uses [0,1] and
-            GL uses [-1,1], and the range must be kept the same between programmable
-            and fixed-function pipelines.
+            GL uses [-1,1].
         */
         virtual const Matrix4 &getProjectionMatrixWithRSDepth() const;
         /** Gets the normal projection matrix for this frustum, ie the
@@ -698,6 +697,13 @@ namespace Ogre
             iOS at this time.  An exception is thrown on other platforms.
         */
         OrientationMode getOrientationMode() const;
+
+        /** Get the orientation mode angle of the frustum.
+        @remarks
+            Getting the orientation of a frustum is only supported on
+            iOS at this time.  An exception is thrown on other platforms.
+        */
+        Radian getOrientationModeAngle() const;
     };
 
     /** @} */

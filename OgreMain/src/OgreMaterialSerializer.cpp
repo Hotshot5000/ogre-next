@@ -676,7 +676,7 @@ namespace Ogre
                 writeTessellationHullProgramRef( pPass );
             }
 
-            if( pPass->hasTessellationHullProgram() )
+            if( pPass->hasTessellationDomainProgram() )
             {
                 writeTessellationDomainProgramRef( pPass );
             }
@@ -684,11 +684,6 @@ namespace Ogre
             if( pPass->hasGeometryProgram() )
             {
                 writeGeometryProgramRef( pPass );
-            }
-
-            if( pPass->hasShadowCasterVertexProgram() )
-            {
-                writeShadowCasterVertexProgramRef( pPass );
             }
 
             // Nested texture layers
@@ -838,13 +833,6 @@ namespace Ogre
             // anisotropy level
             writeAttribute( 4, "max_anisotropy" );
             writeValue( StringConverter::toString( samplerblock->mMaxAnisotropy ) );
-
-            // texture coordinate set
-            if( mDefaults || pTex->getTextureCoordSet() != 0 )
-            {
-                writeAttribute( 4, "tex_coord_set" );
-                writeValue( StringConverter::toString( pTex->getTextureCoordSet() ) );
-            }
 
             // addressing mode
             if( mDefaults || samplerblock->mU != Ogre::TAM_WRAP || samplerblock->mV != Ogre::TAM_WRAP ||
@@ -1354,19 +1342,6 @@ namespace Ogre
     {
         writeGpuProgramRef( "tessellation_domain_program_ref", pPass->getTessellationDomainProgram(),
                             pPass->getTessellationDomainProgramParameters() );
-    }
-    //-----------------------------------------------------------------------
-    void MaterialSerializer::writeShadowCasterVertexProgramRef( const Pass *pPass )
-    {
-        writeGpuProgramRef( "shadow_caster_vertex_program_ref", pPass->getShadowCasterVertexProgram(),
-                            pPass->getShadowCasterVertexProgramParameters() );
-    }
-    //-----------------------------------------------------------------------
-    void MaterialSerializer::writeShadowCasterFragmentProgramRef( const Pass *pPass )
-    {
-        writeGpuProgramRef( "shadow_caster_fragment_program_ref",
-                            pPass->getShadowCasterFragmentProgram(),
-                            pPass->getShadowCasterFragmentProgramParameters() );
     }
     //-----------------------------------------------------------------------
     void MaterialSerializer::writeGeometryProgramRef( const Pass *pPass )

@@ -263,7 +263,7 @@ namespace Ogre
         RenderSystemCapabilities *rsc = new RenderSystemCapabilities();
         rsc->setRenderSystemName( getName() );
 
-        rsc->setDeviceName(mActiveDevice->mDevice.name.UTF8String);
+        rsc->setDeviceName( mActiveDevice->mDevice.name.UTF8String );
 
         rsc->setCapability( RSC_HWSTENCIL );
         rsc->setStencilBufferBitDepth( 8 );
@@ -1345,6 +1345,10 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void MetalRenderSystem::_hlmsComputePipelineStateObjectCreated( HlmsComputePso *newPso )
     {
+#if OGRE_DEBUG_MODE >= OGRE_DEBUG_MEDIUM
+        debugLogPso( newPso );
+#endif
+
         MetalProgram *computeShader =
             static_cast<MetalProgram *>( newPso->computeShader->_getBindingDelegate() );
 
@@ -1382,8 +1386,8 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void MetalRenderSystem::_hlmsComputePipelineStateObjectDestroyed( HlmsComputePso *pso )
     {
-        id<MTLComputePipelineState> metalPso =
-            reinterpret_cast<id<MTLComputePipelineState> >( CFBridgingRelease( pso->rsData ) );
+        if( pso->rsData )  // holds id<MTLComputePipelineState>
+            CFRelease( pso->rsData );
         pso->rsData = 0;
     }
     //-------------------------------------------------------------------------
@@ -1543,6 +1547,10 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void MetalRenderSystem::_hlmsPipelineStateObjectCreated( HlmsPso *newPso )
     {
+#if OGRE_DEBUG_MODE >= OGRE_DEBUG_MEDIUM
+        debugLogPso( newPso );
+#endif
+
         MTLRenderPipelineDescriptor *psd = [[MTLRenderPipelineDescriptor alloc] init];
         [psd
             setSampleCount:newPso->pass.sampleDescription.getColourSamples()];  // aka .rasterSampleCount
@@ -1659,9 +1667,11 @@ namespace Ogre
             psd.colorAttachments[i].destinationRGBBlendFactor =
                 MetalMappings::get( blendblock->mDestBlendFactor );
             psd.colorAttachments[i].sourceAlphaBlendFactor =
-                MetalMappings::get( blendblock->mSourceBlendFactorAlpha );
+                MetalMappings::get( blendblock->mSeparateBlend ? blendblock->mSourceBlendFactorAlpha
+                                                               : blendblock->mSourceBlendFactor );
             psd.colorAttachments[i].destinationAlphaBlendFactor =
-                MetalMappings::get( blendblock->mDestBlendFactorAlpha );
+                MetalMappings::get( blendblock->mSeparateBlend ? blendblock->mDestBlendFactorAlpha
+                                                               : blendblock->mDestBlendFactor );
 
             psd.colorAttachments[i].writeMask = MetalMappings::get( blendblock->mBlendChannelMask );
         }
@@ -1761,8 +1771,9 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void MetalRenderSystem::_hlmsSamplerblockDestroyed( HlmsSamplerblock *block )
     {
-        id<MTLSamplerState> sampler =
-            reinterpret_cast<id<MTLSamplerState> >( CFBridgingRelease( block->mRsData ) );
+        if( block->mRsData )  // holds id<MTLSamplerState>
+            CFRelease( block->mRsData );
+        block->mRsData = 0;
     }
     //-------------------------------------------------------------------------
     template <typename TDescriptorSetTexture, typename TTexSlot, typename TBufferPacked, bool isUav>
@@ -2251,11 +2262,11 @@ namespace Ogre
             }
 
             // Setup baseInstance.
-#if TARGET_OS_SIMULATOR == 0
+#    if TARGET_OS_SIMULATOR == 0
             [mActiveRenderEncoder setVertexBufferOffset:drawCmd->baseInstance * 4u atIndex:15];
-#else
+#    else
             [mActiveRenderEncoder setVertexBufferOffset:drawCmd->baseInstance * 256u atIndex:15];
-#endif
+#    endif
 
             [mActiveRenderEncoder drawIndexedPrimitives:primType
                                              indexCount:drawCmd->primCount
@@ -2298,11 +2309,11 @@ namespace Ogre
         {
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
             // Setup baseInstance.
-#if TARGET_OS_SIMULATOR == 0
+#    if TARGET_OS_SIMULATOR == 0
             [mActiveRenderEncoder setVertexBufferOffset:drawCmd->baseInstance * 4u atIndex:15];
-#else
+#    else
             [mActiveRenderEncoder setVertexBufferOffset:drawCmd->baseInstance * 256u atIndex:15];
-#endif
+#    endif
             [mActiveRenderEncoder drawPrimitives:primType
                                      vertexStart:drawCmd->firstVertexIndex
                                      vertexCount:drawCmd->primCount
@@ -2381,11 +2392,11 @@ namespace Ogre
 #    endif
 
         // Setup baseInstance.
-#if TARGET_OS_SIMULATOR == 0
+#    if TARGET_OS_SIMULATOR == 0
         [mActiveRenderEncoder setVertexBufferOffset:cmd->baseInstance * 4u atIndex:15];
-#else
+#    else
         [mActiveRenderEncoder setVertexBufferOffset:cmd->baseInstance * 256u atIndex:15];
-#endif
+#    endif
 
         [mActiveRenderEncoder
             drawIndexedPrimitives:mCurrentPrimType
@@ -2402,7 +2413,7 @@ namespace Ogre
                       indexBuffer:indexBuffer
                 indexBufferOffset:cmd->firstVertexIndex * bytesPerIndexElement + offsetStart
                     instanceCount:cmd->instanceCount
-                       baseVertex:mCurrentVertexBuffer->vertexStart
+                       baseVertex:(NSInteger)mCurrentVertexBuffer->vertexStart
                      baseInstance:cmd->baseInstance];
 #endif
     }
@@ -2411,11 +2422,11 @@ namespace Ogre
     {
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
         // Setup baseInstance.
-#if TARGET_OS_SIMULATOR == 0
+#    if TARGET_OS_SIMULATOR == 0
         [mActiveRenderEncoder setVertexBufferOffset:cmd->baseInstance * 4u atIndex:15];
-#else
+#    else
         [mActiveRenderEncoder setVertexBufferOffset:cmd->baseInstance * 256u atIndex:15];
-#endif
+#    endif
         [mActiveRenderEncoder
             drawPrimitives:mCurrentPrimType
                vertexStart:0 /*cmd->firstVertexIndex already handled in _setRenderOperation*/
@@ -2491,7 +2502,7 @@ namespace Ogre
                         indexBufferOffset:mCurrentIndexBuffer->indexStart * bytesPerIndexElement +
                                           offsetStart
                             instanceCount:numberOfInstances
-                               baseVertex:mCurrentVertexBuffer->vertexStart
+                               baseVertex:(NSInteger)mCurrentVertexBuffer->vertexStart
                              baseInstance:0];
 #endif
             } while( updatePassIterationRenderState() );
