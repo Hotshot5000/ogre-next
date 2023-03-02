@@ -4,6 +4,11 @@ var class_ogre_1_1_codec =
     [ "CodecDataPtr", "class_ogre_1_1_codec.html#a29e31ad112b08ea7fb648b63f426ff1f", null ],
     [ "CodecIterator", "class_ogre_1_1_codec.html#a21f4b8a16d070793d576f827c9fee218", null ],
     [ "DecodeResult", "class_ogre_1_1_codec.html#a8cc81c85bd7d4e25393aa153c5e01454", null ],
+    [ "ValidationStatus", "class_ogre_1_1_codec.html#a4c74f9daafec4f0fff30b92baa8fc627", [
+      [ "CodecValid", "class_ogre_1_1_codec.html#a4c74f9daafec4f0fff30b92baa8fc627a47a4a53ad7af88177b1dc789714f14f2", null ],
+      [ "CodecInvalid", "class_ogre_1_1_codec.html#a4c74f9daafec4f0fff30b92baa8fc627adbfb6433432642b9c1d8ac283c70ae91", null ],
+      [ "CodecUnknown", "class_ogre_1_1_codec.html#a4c74f9daafec4f0fff30b92baa8fc627a7ea7bb09b0f8951f18e1cd02147e2316", null ]
+    ] ],
     [ "~Codec", "class_ogre_1_1_codec.html#aee7d2a1126a22bbf3da40088495cb00b", null ],
     [ "decode", "class_ogre_1_1_codec.html#a63f306b8171a0ea5cf319824044958e4", null ],
     [ "encode", "class_ogre_1_1_codec.html#ac2d5b19075d7c38a0e7c351838242bff", null ],
@@ -17,16 +22,7 @@ var class_ogre_1_1_codec =
     [ "isCodecRegistered", "class_ogre_1_1_codec.html#ae5b74cfd0cb797a2ac139b4adb7ac557", null ],
     [ "magicNumberMatch", "class_ogre_1_1_codec.html#a270be35471eb9ef28fdbd4b7dced21b9", null ],
     [ "magicNumberToFileExt", "class_ogre_1_1_codec.html#af90756f690827353e18347d328bc5180", null ],
-    [ "operator delete", "class_ogre_1_1_codec.html#a8357fe4fb4849772b94baa4bf47c7ded", null ],
-    [ "operator delete", "class_ogre_1_1_codec.html#acb46d4b0a597156d9ba5abc39d127792", null ],
-    [ "operator delete", "class_ogre_1_1_codec.html#a1c727e879a260c37b00ce5505fe8e144", null ],
-    [ "operator delete[]", "class_ogre_1_1_codec.html#a93e6a86dde5483c053ca0f2a85bbfd6c", null ],
-    [ "operator delete[]", "class_ogre_1_1_codec.html#a595ea4c05da8aa987d3800e65d23355d", null ],
-    [ "operator new", "class_ogre_1_1_codec.html#ad1f1a983f9e2dfddee802c47bb0b1ca9", null ],
-    [ "operator new", "class_ogre_1_1_codec.html#ab422c67a2c8844f410fe822a357cba3b", null ],
-    [ "operator new", "class_ogre_1_1_codec.html#a63fc6bdc2eb6aeac24898a77ec5e2023", null ],
-    [ "operator new[]", "class_ogre_1_1_codec.html#adce32528577d71b228692df906ecd17c", null ],
-    [ "operator new[]", "class_ogre_1_1_codec.html#aed1464ac3de21ff20db8f9f1f8608dc7", null ],
     [ "registerCodec", "class_ogre_1_1_codec.html#a60f445cc6919df56af6611fd14eec47d", null ],
-    [ "unregisterCodec", "class_ogre_1_1_codec.html#a7aa2599cd9db05e590fb7f7786076852", null ]
+    [ "unregisterCodec", "class_ogre_1_1_codec.html#a7aa2599cd9db05e590fb7f7786076852", null ],
+    [ "validateMagicNumber", "class_ogre_1_1_codec.html#a1f6e6d04e958a22de11daef7881effac", null ]
 ];

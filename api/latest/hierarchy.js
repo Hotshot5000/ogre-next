@@ -85,6 +85,7 @@ var hierarchy =
     [ "Ogre::FastArray< DescriptorSetTexture2::Slot >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< DescriptorSetUav::Slot >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< DEVMODE >", "class_ogre_1_1_fast_array.html", null ],
+    [ "Ogre::FastArray< DirtyBlock >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< EGLDeviceEXT >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< float >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< int32 >", "class_ogre_1_1_fast_array.html", null ],
@@ -149,11 +150,13 @@ var hierarchy =
     [ "Ogre::FastArray< VkDescriptorImageInfo >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkDescriptorPoolSize >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkDescriptorSetLayout >", "class_ogre_1_1_fast_array.html", null ],
+    [ "Ogre::FastArray< VkExtensionProperties >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkFence >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkFramebuffer >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkImage >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkImageMemoryBarrier >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkImageView >", "class_ogre_1_1_fast_array.html", null ],
+    [ "Ogre::FastArray< VkLayerProperties >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkPipelineStageFlags >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkQueueFamilyProperties >", "class_ogre_1_1_fast_array.html", null ],
     [ "Ogre::FastArray< VkSemaphore >", "class_ogre_1_1_fast_array.html", null ],
@@ -206,26 +209,10 @@ var hierarchy =
     [ "Ogre::IteratorWrapper< T, IteratorType, T::value_type >", "class_ogre_1_1_iterator_wrapper.html", [
       [ "Ogre::VectorIteratorWrapper< T, IteratorType >", "class_ogre_1_1_vector_iterator_wrapper.html", null ]
     ] ],
-    [ "Ogre::IteratorWrapper< T, T::const_iterator, T::mapped_type >", "class_ogre_1_1_iterator_wrapper.html", [
-      [ "Ogre::MapIteratorWrapper< T, T::const_iterator >", "class_ogre_1_1_map_iterator_wrapper.html", [
-        [ "Ogre::ConstMapIterator< T >", "class_ogre_1_1_const_map_iterator.html", null ]
-      ] ]
-    ] ],
-    [ "Ogre::IteratorWrapper< T, T::const_iterator, T::value_type >", "class_ogre_1_1_iterator_wrapper.html", [
-      [ "Ogre::VectorIteratorWrapper< T, T::const_iterator >", "class_ogre_1_1_vector_iterator_wrapper.html", [
-        [ "Ogre::ConstVectorIterator< T >", "class_ogre_1_1_const_vector_iterator.html", null ]
-      ] ]
-    ] ],
-    [ "Ogre::IteratorWrapper< T, T::iterator, T::mapped_type >", "class_ogre_1_1_iterator_wrapper.html", [
-      [ "Ogre::MapIteratorWrapper< T, T::iterator >", "class_ogre_1_1_map_iterator_wrapper.html", [
-        [ "Ogre::MapIterator< T >", "class_ogre_1_1_map_iterator.html", null ]
-      ] ]
-    ] ],
-    [ "Ogre::IteratorWrapper< T, T::iterator, T::value_type >", "class_ogre_1_1_iterator_wrapper.html", [
-      [ "Ogre::VectorIteratorWrapper< T, T::iterator >", "class_ogre_1_1_vector_iterator_wrapper.html", [
-        [ "Ogre::VectorIterator< T >", "class_ogre_1_1_vector_iterator.html", null ]
-      ] ]
-    ] ],
+    [ "Ogre::IteratorWrapper< T, T::const_iterator, T::mapped_type >", "class_ogre_1_1_iterator_wrapper.html", null ],
+    [ "Ogre::IteratorWrapper< T, T::const_iterator, T::value_type >", "class_ogre_1_1_iterator_wrapper.html", null ],
+    [ "Ogre::IteratorWrapper< T, T::iterator, T::mapped_type >", "class_ogre_1_1_iterator_wrapper.html", null ],
+    [ "Ogre::IteratorWrapper< T, T::iterator, T::value_type >", "class_ogre_1_1_iterator_wrapper.html", null ],
     [ "MultiRenderTarget", null, [
       [ "Ogre::GLES2FBOMultiRenderTarget", "class_ogre_1_1_g_l_e_s2_f_b_o_multi_render_target.html", null ]
     ] ],
@@ -247,259 +234,9 @@ var hierarchy =
     [ "Ogre::AbiCookie", "struct_ogre_1_1_abi_cookie.html", null ],
     [ "Ogre::ActiveActorData", "struct_ogre_1_1_active_actor_data.html", null ],
     [ "Ogre::AlignedMemory", "class_ogre_1_1_aligned_memory.html", null ],
-    [ "Ogre::AllocatedObject< Alloc >", "class_ogre_1_1_allocated_object.html", [
-      [ "Ogre::Controller< Real >", "class_ogre_1_1_controller.html", null ],
-      [ "Ogre::ControllerFunction< Real >", "class_ogre_1_1_controller_function.html", [
-        [ "Ogre::AnimationControllerFunction", "class_ogre_1_1_animation_controller_function.html", null ],
-        [ "Ogre::LinearControllerFunction", "class_ogre_1_1_linear_controller_function.html", null ],
-        [ "Ogre::PassthroughControllerFunction", "class_ogre_1_1_passthrough_controller_function.html", null ],
-        [ "Ogre::ScaleControllerFunction", "class_ogre_1_1_scale_controller_function.html", null ],
-        [ "Ogre::WaveformControllerFunction", "class_ogre_1_1_waveform_controller_function.html", null ]
-      ] ],
-      [ "Ogre::ControllerValue< Real >", "class_ogre_1_1_controller_value.html", [
-        [ "Ogre::FloatGpuParameterControllerValue", "class_ogre_1_1_float_gpu_parameter_controller_value.html", null ],
-        [ "Ogre::FrameTimeControllerValue", "class_ogre_1_1_frame_time_controller_value.html", null ],
-        [ "Ogre::TexCoordModifierControllerValue", "class_ogre_1_1_tex_coord_modifier_controller_value.html", null ],
-        [ "Ogre::TextureFrameControllerValue", "class_ogre_1_1_texture_frame_controller_value.html", null ],
-        [ "Ogre::v1::AnimationStateControllerValue", "class_ogre_1_1v1_1_1_animation_state_controller_value.html", null ]
-      ] ],
-      [ "Ogre::ControllerValue< Ogre::Real >", "class_ogre_1_1_controller_value.html", [
-        [ "Ogre::TextureAnimationControllerValue", "class_ogre_1_1_texture_animation_controller_value.html", null ]
-      ] ],
-      [ "Ogre::AbstractNode", "class_ogre_1_1_abstract_node.html", [
-        [ "Ogre::AtomAbstractNode", "class_ogre_1_1_atom_abstract_node.html", null ],
-        [ "Ogre::ImportAbstractNode", "class_ogre_1_1_import_abstract_node.html", null ],
-        [ "Ogre::ObjectAbstractNode", "class_ogre_1_1_object_abstract_node.html", null ],
-        [ "Ogre::PropertyAbstractNode", "class_ogre_1_1_property_abstract_node.html", null ],
-        [ "Ogre::VariableAccessAbstractNode", "class_ogre_1_1_variable_access_abstract_node.html", null ]
-      ] ],
-      [ "Ogre::AndroidLogListener", "class_ogre_1_1_android_log_listener.html", null ],
-      [ "Ogre::AnimableValue", "class_ogre_1_1_animable_value.html", null ],
-      [ "Ogre::Archive", "class_ogre_1_1_archive.html", [
-        [ "Ogre::APKFileSystemArchive", "class_ogre_1_1_a_p_k_file_system_archive.html", null ],
-        [ "Ogre::FileSystemArchive", "class_ogre_1_1_file_system_archive.html", null ],
-        [ "Ogre::ZipArchive", "class_ogre_1_1_zip_archive.html", null ]
-      ] ],
-      [ "Ogre::ArchiveFactory", "class_ogre_1_1_archive_factory.html", null ],
-      [ "Ogre::ArchiveManager", "class_ogre_1_1_archive_manager.html", null ],
-      [ "Ogre::AsyncTextureTicket", "class_ogre_1_1_async_texture_ticket.html", [
-        [ "Ogre::D3D11AsyncTextureTicket", "class_ogre_1_1_d3_d11_async_texture_ticket.html", null ],
-        [ "Ogre::GL3PlusAsyncTextureTicket", "class_ogre_1_1_g_l3_plus_async_texture_ticket.html", null ],
-        [ "Ogre::MetalAsyncTextureTicket", "class_ogre_1_1_metal_async_texture_ticket.html", null ],
-        [ "Ogre::NULLAsyncTextureTicket", "class_ogre_1_1_n_u_l_l_async_texture_ticket.html", null ],
-        [ "Ogre::VulkanAsyncTextureTicket", "class_ogre_1_1_vulkan_async_texture_ticket.html", null ]
-      ] ],
-      [ "Ogre::AsyncTicket", "class_ogre_1_1_async_ticket.html", [
-        [ "Ogre::D3D11AsyncTicket", "class_ogre_1_1_d3_d11_async_ticket.html", null ],
-        [ "Ogre::GL3PlusAsyncTicket", "class_ogre_1_1_g_l3_plus_async_ticket.html", null ],
-        [ "Ogre::GLES2AsyncTicket", "class_ogre_1_1_g_l_e_s2_async_ticket.html", null ],
-        [ "Ogre::MetalAsyncTicket", "class_ogre_1_1_metal_async_ticket.html", null ],
-        [ "Ogre::NULLAsyncTicket", "class_ogre_1_1_n_u_l_l_async_ticket.html", null ],
-        [ "Ogre::VulkanAsyncTicket", "class_ogre_1_1_vulkan_async_ticket.html", null ]
-      ] ],
-      [ "Ogre::AtmosphereComponent", "class_ogre_1_1_atmosphere_component.html", [
-        [ "Ogre::AtmosphereNpr", "class_ogre_1_1_atmosphere_npr.html", null ]
-      ] ],
-      [ "Ogre::Bone", "class_ogre_1_1_bone.html", null ],
-      [ "Ogre::BufferPacked", "class_ogre_1_1_buffer_packed.html", [
-        [ "Ogre::ConstBufferPacked", "class_ogre_1_1_const_buffer_packed.html", [
-          [ "Ogre::D3D11ConstBufferPacked", "class_ogre_1_1_d3_d11_const_buffer_packed.html", null ],
-          [ "Ogre::GL3PlusConstBufferPacked", "class_ogre_1_1_g_l3_plus_const_buffer_packed.html", null ],
-          [ "Ogre::GLES2ConstBufferPacked", "class_ogre_1_1_g_l_e_s2_const_buffer_packed.html", null ],
-          [ "Ogre::MetalConstBufferPacked", "class_ogre_1_1_metal_const_buffer_packed.html", null ],
-          [ "Ogre::NULLConstBufferPacked", "class_ogre_1_1_n_u_l_l_const_buffer_packed.html", null ],
-          [ "Ogre::VulkanConstBufferPacked", "class_ogre_1_1_vulkan_const_buffer_packed.html", null ]
-        ] ],
-        [ "Ogre::IndexBufferPacked", "class_ogre_1_1_index_buffer_packed.html", null ],
-        [ "Ogre::IndirectBufferPacked", "class_ogre_1_1_indirect_buffer_packed.html", null ],
-        [ "Ogre::TexBufferPacked", "class_ogre_1_1_tex_buffer_packed.html", [
-          [ "Ogre::D3D11TexBufferPacked", "class_ogre_1_1_d3_d11_tex_buffer_packed.html", null ],
-          [ "Ogre::GL3PlusTexBufferEmulatedPacked", "class_ogre_1_1_g_l3_plus_tex_buffer_emulated_packed.html", null ],
-          [ "Ogre::GL3PlusTexBufferPacked", "class_ogre_1_1_g_l3_plus_tex_buffer_packed.html", null ],
-          [ "Ogre::GLES2TexBufferEmulatedPacked", "class_ogre_1_1_g_l_e_s2_tex_buffer_emulated_packed.html", null ],
-          [ "Ogre::NULLTexBufferPacked", "class_ogre_1_1_n_u_l_l_tex_buffer_packed.html", null ],
-          [ "Ogre::ReadOnlyBufferPacked", "class_ogre_1_1_read_only_buffer_packed.html", [
-            [ "Ogre::D3D11ReadOnlyBufferPacked", "class_ogre_1_1_d3_d11_read_only_buffer_packed.html", null ],
-            [ "Ogre::GL3PlusReadOnlyBufferEmulatedPacked", "class_ogre_1_1_g_l3_plus_read_only_buffer_emulated_packed.html", null ],
-            [ "Ogre::GL3PlusReadOnlyTexBufferPacked", "class_ogre_1_1_g_l3_plus_read_only_tex_buffer_packed.html", null ],
-            [ "Ogre::GL3PlusReadOnlyUavBufferPacked", "class_ogre_1_1_g_l3_plus_read_only_uav_buffer_packed.html", null ],
-            [ "Ogre::MetalTexBufferPacked", "class_ogre_1_1_metal_tex_buffer_packed.html", [
-              [ "Ogre::MetalReadOnlyBufferPacked", "class_ogre_1_1_metal_read_only_buffer_packed.html", null ]
-            ] ],
-            [ "Ogre::NULLReadOnlyBufferPacked", "class_ogre_1_1_n_u_l_l_read_only_buffer_packed.html", null ],
-            [ "Ogre::VulkanReadOnlyBufferPacked", "class_ogre_1_1_vulkan_read_only_buffer_packed.html", null ]
-          ] ],
-          [ "Ogre::VulkanTexBufferPacked", "class_ogre_1_1_vulkan_tex_buffer_packed.html", null ]
-        ] ],
-        [ "Ogre::UavBufferPacked", "class_ogre_1_1_uav_buffer_packed.html", [
-          [ "Ogre::D3D11UavBufferPacked", "class_ogre_1_1_d3_d11_uav_buffer_packed.html", null ],
-          [ "Ogre::GL3PlusUavBufferPacked", "class_ogre_1_1_g_l3_plus_uav_buffer_packed.html", null ],
-          [ "Ogre::MetalUavBufferPacked", "class_ogre_1_1_metal_uav_buffer_packed.html", null ],
-          [ "Ogre::NULLUavBufferPacked", "class_ogre_1_1_n_u_l_l_uav_buffer_packed.html", null ],
-          [ "Ogre::VulkanUavBufferPacked", "class_ogre_1_1_vulkan_uav_buffer_packed.html", null ]
-        ] ],
-        [ "Ogre::VertexBufferPacked", "class_ogre_1_1_vertex_buffer_packed.html", null ]
-      ] ],
-      [ "Ogre::CocoaContext", "class_ogre_1_1_cocoa_context.html", null ],
-      [ "Ogre::Codec", "class_ogre_1_1_codec.html", [
-        [ "Ogre::ImageCodec2", "class_ogre_1_1_image_codec2.html", [
-          [ "Ogre::ASTCCodec", "class_ogre_1_1_a_s_t_c_codec.html", null ],
-          [ "Ogre::DDSCodec2", "class_ogre_1_1_d_d_s_codec2.html", null ],
-          [ "Ogre::ETCCodec", "class_ogre_1_1_e_t_c_codec.html", null ],
-          [ "Ogre::FreeImageCodec2", "class_ogre_1_1_free_image_codec2.html", null ],
-          [ "Ogre::OITDCodec", "class_ogre_1_1_o_i_t_d_codec.html", null ],
-          [ "Ogre::PVRTCCodec", "class_ogre_1_1_p_v_r_t_c_codec.html", null ],
-          [ "Ogre::STBIImageCodec", "class_ogre_1_1_s_t_b_i_image_codec.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::Codec::CodecData", "class_ogre_1_1_codec_1_1_codec_data.html", [
-        [ "Ogre::ImageCodec2::ImageData2", "class_ogre_1_1_image_codec2_1_1_image_data2.html", null ]
-      ] ],
-      [ "Ogre::CompositorManager2", "class_ogre_1_1_compositor_manager2.html", null ],
-      [ "Ogre::CompositorNode", "class_ogre_1_1_compositor_node.html", [
-        [ "Ogre::CompositorShadowNode", "class_ogre_1_1_compositor_shadow_node.html", null ]
-      ] ],
-      [ "Ogre::CompositorPass", "class_ogre_1_1_compositor_pass.html", [
-        [ "Ogre::CompositorPassClear", "class_ogre_1_1_compositor_pass_clear.html", null ],
-        [ "Ogre::CompositorPassCompute", "class_ogre_1_1_compositor_pass_compute.html", null ],
-        [ "Ogre::CompositorPassDepthCopy", "class_ogre_1_1_compositor_pass_depth_copy.html", null ],
-        [ "Ogre::CompositorPassIblSpecular", "class_ogre_1_1_compositor_pass_ibl_specular.html", null ],
-        [ "Ogre::CompositorPassMipmap", "class_ogre_1_1_compositor_pass_mipmap.html", null ],
-        [ "Ogre::CompositorPassQuad", "class_ogre_1_1_compositor_pass_quad.html", null ],
-        [ "Ogre::CompositorPassScene", "class_ogre_1_1_compositor_pass_scene.html", null ],
-        [ "Ogre::CompositorPassShadows", "class_ogre_1_1_compositor_pass_shadows.html", null ],
-        [ "Ogre::CompositorPassStencil", "class_ogre_1_1_compositor_pass_stencil.html", null ],
-        [ "Ogre::CompositorPassTargetBarrier", "class_ogre_1_1_compositor_pass_target_barrier.html", null ],
-        [ "Ogre::CompositorPassUav", "class_ogre_1_1_compositor_pass_uav.html", null ]
-      ] ],
-      [ "Ogre::CompositorPassDef", "class_ogre_1_1_compositor_pass_def.html", [
-        [ "Ogre::CompositorPassClearDef", "class_ogre_1_1_compositor_pass_clear_def.html", null ],
-        [ "Ogre::CompositorPassComputeDef", "class_ogre_1_1_compositor_pass_compute_def.html", null ],
-        [ "Ogre::CompositorPassDepthCopyDef", "class_ogre_1_1_compositor_pass_depth_copy_def.html", null ],
-        [ "Ogre::CompositorPassIblSpecularDef", "class_ogre_1_1_compositor_pass_ibl_specular_def.html", null ],
-        [ "Ogre::CompositorPassMipmapDef", "class_ogre_1_1_compositor_pass_mipmap_def.html", null ],
-        [ "Ogre::CompositorPassQuadDef", "class_ogre_1_1_compositor_pass_quad_def.html", null ],
-        [ "Ogre::CompositorPassSceneDef", "class_ogre_1_1_compositor_pass_scene_def.html", null ],
-        [ "Ogre::CompositorPassShadowsDef", "class_ogre_1_1_compositor_pass_shadows_def.html", null ],
-        [ "Ogre::CompositorPassStencilDef", "class_ogre_1_1_compositor_pass_stencil_def.html", null ],
-        [ "Ogre::CompositorPassTargetBarrierDef", "class_ogre_1_1_compositor_pass_target_barrier_def.html", null ],
-        [ "Ogre::CompositorPassUavDef", "class_ogre_1_1_compositor_pass_uav_def.html", null ]
-      ] ],
-      [ "Ogre::CompositorPassProvider", "class_ogre_1_1_compositor_pass_provider.html", null ],
-      [ "Ogre::CompositorTargetDef", "class_ogre_1_1_compositor_target_def.html", null ],
-      [ "Ogre::CompositorWorkspace", "class_ogre_1_1_compositor_workspace.html", null ],
-      [ "Ogre::ConcreteNode", "struct_ogre_1_1_concrete_node.html", null ],
-      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
-      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
-      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
-      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
-      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
-      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
-      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
-      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
-      [ "Ogre::ConfigFile", "class_ogre_1_1_config_file.html", null ],
-      [ "Ogre::Controller< T >", "class_ogre_1_1_controller.html", null ],
-      [ "Ogre::ControllerFunction< T >", "class_ogre_1_1_controller_function.html", null ],
-      [ "Ogre::ControllerManager", "class_ogre_1_1_controller_manager.html", null ],
-      [ "Ogre::ControllerValue< T >", "class_ogre_1_1_controller_value.html", null ],
-      [ "Ogre::CubemapProbe", "class_ogre_1_1_cubemap_probe.html", null ],
-      [ "Ogre::D3D11StereoDriverImpl", "class_ogre_1_1_d3_d11_stereo_driver_impl.html", [
-        [ "Ogre::D3D11StereoDriverAMD", "class_ogre_1_1_d3_d11_stereo_driver_a_m_d.html", null ],
-        [ "Ogre::D3D11StereoDriverNVIDIA", "class_ogre_1_1_d3_d11_stereo_driver_n_v_i_d_i_a.html", null ]
-      ] ],
-      [ "Ogre::DataStream", "class_ogre_1_1_data_stream.html", [
-        [ "Ogre::DeflateStream", "class_ogre_1_1_deflate_stream.html", null ],
-        [ "Ogre::FileHandleDataStream", "class_ogre_1_1_file_handle_data_stream.html", null ],
-        [ "Ogre::FileStreamDataStream", "class_ogre_1_1_file_stream_data_stream.html", null ],
-        [ "Ogre::MemoryDataStream", "class_ogre_1_1_memory_data_stream.html", null ],
-        [ "Ogre::ZipDataStream", "class_ogre_1_1_zip_data_stream.html", null ]
-      ] ],
-      [ "Ogre::DynLib", "class_ogre_1_1_dyn_lib.html", null ],
-      [ "Ogre::DynLibManager", "class_ogre_1_1_dyn_lib_manager.html", null ],
-      [ "Ogre::ExternalTextureSourceManager", "class_ogre_1_1_external_texture_source_manager.html", null ],
-      [ "Ogre::FileSystemLayer", "class_ogre_1_1_file_system_layer.html", null ],
-      [ "Ogre::ForwardPlusBase", "class_ogre_1_1_forward_plus_base.html", [
-        [ "Ogre::Forward3D", "class_ogre_1_1_forward3_d.html", null ],
-        [ "Ogre::ForwardClustered", "class_ogre_1_1_forward_clustered.html", null ]
-      ] ],
-      [ "Ogre::FrameStats", "class_ogre_1_1_frame_stats.html", null ],
-      [ "Ogre::GpuLogicalBufferStruct", "struct_ogre_1_1_gpu_logical_buffer_struct.html", null ],
-      [ "Ogre::GpuNamedConstants", "struct_ogre_1_1_gpu_named_constants.html", null ],
-      [ "Ogre::GpuProgramParameters", "class_ogre_1_1_gpu_program_parameters.html", null ],
-      [ "Ogre::GpuProgramUsage", "class_ogre_1_1_gpu_program_usage.html", null ],
-      [ "Ogre::GpuResource", "class_ogre_1_1_gpu_resource.html", [
-        [ "Ogre::TextureGpu", "class_ogre_1_1_texture_gpu.html", [
-          [ "Ogre::D3D11TextureGpu", "class_ogre_1_1_d3_d11_texture_gpu.html", [
-            [ "Ogre::D3D11TextureGpuRenderTarget", "class_ogre_1_1_d3_d11_texture_gpu_render_target.html", [
-              [ "Ogre::D3D11TextureGpuWindow", "class_ogre_1_1_d3_d11_texture_gpu_window.html", null ]
-            ] ]
-          ] ],
-          [ "Ogre::GL3PlusTextureGpu", "class_ogre_1_1_g_l3_plus_texture_gpu.html", [
-            [ "Ogre::GL3PlusTextureGpuRenderTarget", "class_ogre_1_1_g_l3_plus_texture_gpu_render_target.html", [
-              [ "Ogre::GL3PlusTextureGpuHeadlessWindow", "class_ogre_1_1_g_l3_plus_texture_gpu_headless_window.html", null ],
-              [ "Ogre::GL3PlusTextureGpuWindow", "class_ogre_1_1_g_l3_plus_texture_gpu_window.html", null ]
-            ] ]
-          ] ],
-          [ "Ogre::MetalTextureGpu", "class_ogre_1_1_metal_texture_gpu.html", [
-            [ "Ogre::MetalTextureGpuRenderTarget", "class_ogre_1_1_metal_texture_gpu_render_target.html", [
-              [ "Ogre::MetalTextureGpuWindow", "class_ogre_1_1_metal_texture_gpu_window.html", null ]
-            ] ]
-          ] ],
-          [ "Ogre::NULLTextureGpu", "class_ogre_1_1_n_u_l_l_texture_gpu.html", [
-            [ "Ogre::NULLTextureGpuRenderTarget", "class_ogre_1_1_n_u_l_l_texture_gpu_render_target.html", null ]
-          ] ],
-          [ "Ogre::VulkanTextureGpu", "class_ogre_1_1_vulkan_texture_gpu.html", [
-            [ "Ogre::VulkanTextureGpuRenderTarget", "class_ogre_1_1_vulkan_texture_gpu_render_target.html", [
-              [ "Ogre::VulkanTextureGpuWindow", "class_ogre_1_1_vulkan_texture_gpu_window.html", null ]
-            ] ]
-          ] ]
-        ] ]
-      ] ],
-      [ "Ogre::GpuSharedParameters", "class_ogre_1_1_gpu_shared_parameters.html", null ],
-      [ "Ogre::GpuSharedParametersUsage", "class_ogre_1_1_gpu_shared_parameters_usage.html", null ],
-      [ "Ogre::HardwareOcclusionQuery", "class_ogre_1_1_hardware_occlusion_query.html", [
-        [ "Ogre::D3D11HardwareOcclusionQuery", "class_ogre_1_1_d3_d11_hardware_occlusion_query.html", null ],
-        [ "Ogre::GL3PlusHardwareOcclusionQuery", "class_ogre_1_1_g_l3_plus_hardware_occlusion_query.html", null ]
-      ] ],
-      [ "Ogre::HighLevelGpuProgramFactory", "class_ogre_1_1_high_level_gpu_program_factory.html", [
-        [ "Ogre::D3D11HLSLProgramFactory", "class_ogre_1_1_d3_d11_h_l_s_l_program_factory.html", null ],
-        [ "Ogre::GLSLESShaderFactory", "class_ogre_1_1_g_l_s_l_e_s_shader_factory.html", null ],
-        [ "Ogre::GLSLShaderFactory", "class_ogre_1_1_g_l_s_l_shader_factory.html", null ],
-        [ "Ogre::MetalProgramFactory", "class_ogre_1_1_metal_program_factory.html", null ],
-        [ "Ogre::UnifiedHighLevelGpuProgramFactory", "class_ogre_1_1_unified_high_level_gpu_program_factory.html", null ],
-        [ "Ogre::VulkanProgramFactory", "class_ogre_1_1_vulkan_program_factory.html", null ]
-      ] ],
-      [ "Ogre::HlmsComputeJob", "class_ogre_1_1_hlms_compute_job.html", null ],
-      [ "Ogre::HlmsDatablock", "class_ogre_1_1_hlms_datablock.html", [
-        [ "Ogre::HlmsLowLevelDatablock", "class_ogre_1_1_hlms_low_level_datablock.html", null ],
-        [ "Ogre::OGRE_HLMS_TEXTURE_BASE_CLASS", "class_ogre_1_1_o_g_r_e___h_l_m_s___t_e_x_t_u_r_e___b_a_s_e___c_l_a_s_s.html", null ]
-      ] ],
-      [ "Ogre::HlmsDiskCache", "class_ogre_1_1_hlms_disk_cache.html", null ],
-      [ "Ogre::HlmsJson", "class_ogre_1_1_hlms_json.html", null ],
-      [ "Ogre::HlmsJsonCompute", "class_ogre_1_1_hlms_json_compute.html", null ],
-      [ "Ogre::HlmsManager", "class_ogre_1_1_hlms_manager.html", null ],
-      [ "Ogre::IesLoader", "class_ogre_1_1_ies_loader.html", null ],
-      [ "Ogre::Image2", "class_ogre_1_1_image2.html", null ],
-      [ "Ogre::IntersectionSceneQueryResult", "struct_ogre_1_1_intersection_scene_query_result.html", null ],
-      [ "Ogre::IrradianceFieldRaster", "class_ogre_1_1_irradiance_field_raster.html", null ],
-      [ "Ogre::LightProfiles", "class_ogre_1_1_light_profiles.html", null ],
-      [ "Ogre::LodStrategy", "class_ogre_1_1_lod_strategy.html", [
-        [ "Ogre::DistanceLodStrategyBase", "class_ogre_1_1_distance_lod_strategy_base.html", [
-          [ "Ogre::DistanceLodBoxStrategy", "class_ogre_1_1_distance_lod_box_strategy.html", null ],
-          [ "Ogre::DistanceLodSphereStrategy", "class_ogre_1_1_distance_lod_sphere_strategy.html", null ]
-        ] ],
-        [ "Ogre::PixelCountLodStrategyBase", "class_ogre_1_1_pixel_count_lod_strategy_base.html", [
-          [ "Ogre::AbsolutePixelCountLodStrategy", "class_ogre_1_1_absolute_pixel_count_lod_strategy.html", null ],
-          [ "Ogre::ScreenRatioPixelCountLodStrategy", "class_ogre_1_1_screen_ratio_pixel_count_lod_strategy.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::LodStrategyManager", "class_ogre_1_1_lod_strategy_manager.html", null ],
-      [ "Ogre::Log", "class_ogre_1_1_log.html", null ],
-      [ "Ogre::LogManager", "class_ogre_1_1_log_manager.html", null ],
-      [ "Ogre::ManualObject::ManualObjectSection", "class_ogre_1_1_manual_object_1_1_manual_object_section.html", null ],
-      [ "Ogre::MaterialSerializer", "class_ogre_1_1_material_serializer.html", null ],
-      [ "Ogre::MetalDiscardBuffer", "class_ogre_1_1_metal_discard_buffer.html", null ],
-      [ "Ogre::MetalDiscardBufferManager", "class_ogre_1_1_metal_discard_buffer_manager.html", null ],
+    [ "Ogre::AllocatedObject< Alloc >", "class_ogre_1_1_allocated_object.html", null ],
+    [ "Ogre::Angle", "class_ogre_1_1_angle.html", null ],
+    [ "Ogre::AnimableObject", "class_ogre_1_1_animable_object.html", [
       [ "Ogre::MovableObject", "class_ogre_1_1_movable_object.html", [
         [ "Ogre::Decal", "class_ogre_1_1_decal.html", null ],
         [ "Ogre::Frustum", "class_ogre_1_1_frustum.html", [
@@ -527,457 +264,7 @@ var hierarchy =
         [ "Ogre::v1::SimpleRenderable", "class_ogre_1_1v1_1_1_simple_renderable.html", [
           [ "Ogre::v1::WireBoundingBox", "class_ogre_1_1v1_1_1_wire_bounding_box.html", null ]
         ] ]
-      ] ],
-      [ "Ogre::MovableObjectFactory", "class_ogre_1_1_movable_object_factory.html", [
-        [ "Ogre::DecalFactory", "class_ogre_1_1_decal_factory.html", null ],
-        [ "Ogre::InternalCubemapProbeFactory", "class_ogre_1_1_internal_cubemap_probe_factory.html", null ],
-        [ "Ogre::ItemFactory", "class_ogre_1_1_item_factory.html", null ],
-        [ "Ogre::LightFactory", "class_ogre_1_1_light_factory.html", null ],
-        [ "Ogre::ManualObjectFactory", "class_ogre_1_1_manual_object_factory.html", null ],
-        [ "Ogre::ParticleSystemFactory", "class_ogre_1_1_particle_system_factory.html", null ],
-        [ "Ogre::Rectangle2DFactory", "class_ogre_1_1_rectangle2_d_factory.html", null ],
-        [ "Ogre::WireAabbFactory", "class_ogre_1_1_wire_aabb_factory.html", null ],
-        [ "Ogre::v1::BillboardChainFactory", "class_ogre_1_1v1_1_1_billboard_chain_factory.html", null ],
-        [ "Ogre::v1::BillboardSetFactory", "class_ogre_1_1v1_1_1_billboard_set_factory.html", null ],
-        [ "Ogre::v1::EntityFactory", "class_ogre_1_1v1_1_1_entity_factory.html", null ],
-        [ "Ogre::v1::ManualObjectFactory", "class_ogre_1_1v1_1_1_manual_object_factory.html", null ],
-        [ "Ogre::v1::Rectangle2DFactory", "class_ogre_1_1v1_1_1_rectangle2_d_factory.html", null ],
-        [ "Ogre::v1::RibbonTrailFactory", "class_ogre_1_1v1_1_1_ribbon_trail_factory.html", null ]
-      ] ],
-      [ "Ogre::Node", "class_ogre_1_1_node.html", [
-        [ "Ogre::SceneNode", "class_ogre_1_1_scene_node.html", [
-          [ "Ogre::TagPoint", "class_ogre_1_1_tag_point.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::ObjCmdBuffer", "class_ogre_1_1_obj_cmd_buffer.html", null ],
-      [ "Ogre::Particle", "class_ogre_1_1_particle.html", [
-        [ "Ogre::ParticleEmitter", "class_ogre_1_1_particle_emitter.html", [
-          [ "Ogre::AreaEmitter", "class_ogre_1_1_area_emitter.html", [
-            [ "Ogre::BoxEmitter", "class_ogre_1_1_box_emitter.html", null ],
-            [ "Ogre::CylinderEmitter", "class_ogre_1_1_cylinder_emitter.html", null ],
-            [ "Ogre::EllipsoidEmitter", "class_ogre_1_1_ellipsoid_emitter.html", [
-              [ "Ogre::HollowEllipsoidEmitter", "class_ogre_1_1_hollow_ellipsoid_emitter.html", null ]
-            ] ],
-            [ "Ogre::RingEmitter", "class_ogre_1_1_ring_emitter.html", null ]
-          ] ],
-          [ "Ogre::PointEmitter", "class_ogre_1_1_point_emitter.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::ParticleAffector", "class_ogre_1_1_particle_affector.html", [
-        [ "Ogre::ColourFaderAffector", "class_ogre_1_1_colour_fader_affector.html", null ],
-        [ "Ogre::ColourFaderAffector2", "class_ogre_1_1_colour_fader_affector2.html", null ],
-        [ "Ogre::ColourImageAffector", "class_ogre_1_1_colour_image_affector.html", null ],
-        [ "Ogre::ColourInterpolatorAffector", "class_ogre_1_1_colour_interpolator_affector.html", null ],
-        [ "Ogre::DeflectorPlaneAffector", "class_ogre_1_1_deflector_plane_affector.html", null ],
-        [ "Ogre::DirectionRandomiserAffector", "class_ogre_1_1_direction_randomiser_affector.html", null ],
-        [ "Ogre::LinearForceAffector", "class_ogre_1_1_linear_force_affector.html", null ],
-        [ "Ogre::RotationAffector", "class_ogre_1_1_rotation_affector.html", null ],
-        [ "Ogre::ScaleAffector", "class_ogre_1_1_scale_affector.html", null ]
-      ] ],
-      [ "Ogre::ParticleAffectorFactory", "class_ogre_1_1_particle_affector_factory.html", [
-        [ "Ogre::ColourFaderAffectorFactory", "class_ogre_1_1_colour_fader_affector_factory.html", null ],
-        [ "Ogre::ColourFaderAffectorFactory2", "class_ogre_1_1_colour_fader_affector_factory2.html", null ],
-        [ "Ogre::ColourImageAffectorFactory", "class_ogre_1_1_colour_image_affector_factory.html", null ],
-        [ "Ogre::ColourInterpolatorAffectorFactory", "class_ogre_1_1_colour_interpolator_affector_factory.html", null ],
-        [ "Ogre::DeflectorPlaneAffectorFactory", "class_ogre_1_1_deflector_plane_affector_factory.html", null ],
-        [ "Ogre::DirectionRandomiserAffectorFactory", "class_ogre_1_1_direction_randomiser_affector_factory.html", null ],
-        [ "Ogre::LinearForceAffectorFactory", "class_ogre_1_1_linear_force_affector_factory.html", null ],
-        [ "Ogre::RotationAffectorFactory", "class_ogre_1_1_rotation_affector_factory.html", null ],
-        [ "Ogre::ScaleAffectorFactory", "class_ogre_1_1_scale_affector_factory.html", null ]
-      ] ],
-      [ "Ogre::ParticleEmitterFactory", "class_ogre_1_1_particle_emitter_factory.html", [
-        [ "Ogre::BoxEmitterFactory", "class_ogre_1_1_box_emitter_factory.html", null ],
-        [ "Ogre::CylinderEmitterFactory", "class_ogre_1_1_cylinder_emitter_factory.html", null ],
-        [ "Ogre::EllipsoidEmitterFactory", "class_ogre_1_1_ellipsoid_emitter_factory.html", null ],
-        [ "Ogre::HollowEllipsoidEmitterFactory", "class_ogre_1_1_hollow_ellipsoid_emitter_factory.html", null ],
-        [ "Ogre::PointEmitterFactory", "class_ogre_1_1_point_emitter_factory.html", null ],
-        [ "Ogre::RingEmitterFactory", "class_ogre_1_1_ring_emitter_factory.html", null ]
-      ] ],
-      [ "Ogre::ParticleSystemManager", "class_ogre_1_1_particle_system_manager.html", null ],
-      [ "Ogre::ParticleSystemRenderer", "class_ogre_1_1_particle_system_renderer.html", [
-        [ "Ogre::v1::BillboardParticleRenderer", "class_ogre_1_1v1_1_1_billboard_particle_renderer.html", null ]
-      ] ],
-      [ "Ogre::ParticleSystemRendererFactory", "class_ogre_1_1_particle_system_renderer_factory.html", null ],
-      [ "Ogre::ParticleVisualData", "class_ogre_1_1_particle_visual_data.html", null ],
-      [ "Ogre::Pass", "class_ogre_1_1_pass.html", null ],
-      [ "Ogre::Plugin", "class_ogre_1_1_plugin.html", [
-        [ "Ogre::D3D11Plugin", "class_ogre_1_1_d3_d11_plugin.html", null ],
-        [ "Ogre::GL3PlusPlugin", "class_ogre_1_1_g_l3_plus_plugin.html", null ],
-        [ "Ogre::GLES2Plugin", "class_ogre_1_1_g_l_e_s2_plugin.html", null ],
-        [ "Ogre::MetalPlugin", "class_ogre_1_1_metal_plugin.html", null ],
-        [ "Ogre::NULLPlugin", "class_ogre_1_1_n_u_l_l_plugin.html", null ],
-        [ "Ogre::ParticleFXPlugin", "class_ogre_1_1_particle_f_x_plugin.html", null ],
-        [ "Ogre::VulkanPlugin", "class_ogre_1_1_vulkan_plugin.html", null ]
-      ] ],
-      [ "Ogre::Profile", "class_ogre_1_1_profile.html", null ],
-      [ "Ogre::ProfileInstance", "class_ogre_1_1_profile_instance.html", null ],
-      [ "Ogre::Profiler", "class_ogre_1_1_profiler.html", null ],
-      [ "Ogre::PsoCacheHelper", "class_ogre_1_1_pso_cache_helper.html", null ],
-      [ "Ogre::RadialDensityMask", "class_ogre_1_1_radial_density_mask.html", null ],
-      [ "Ogre::RenderPassDescriptor", "class_ogre_1_1_render_pass_descriptor.html", [
-        [ "Ogre::D3D11RenderPassDescriptor", "class_ogre_1_1_d3_d11_render_pass_descriptor.html", null ],
-        [ "Ogre::GL3PlusRenderPassDescriptor", "class_ogre_1_1_g_l3_plus_render_pass_descriptor.html", null ],
-        [ "Ogre::MetalRenderPassDescriptor", "class_ogre_1_1_metal_render_pass_descriptor.html", null ],
-        [ "Ogre::VulkanRenderPassDescriptor", "class_ogre_1_1_vulkan_render_pass_descriptor.html", null ]
-      ] ],
-      [ "Ogre::RenderQueue", "class_ogre_1_1_render_queue.html", null ],
-      [ "Ogre::RenderSystem", "class_ogre_1_1_render_system.html", [
-        [ "Ogre::D3D11RenderSystem", "class_ogre_1_1_d3_d11_render_system.html", null ],
-        [ "Ogre::GL3PlusRenderSystem", "class_ogre_1_1_g_l3_plus_render_system.html", null ],
-        [ "Ogre::GLES2RenderSystem", "class_ogre_1_1_g_l_e_s2_render_system.html", null ],
-        [ "Ogre::MetalRenderSystem", "class_ogre_1_1_metal_render_system.html", null ],
-        [ "Ogre::NULLRenderSystem", "class_ogre_1_1_n_u_l_l_render_system.html", null ],
-        [ "Ogre::VulkanRenderSystem", "class_ogre_1_1_vulkan_render_system.html", null ]
-      ] ],
-      [ "Ogre::RenderSystemCapabilities", "class_ogre_1_1_render_system_capabilities.html", null ],
-      [ "Ogre::RenderSystemCapabilitiesManager", "class_ogre_1_1_render_system_capabilities_manager.html", null ],
-      [ "Ogre::RenderSystemCapabilitiesSerializer", "class_ogre_1_1_render_system_capabilities_serializer.html", null ],
-      [ "Ogre::Resource", "class_ogre_1_1_resource.html", [
-        [ "Ogre::Font", "class_ogre_1_1_font.html", null ],
-        [ "Ogre::GpuProgram", "class_ogre_1_1_gpu_program.html", [
-          [ "Ogre::HighLevelGpuProgram", "class_ogre_1_1_high_level_gpu_program.html", [
-            [ "Ogre::D3D11HLSLProgram", "class_ogre_1_1_d3_d11_h_l_s_l_program.html", null ],
-            [ "Ogre::GLSLShader", "class_ogre_1_1_g_l_s_l_shader.html", null ],
-            [ "Ogre::MetalProgram", "class_ogre_1_1_metal_program.html", null ],
-            [ "Ogre::UnifiedHighLevelGpuProgram", "class_ogre_1_1_unified_high_level_gpu_program.html", null ],
-            [ "Ogre::VulkanProgram", "class_ogre_1_1_vulkan_program.html", null ]
-          ] ]
-        ] ],
-        [ "Ogre::Material", "class_ogre_1_1_material.html", null ],
-        [ "Ogre::Mesh", "class_ogre_1_1_mesh.html", null ],
-        [ "Ogre::v1::Mesh", "class_ogre_1_1v1_1_1_mesh.html", [
-          [ "Ogre::v1::PatchMesh", "class_ogre_1_1v1_1_1_patch_mesh.html", null ]
-        ] ],
-        [ "Ogre::v1::Skeleton", "class_ogre_1_1v1_1_1_skeleton.html", [
-          [ "Ogre::v1::OldSkeletonInstance", "class_ogre_1_1v1_1_1_old_skeleton_instance.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::ResourceBackgroundQueue", "class_ogre_1_1_resource_background_queue.html", null ],
-      [ "Ogre::ResourceGroupManager", "class_ogre_1_1_resource_group_manager.html", null ],
-      [ "Ogre::ResourceManager", "class_ogre_1_1_resource_manager.html", [
-        [ "Ogre::FontManager", "class_ogre_1_1_font_manager.html", null ],
-        [ "Ogre::GpuProgramManager", "class_ogre_1_1_gpu_program_manager.html", [
-          [ "Ogre::D3D11GpuProgramManager", "class_ogre_1_1_d3_d11_gpu_program_manager.html", null ],
-          [ "Ogre::GLES2GpuProgramManager", "class_ogre_1_1_g_l_e_s2_gpu_program_manager.html", null ],
-          [ "Ogre::GLSLShaderManager", "class_ogre_1_1_g_l_s_l_shader_manager.html", null ],
-          [ "Ogre::MetalGpuProgramManager", "class_ogre_1_1_metal_gpu_program_manager.html", null ],
-          [ "Ogre::VulkanGpuProgramManager", "class_ogre_1_1_vulkan_gpu_program_manager.html", null ]
-        ] ],
-        [ "Ogre::HighLevelGpuProgramManager", "class_ogre_1_1_high_level_gpu_program_manager.html", null ],
-        [ "Ogre::MaterialManager", "class_ogre_1_1_material_manager.html", null ],
-        [ "Ogre::MeshManager", "class_ogre_1_1_mesh_manager.html", null ],
-        [ "Ogre::v1::MeshManager", "class_ogre_1_1v1_1_1_mesh_manager.html", null ],
-        [ "Ogre::v1::OldSkeletonManager", "class_ogre_1_1v1_1_1_old_skeleton_manager.html", null ]
-      ] ],
-      [ "Ogre::ResourceManager::ResourcePool", "class_ogre_1_1_resource_manager_1_1_resource_pool.html", null ],
-      [ "Ogre::Root", "class_ogre_1_1_root.html", null ],
-      [ "Ogre::SceneManagerEnumerator", "class_ogre_1_1_scene_manager_enumerator.html", null ],
-      [ "Ogre::SceneManagerFactory", "class_ogre_1_1_scene_manager_factory.html", [
-        [ "Ogre::DefaultSceneManagerFactory", "class_ogre_1_1_default_scene_manager_factory.html", null ]
-      ] ],
-      [ "Ogre::SceneQuery", "class_ogre_1_1_scene_query.html", [
-        [ "Ogre::IntersectionSceneQuery", "class_ogre_1_1_intersection_scene_query.html", [
-          [ "Ogre::DefaultIntersectionSceneQuery", "class_ogre_1_1_default_intersection_scene_query.html", null ]
-        ] ],
-        [ "Ogre::RaySceneQuery", "class_ogre_1_1_ray_scene_query.html", [
-          [ "Ogre::DefaultRaySceneQuery", "class_ogre_1_1_default_ray_scene_query.html", null ]
-        ] ],
-        [ "Ogre::RegionSceneQuery", "class_ogre_1_1_region_scene_query.html", [
-          [ "Ogre::AxisAlignedBoxSceneQuery", "class_ogre_1_1_axis_aligned_box_scene_query.html", [
-            [ "Ogre::DefaultAxisAlignedBoxSceneQuery", "class_ogre_1_1_default_axis_aligned_box_scene_query.html", null ]
-          ] ],
-          [ "Ogre::PlaneBoundedVolumeListSceneQuery", "class_ogre_1_1_plane_bounded_volume_list_scene_query.html", [
-            [ "Ogre::DefaultPlaneBoundedVolumeListSceneQuery", "class_ogre_1_1_default_plane_bounded_volume_list_scene_query.html", null ]
-          ] ],
-          [ "Ogre::SphereSceneQuery", "class_ogre_1_1_sphere_scene_query.html", [
-            [ "Ogre::DefaultSphereSceneQuery", "class_ogre_1_1_default_sphere_scene_query.html", null ]
-          ] ]
-        ] ]
-      ] ],
-      [ "Ogre::SceneQueryResult", "struct_ogre_1_1_scene_query_result.html", null ],
-      [ "Ogre::ScriptCompiler", "class_ogre_1_1_script_compiler.html", null ],
-      [ "Ogre::ScriptCompiler::Error", "struct_ogre_1_1_script_compiler_1_1_error.html", null ],
-      [ "Ogre::ScriptCompilerManager", "class_ogre_1_1_script_compiler_manager.html", null ],
-      [ "Ogre::ScriptLexer", "class_ogre_1_1_script_lexer.html", null ],
-      [ "Ogre::ScriptParser", "class_ogre_1_1_script_parser.html", null ],
-      [ "Ogre::ScriptTranslator", "class_ogre_1_1_script_translator.html", [
-        [ "Ogre::CompositorLoadActionTranslator", "class_ogre_1_1_compositor_load_action_translator.html", null ],
-        [ "Ogre::CompositorPassTranslator", "class_ogre_1_1_compositor_pass_translator.html", null ],
-        [ "Ogre::CompositorRenderTargetViewTranslator", "class_ogre_1_1_compositor_render_target_view_translator.html", null ],
-        [ "Ogre::CompositorShadowMapRepeatTranslator", "class_ogre_1_1_compositor_shadow_map_repeat_translator.html", null ],
-        [ "Ogre::CompositorShadowMapTargetTranslator", "class_ogre_1_1_compositor_shadow_map_target_translator.html", null ],
-        [ "Ogre::CompositorShadowMapTargetTypeTranslator", "class_ogre_1_1_compositor_shadow_map_target_type_translator.html", null ],
-        [ "Ogre::CompositorStoreActionTranslator", "class_ogre_1_1_compositor_store_action_translator.html", null ],
-        [ "Ogre::CompositorTargetTranslator", "class_ogre_1_1_compositor_target_translator.html", null ],
-        [ "Ogre::CompositorTextureBaseTranslator", "class_ogre_1_1_compositor_texture_base_translator.html", [
-          [ "Ogre::CompositorNodeTranslator", "class_ogre_1_1_compositor_node_translator.html", null ],
-          [ "Ogre::CompositorShadowNodeTranslator", "class_ogre_1_1_compositor_shadow_node_translator.html", null ],
-          [ "Ogre::CompositorWorkspaceTranslator", "class_ogre_1_1_compositor_workspace_translator.html", null ]
-        ] ],
-        [ "Ogre::GpuProgramTranslator", "class_ogre_1_1_gpu_program_translator.html", null ],
-        [ "Ogre::HlmsTranslator", "class_ogre_1_1_hlms_translator.html", null ],
-        [ "Ogre::MaterialTranslator", "class_ogre_1_1_material_translator.html", null ],
-        [ "Ogre::ParticleAffectorTranslator", "class_ogre_1_1_particle_affector_translator.html", null ],
-        [ "Ogre::ParticleEmitterTranslator", "class_ogre_1_1_particle_emitter_translator.html", null ],
-        [ "Ogre::ParticleSystemTranslator", "class_ogre_1_1_particle_system_translator.html", null ],
-        [ "Ogre::PassTranslator", "class_ogre_1_1_pass_translator.html", null ],
-        [ "Ogre::SharedParamsTranslator", "class_ogre_1_1_shared_params_translator.html", null ],
-        [ "Ogre::TechniqueTranslator", "class_ogre_1_1_technique_translator.html", null ],
-        [ "Ogre::TextureSourceTranslator", "class_ogre_1_1_texture_source_translator.html", null ],
-        [ "Ogre::TextureUnitTranslator", "class_ogre_1_1_texture_unit_translator.html", null ]
-      ] ],
-      [ "Ogre::ScriptTranslatorManager", "class_ogre_1_1_script_translator_manager.html", [
-        [ "Ogre::BuiltinScriptTranslatorManager", "class_ogre_1_1_builtin_script_translator_manager.html", null ]
-      ] ],
-      [ "Ogre::Serializer", "class_ogre_1_1_serializer.html", [
-        [ "Ogre::GpuNamedConstantsSerializer", "class_ogre_1_1_gpu_named_constants_serializer.html", null ],
-        [ "Ogre::LodConfigSerializer", "class_ogre_1_1_lod_config_serializer.html", null ],
-        [ "Ogre::MeshSerializer", "class_ogre_1_1_mesh_serializer.html", null ],
-        [ "Ogre::MeshSerializerImpl", "class_ogre_1_1_mesh_serializer_impl.html", [
-          [ "Ogre::MeshSerializerImpl_v2_1_R1", "class_ogre_1_1_mesh_serializer_impl__v2__1___r1.html", [
-            [ "Ogre::MeshSerializerImpl_v2_1_R0", "class_ogre_1_1_mesh_serializer_impl__v2__1___r0.html", null ]
-          ] ]
-        ] ],
-        [ "Ogre::v1::MeshSerializer", "class_ogre_1_1v1_1_1_mesh_serializer.html", null ],
-        [ "Ogre::v1::MeshSerializerImpl", "class_ogre_1_1v1_1_1_mesh_serializer_impl.html", [
-          [ "Ogre::v1::MeshSerializerImpl_v1_10", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__10.html", [
-            [ "Ogre::v1::MeshSerializerImpl_v1_8", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__8.html", [
-              [ "Ogre::v1::MeshSerializerImpl_v1_41", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__41.html", [
-                [ "Ogre::v1::MeshSerializerImpl_v1_4", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__4.html", [
-                  [ "Ogre::v1::MeshSerializerImpl_v1_3", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__3.html", [
-                    [ "Ogre::v1::MeshSerializerImpl_v1_2", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__2.html", [
-                      [ "Ogre::v1::MeshSerializerImpl_v1_1", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html", null ]
-                    ] ]
-                  ] ]
-                ] ]
-              ] ]
-            ] ]
-          ] ]
-        ] ],
-        [ "Ogre::v1::SkeletonSerializer", "class_ogre_1_1v1_1_1_skeleton_serializer.html", null ]
-      ] ],
-      [ "Ogre::ShaderParams", "class_ogre_1_1_shader_params.html", null ],
-      [ "Ogre::ShadowCameraSetup", "class_ogre_1_1_shadow_camera_setup.html", [
-        [ "Ogre::DefaultShadowCameraSetup", "class_ogre_1_1_default_shadow_camera_setup.html", [
-          [ "Ogre::ConcentricShadowCamera", "class_ogre_1_1_concentric_shadow_camera.html", null ],
-          [ "Ogre::FocusedShadowCameraSetup", "class_ogre_1_1_focused_shadow_camera_setup.html", [
-            [ "Ogre::PSSMShadowCameraSetup", "class_ogre_1_1_p_s_s_m_shadow_camera_setup.html", null ]
-          ] ]
-        ] ],
-        [ "Ogre::PlaneOptimalShadowCameraSetup", "class_ogre_1_1_plane_optimal_shadow_camera_setup.html", null ]
-      ] ],
-      [ "Ogre::ShadowTextureDefinition", "class_ogre_1_1_shadow_texture_definition.html", null ],
-      [ "Ogre::SkeletonAnimation", "class_ogre_1_1_skeleton_animation.html", null ],
-      [ "Ogre::SkeletonAnimationDef", "class_ogre_1_1_skeleton_animation_def.html", null ],
-      [ "Ogre::SkeletonDef", "class_ogre_1_1_skeleton_def.html", null ],
-      [ "Ogre::SkeletonInstance", "class_ogre_1_1_skeleton_instance.html", null ],
-      [ "Ogre::SkeletonManager", "class_ogre_1_1_skeleton_manager.html", null ],
-      [ "Ogre::SkeletonTrack", "class_ogre_1_1_skeleton_track.html", null ],
-      [ "Ogre::StagingBuffer", "class_ogre_1_1_staging_buffer.html", [
-        [ "Ogre::D3D11StagingBuffer", "class_ogre_1_1_d3_d11_staging_buffer.html", null ],
-        [ "Ogre::GL3PlusStagingBuffer", "class_ogre_1_1_g_l3_plus_staging_buffer.html", null ],
-        [ "Ogre::GLES2StagingBuffer", "class_ogre_1_1_g_l_e_s2_staging_buffer.html", null ],
-        [ "Ogre::MetalStagingBuffer", "class_ogre_1_1_metal_staging_buffer.html", null ],
-        [ "Ogre::NULLStagingBuffer", "class_ogre_1_1_n_u_l_l_staging_buffer.html", null ],
-        [ "Ogre::VulkanStagingBuffer", "class_ogre_1_1_vulkan_staging_buffer.html", null ]
-      ] ],
-      [ "Ogre::StagingTexture", "class_ogre_1_1_staging_texture.html", [
-        [ "Ogre::D3D11StagingTexture", "class_ogre_1_1_d3_d11_staging_texture.html", null ],
-        [ "Ogre::StagingTextureBufferImpl", "class_ogre_1_1_staging_texture_buffer_impl.html", [
-          [ "Ogre::GL3PlusStagingTexture", "class_ogre_1_1_g_l3_plus_staging_texture.html", null ],
-          [ "Ogre::MetalStagingTexture", "class_ogre_1_1_metal_staging_texture.html", null ],
-          [ "Ogre::NULLStagingTexture", "class_ogre_1_1_n_u_l_l_staging_texture.html", null ],
-          [ "Ogre::VulkanStagingTexture", "class_ogre_1_1_vulkan_staging_texture.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::StreamSerialiser", "class_ogre_1_1_stream_serialiser.html", null ],
-      [ "Ogre::StreamSerialiser::Chunk", "struct_ogre_1_1_stream_serialiser_1_1_chunk.html", null ],
-      [ "Ogre::SubItem", "class_ogre_1_1_sub_item.html", null ],
-      [ "Ogre::SubMesh", "class_ogre_1_1_sub_mesh.html", null ],
-      [ "Ogre::Technique", "class_ogre_1_1_technique.html", null ],
-      [ "Ogre::TextureDefinitionBase", "class_ogre_1_1_texture_definition_base.html", [
-        [ "Ogre::CompositorNodeDef", "class_ogre_1_1_compositor_node_def.html", [
-          [ "Ogre::CompositorShadowNodeDef", "class_ogre_1_1_compositor_shadow_node_def.html", null ]
-        ] ],
-        [ "Ogre::CompositorWorkspaceDef", "class_ogre_1_1_compositor_workspace_def.html", null ]
-      ] ],
-      [ "Ogre::TextureDefinitionBase::BufferDefinition", "struct_ogre_1_1_texture_definition_base_1_1_buffer_definition.html", null ],
-      [ "Ogre::TextureDefinitionBase::TextureDefinition", "class_ogre_1_1_texture_definition_base_1_1_texture_definition.html", null ],
-      [ "Ogre::TextureFilter::FilterBase", "class_ogre_1_1_texture_filter_1_1_filter_base.html", [
-        [ "Ogre::TextureFilter::GenerateHwMipmaps", "class_ogre_1_1_texture_filter_1_1_generate_hw_mipmaps.html", null ],
-        [ "Ogre::TextureFilter::GenerateSwMipmaps", "class_ogre_1_1_texture_filter_1_1_generate_sw_mipmaps.html", null ],
-        [ "Ogre::TextureFilter::LeaveChannelR", "class_ogre_1_1_texture_filter_1_1_leave_channel_r.html", null ],
-        [ "Ogre::TextureFilter::PrepareForNormalMapping", "class_ogre_1_1_texture_filter_1_1_prepare_for_normal_mapping.html", null ]
-      ] ],
-      [ "Ogre::TextureGpuManager", "class_ogre_1_1_texture_gpu_manager.html", [
-        [ "Ogre::D3D11TextureGpuManager", "class_ogre_1_1_d3_d11_texture_gpu_manager.html", null ],
-        [ "Ogre::GL3PlusTextureGpuManager", "class_ogre_1_1_g_l3_plus_texture_gpu_manager.html", null ],
-        [ "Ogre::MetalTextureGpuManager", "class_ogre_1_1_metal_texture_gpu_manager.html", null ],
-        [ "Ogre::NULLTextureGpuManager", "class_ogre_1_1_n_u_l_l_texture_gpu_manager.html", null ],
-        [ "Ogre::VulkanTextureGpuManager", "class_ogre_1_1_vulkan_texture_gpu_manager.html", null ]
-      ] ],
-      [ "Ogre::TextureUnitState", "class_ogre_1_1_texture_unit_state.html", null ],
-      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
-      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
-      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
-      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
-      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
-      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
-      [ "Ogre::UserObjectBindings", "class_ogre_1_1_user_object_bindings.html", null ],
-      [ "Ogre::VaoManager", "class_ogre_1_1_vao_manager.html", [
-        [ "Ogre::D3D11VaoManager", "class_ogre_1_1_d3_d11_vao_manager.html", null ],
-        [ "Ogre::GL3PlusVaoManager", "class_ogre_1_1_g_l3_plus_vao_manager.html", null ],
-        [ "Ogre::GLES2VaoManager", "class_ogre_1_1_g_l_e_s2_vao_manager.html", null ],
-        [ "Ogre::MetalVaoManager", "class_ogre_1_1_metal_vao_manager.html", null ],
-        [ "Ogre::NULLVaoManager", "class_ogre_1_1_n_u_l_l_vao_manager.html", null ],
-        [ "Ogre::VulkanVaoManager", "class_ogre_1_1_vulkan_vao_manager.html", null ]
-      ] ],
-      [ "Ogre::VertexArrayObject", "struct_ogre_1_1_vertex_array_object.html", [
-        [ "Ogre::D3D11VertexArrayObject", "struct_ogre_1_1_d3_d11_vertex_array_object.html", null ],
-        [ "Ogre::GL3PlusVertexArrayObject", "struct_ogre_1_1_g_l3_plus_vertex_array_object.html", null ],
-        [ "Ogre::GLES2VertexArrayObject", "struct_ogre_1_1_g_l_e_s2_vertex_array_object.html", null ],
-        [ "Ogre::NULLVertexArrayObject", "struct_ogre_1_1_n_u_l_l_vertex_array_object.html", null ]
-      ] ],
-      [ "Ogre::Viewport", "class_ogre_1_1_viewport.html", null ],
-      [ "Ogre::Volume::DualGridGenerator", "class_ogre_1_1_volume_1_1_dual_grid_generator.html", null ],
-      [ "Ogre::Volume::IsoSurface", "class_ogre_1_1_volume_1_1_iso_surface.html", [
-        [ "Ogre::Volume::IsoSurfaceMC", "class_ogre_1_1_volume_1_1_iso_surface_m_c.html", null ]
-      ] ],
-      [ "Ogre::Volume::MeshBuilder", "class_ogre_1_1_volume_1_1_mesh_builder.html", null ],
-      [ "Ogre::Volume::OctreeNode", "class_ogre_1_1_volume_1_1_octree_node.html", null ],
-      [ "Ogre::VulkanCache", "class_ogre_1_1_vulkan_cache.html", null ],
-      [ "Ogre::VulkanDescriptorPool", "class_ogre_1_1_vulkan_descriptor_pool.html", null ],
-      [ "Ogre::VulkanDiscardBuffer", "class_ogre_1_1_vulkan_discard_buffer.html", null ],
-      [ "Ogre::VulkanDiscardBufferManager", "class_ogre_1_1_vulkan_discard_buffer_manager.html", null ],
-      [ "Ogre::VulkanRootLayout", "class_ogre_1_1_vulkan_root_layout.html", null ],
-      [ "Ogre::Window", "class_ogre_1_1_window.html", [
-        [ "Ogre::CocoaWindow", "class_ogre_1_1_cocoa_window.html", null ],
-        [ "Ogre::D3D11Window", "class_ogre_1_1_d3_d11_window.html", [
-          [ "Ogre::D3D11WindowSwapChainBased", "class_ogre_1_1_d3_d11_window_swap_chain_based.html", null ]
-        ] ],
-        [ "Ogre::EGLWindow", "class_ogre_1_1_e_g_l_window.html", [
-          [ "Ogre::AndroidEGLWindow", "class_ogre_1_1_android_e_g_l_window.html", null ],
-          [ "Ogre::EmscriptenEGLWindow", "class_ogre_1_1_emscripten_e_g_l_window.html", null ],
-          [ "Ogre::Win32EGLWindow", "class_ogre_1_1_win32_e_g_l_window.html", null ],
-          [ "Ogre::X11EGLWindow", "class_ogre_1_1_x11_e_g_l_window.html", null ]
-        ] ],
-        [ "Ogre::EglPBufferWindow", "class_ogre_1_1_egl_p_buffer_window.html", null ],
-        [ "Ogre::GLXWindow", "class_ogre_1_1_g_l_x_window.html", null ],
-        [ "Ogre::MetalWindow", "class_ogre_1_1_metal_window.html", null ],
-        [ "Ogre::NULLWindow", "class_ogre_1_1_n_u_l_l_window.html", null ],
-        [ "Ogre::VulkanWindow", "class_ogre_1_1_vulkan_window.html", [
-          [ "Ogre::VulkanWindowNull", "class_ogre_1_1_vulkan_window_null.html", null ],
-          [ "Ogre::VulkanWindowSwapChainBased", "class_ogre_1_1_vulkan_window_swap_chain_based.html", [
-            [ "Ogre::VulkanAndroidWindow", "class_ogre_1_1_vulkan_android_window.html", null ],
-            [ "Ogre::VulkanWin32Window", "class_ogre_1_1_vulkan_win32_window.html", null ],
-            [ "Ogre::VulkanXcbWindow", "class_ogre_1_1_vulkan_xcb_window.html", null ]
-          ] ]
-        ] ],
-        [ "Ogre::Win32Window", "class_ogre_1_1_win32_window.html", null ]
-      ] ],
-      [ "Ogre::WorkQueue", "class_ogre_1_1_work_queue.html", [
-        [ "Ogre::DefaultWorkQueueBase", "class_ogre_1_1_default_work_queue_base.html", [
-          [ "Ogre::DefaultWorkQueue", "class_ogre_1_1_default_work_queue.html", null ],
-          [ "Ogre::DefaultWorkQueue", "class_ogre_1_1_default_work_queue.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::WorkQueue::Request", "class_ogre_1_1_work_queue_1_1_request.html", null ],
-      [ "Ogre::WorkQueue::Response", "struct_ogre_1_1_work_queue_1_1_response.html", null ],
-      [ "Ogre::v1::Animation", "class_ogre_1_1v1_1_1_animation.html", null ],
-      [ "Ogre::v1::AnimationState", "class_ogre_1_1v1_1_1_animation_state.html", null ],
-      [ "Ogre::v1::AnimationStateSet", "class_ogre_1_1v1_1_1_animation_state_set.html", null ],
-      [ "Ogre::v1::AnimationTrack", "class_ogre_1_1v1_1_1_animation_track.html", [
-        [ "Ogre::v1::NodeAnimationTrack", "class_ogre_1_1v1_1_1_node_animation_track.html", null ],
-        [ "Ogre::v1::NumericAnimationTrack", "class_ogre_1_1v1_1_1_numeric_animation_track.html", null ],
-        [ "Ogre::v1::OldNodeAnimationTrack", "class_ogre_1_1v1_1_1_old_node_animation_track.html", null ],
-        [ "Ogre::v1::VertexAnimationTrack", "class_ogre_1_1v1_1_1_vertex_animation_track.html", null ]
-      ] ],
-      [ "Ogre::v1::Billboard", "class_ogre_1_1v1_1_1_billboard.html", null ],
-      [ "Ogre::v1::BorderRenderable", "class_ogre_1_1v1_1_1_border_renderable.html", null ],
-      [ "Ogre::v1::EdgeData", "class_ogre_1_1v1_1_1_edge_data.html", null ],
-      [ "Ogre::v1::HardwareBuffer", "class_ogre_1_1v1_1_1_hardware_buffer.html", [
-        [ "Ogre::v1::D3D11HardwareBuffer", "class_ogre_1_1v1_1_1_d3_d11_hardware_buffer.html", null ],
-        [ "Ogre::v1::HardwareIndexBuffer", "class_ogre_1_1v1_1_1_hardware_index_buffer.html", [
-          [ "Ogre::v1::D3D11HardwareIndexBuffer", "class_ogre_1_1v1_1_1_d3_d11_hardware_index_buffer.html", null ],
-          [ "Ogre::v1::DefaultHardwareIndexBuffer", "class_ogre_1_1v1_1_1_default_hardware_index_buffer.html", null ],
-          [ "Ogre::v1::GL3PlusDefaultHardwareIndexBuffer", "class_ogre_1_1v1_1_1_g_l3_plus_default_hardware_index_buffer.html", null ],
-          [ "Ogre::v1::GL3PlusHardwareIndexBuffer", "class_ogre_1_1v1_1_1_g_l3_plus_hardware_index_buffer.html", null ],
-          [ "Ogre::v1::GLES2DefaultHardwareIndexBuffer", "class_ogre_1_1v1_1_1_g_l_e_s2_default_hardware_index_buffer.html", null ],
-          [ "Ogre::v1::MetalHardwareIndexBuffer", "class_ogre_1_1v1_1_1_metal_hardware_index_buffer.html", null ],
-          [ "Ogre::v1::VulkanHardwareIndexBuffer", "class_ogre_1_1v1_1_1_vulkan_hardware_index_buffer.html", null ]
-        ] ],
-        [ "Ogre::v1::HardwareVertexBuffer", "class_ogre_1_1v1_1_1_hardware_vertex_buffer.html", [
-          [ "Ogre::v1::D3D11HardwareVertexBuffer", "class_ogre_1_1v1_1_1_d3_d11_hardware_vertex_buffer.html", null ],
-          [ "Ogre::v1::DefaultHardwareVertexBuffer", "class_ogre_1_1v1_1_1_default_hardware_vertex_buffer.html", null ],
-          [ "Ogre::v1::GL3PlusDefaultHardwareVertexBuffer", "class_ogre_1_1v1_1_1_g_l3_plus_default_hardware_vertex_buffer.html", null ],
-          [ "Ogre::v1::GL3PlusHardwareVertexBuffer", "class_ogre_1_1v1_1_1_g_l3_plus_hardware_vertex_buffer.html", null ],
-          [ "Ogre::v1::GLES2DefaultHardwareVertexBuffer", "class_ogre_1_1v1_1_1_g_l_e_s2_default_hardware_vertex_buffer.html", null ],
-          [ "Ogre::v1::MetalHardwareVertexBuffer", "class_ogre_1_1v1_1_1_metal_hardware_vertex_buffer.html", null ],
-          [ "Ogre::v1::VulkanHardwareVertexBuffer", "class_ogre_1_1v1_1_1_vulkan_hardware_vertex_buffer.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::v1::HardwareBufferManagerBase", "class_ogre_1_1v1_1_1_hardware_buffer_manager_base.html", [
-        [ "Ogre::v1::D3D11HardwareBufferManagerBase", "class_ogre_1_1v1_1_1_d3_d11_hardware_buffer_manager_base.html", null ],
-        [ "Ogre::v1::DefaultHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_default_hardware_buffer_manager_base.html", null ],
-        [ "Ogre::v1::GL3PlusDefaultHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_g_l3_plus_default_hardware_buffer_manager_base.html", null ],
-        [ "Ogre::v1::GL3PlusHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_g_l3_plus_hardware_buffer_manager_base.html", null ],
-        [ "Ogre::v1::GLES2DefaultHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_g_l_e_s2_default_hardware_buffer_manager_base.html", null ],
-        [ "Ogre::v1::GLES2HardwareBufferManagerBase", "class_ogre_1_1v1_1_1_g_l_e_s2_hardware_buffer_manager_base.html", null ],
-        [ "Ogre::v1::HardwareBufferManager", "class_ogre_1_1v1_1_1_hardware_buffer_manager.html", [
-          [ "Ogre::v1::D3D11HardwareBufferManager", "class_ogre_1_1v1_1_1_d3_d11_hardware_buffer_manager.html", null ],
-          [ "Ogre::v1::DefaultHardwareBufferManager", "class_ogre_1_1v1_1_1_default_hardware_buffer_manager.html", null ],
-          [ "Ogre::v1::GL3PlusDefaultHardwareBufferManager", "class_ogre_1_1v1_1_1_g_l3_plus_default_hardware_buffer_manager.html", null ],
-          [ "Ogre::v1::GL3PlusHardwareBufferManager", "class_ogre_1_1v1_1_1_g_l3_plus_hardware_buffer_manager.html", null ],
-          [ "Ogre::v1::GLES2DefaultHardwareBufferManager", "class_ogre_1_1v1_1_1_g_l_e_s2_default_hardware_buffer_manager.html", null ],
-          [ "Ogre::v1::GLES2HardwareBufferManager", "class_ogre_1_1v1_1_1_g_l_e_s2_hardware_buffer_manager.html", null ],
-          [ "Ogre::v1::MetalHardwareBufferManager", "class_ogre_1_1v1_1_1_metal_hardware_buffer_manager.html", null ],
-          [ "Ogre::v1::VulkanHardwareBufferManager", "class_ogre_1_1v1_1_1_vulkan_hardware_buffer_manager.html", null ]
-        ] ],
-        [ "Ogre::v1::MetalHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html", null ],
-        [ "Ogre::v1::VulkanHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_vulkan_hardware_buffer_manager_base.html", null ]
-      ] ],
-      [ "Ogre::v1::IndexData", "class_ogre_1_1v1_1_1_index_data.html", null ],
-      [ "Ogre::v1::KeyFrame", "class_ogre_1_1v1_1_1_key_frame.html", [
-        [ "Ogre::v1::NumericKeyFrame", "class_ogre_1_1v1_1_1_numeric_key_frame.html", null ],
-        [ "Ogre::v1::TransformKeyFrame", "class_ogre_1_1v1_1_1_transform_key_frame.html", null ],
-        [ "Ogre::v1::VertexMorphKeyFrame", "class_ogre_1_1v1_1_1_vertex_morph_key_frame.html", null ],
-        [ "Ogre::v1::VertexPoseKeyFrame", "class_ogre_1_1v1_1_1_vertex_pose_key_frame.html", null ]
-      ] ],
-      [ "Ogre::v1::ManualObject::ManualObjectSection", "class_ogre_1_1v1_1_1_manual_object_1_1_manual_object_section.html", null ],
-      [ "Ogre::v1::OldNode", "class_ogre_1_1v1_1_1_old_node.html", [
-        [ "Ogre::v1::OldBone", "class_ogre_1_1v1_1_1_old_bone.html", [
-          [ "Ogre::v1::TagPoint", "class_ogre_1_1v1_1_1_tag_point.html", null ]
-        ] ]
-      ] ],
-      [ "Ogre::v1::OverlayElement", "class_ogre_1_1v1_1_1_overlay_element.html", [
-        [ "Ogre::v1::OverlayContainer", "class_ogre_1_1v1_1_1_overlay_container.html", [
-          [ "Ogre::v1::PanelOverlayElement", "class_ogre_1_1v1_1_1_panel_overlay_element.html", [
-            [ "Ogre::v1::BorderPanelOverlayElement", "class_ogre_1_1v1_1_1_border_panel_overlay_element.html", null ]
-          ] ]
-        ] ],
-        [ "Ogre::v1::TextAreaOverlayElement", "class_ogre_1_1v1_1_1_text_area_overlay_element.html", null ]
-      ] ],
-      [ "Ogre::v1::OverlayElementFactory", "class_ogre_1_1v1_1_1_overlay_element_factory.html", [
-        [ "Ogre::v1::BorderPanelOverlayElementFactory", "class_ogre_1_1v1_1_1_border_panel_overlay_element_factory.html", null ],
-        [ "Ogre::v1::PanelOverlayElementFactory", "class_ogre_1_1v1_1_1_panel_overlay_element_factory.html", null ],
-        [ "Ogre::v1::TextAreaOverlayElementFactory", "class_ogre_1_1v1_1_1_text_area_overlay_element_factory.html", null ]
-      ] ],
-      [ "Ogre::v1::OverlayManager", "class_ogre_1_1v1_1_1_overlay_manager.html", null ],
-      [ "Ogre::v1::OverlaySystem", "class_ogre_1_1v1_1_1_overlay_system.html", null ],
-      [ "Ogre::v1::PatchSurface", "class_ogre_1_1v1_1_1_patch_surface.html", null ],
-      [ "Ogre::v1::Pose", "class_ogre_1_1v1_1_1_pose.html", null ],
-      [ "Ogre::v1::SubEntity", "class_ogre_1_1v1_1_1_sub_entity.html", null ],
-      [ "Ogre::v1::SubMesh", "class_ogre_1_1v1_1_1_sub_mesh.html", null ],
-      [ "Ogre::v1::TempBlendedBufferInfo", "class_ogre_1_1v1_1_1_temp_blended_buffer_info.html", null ],
-      [ "Ogre::v1::VertexBufferBinding", "class_ogre_1_1v1_1_1_vertex_buffer_binding.html", null ],
-      [ "Ogre::v1::VertexCacheProfiler", "class_ogre_1_1v1_1_1_vertex_cache_profiler.html", null ],
-      [ "Ogre::v1::VertexData", "class_ogre_1_1v1_1_1_vertex_data.html", null ],
-      [ "Ogre::v1::VertexDeclaration", "class_ogre_1_1v1_1_1_vertex_declaration.html", null ],
-      [ "Ogre::v1::VertexElement", "class_ogre_1_1v1_1_1_vertex_element.html", null ]
-    ] ],
-    [ "Ogre::Angle", "class_ogre_1_1_angle.html", null ],
-    [ "Ogre::AnimableObject", "class_ogre_1_1_animable_object.html", [
-      [ "Ogre::MovableObject", "class_ogre_1_1_movable_object.html", null ]
+      ] ]
     ] ],
     [ "Ogre::Any", "class_ogre_1_1_any.html", [
       [ "Ogre::AnyNumeric", "class_ogre_1_1_any_numeric.html", null ]
@@ -1106,9 +393,15 @@ var hierarchy =
       [ "Ogre::D3D11RenderPassDescriptor", "class_ogre_1_1_d3_d11_render_pass_descriptor.html", null ],
       [ "Ogre::D3D11StagingBuffer", "class_ogre_1_1_d3_d11_staging_buffer.html", null ],
       [ "Ogre::D3D11TexBufferPacked", "class_ogre_1_1_d3_d11_tex_buffer_packed.html", null ],
-      [ "Ogre::D3D11TextureGpu", "class_ogre_1_1_d3_d11_texture_gpu.html", null ],
+      [ "Ogre::D3D11TextureGpu", "class_ogre_1_1_d3_d11_texture_gpu.html", [
+        [ "Ogre::D3D11TextureGpuRenderTarget", "class_ogre_1_1_d3_d11_texture_gpu_render_target.html", [
+          [ "Ogre::D3D11TextureGpuWindow", "class_ogre_1_1_d3_d11_texture_gpu_window.html", null ]
+        ] ]
+      ] ],
       [ "Ogre::D3D11UavBufferPacked", "class_ogre_1_1_d3_d11_uav_buffer_packed.html", null ],
-      [ "Ogre::D3D11Window", "class_ogre_1_1_d3_d11_window.html", null ],
+      [ "Ogre::D3D11Window", "class_ogre_1_1_d3_d11_window.html", [
+        [ "Ogre::D3D11WindowSwapChainBased", "class_ogre_1_1_d3_d11_window_swap_chain_based.html", null ]
+      ] ],
       [ "Ogre::v1::D3D11HardwareBuffer", "class_ogre_1_1v1_1_1_d3_d11_hardware_buffer.html", null ]
     ] ],
     [ "Ogre::D3D11DeviceResourceManager", "class_ogre_1_1_d3_d11_device_resource_manager.html", [
@@ -1245,8 +538,67 @@ var hierarchy =
     [ "Ogre::GpuProgramParameters::AutoConstantDefinition", "struct_ogre_1_1_gpu_program_parameters_1_1_auto_constant_definition.html", null ],
     [ "Ogre::GpuProgramParameters_AutoConstantEntry", "class_ogre_1_1_gpu_program_parameters___auto_constant_entry.html", null ],
     [ "Ogre::GpuTrackedResource", "struct_ogre_1_1_gpu_tracked_resource.html", [
-      [ "Ogre::BufferPacked", "class_ogre_1_1_buffer_packed.html", null ],
-      [ "Ogre::TextureGpu", "class_ogre_1_1_texture_gpu.html", null ]
+      [ "Ogre::BufferPacked", "class_ogre_1_1_buffer_packed.html", [
+        [ "Ogre::ConstBufferPacked", "class_ogre_1_1_const_buffer_packed.html", [
+          [ "Ogre::D3D11ConstBufferPacked", "class_ogre_1_1_d3_d11_const_buffer_packed.html", null ],
+          [ "Ogre::GL3PlusConstBufferPacked", "class_ogre_1_1_g_l3_plus_const_buffer_packed.html", null ],
+          [ "Ogre::GLES2ConstBufferPacked", "class_ogre_1_1_g_l_e_s2_const_buffer_packed.html", null ],
+          [ "Ogre::MetalConstBufferPacked", "class_ogre_1_1_metal_const_buffer_packed.html", null ],
+          [ "Ogre::NULLConstBufferPacked", "class_ogre_1_1_n_u_l_l_const_buffer_packed.html", null ],
+          [ "Ogre::VulkanConstBufferPacked", "class_ogre_1_1_vulkan_const_buffer_packed.html", null ]
+        ] ],
+        [ "Ogre::IndexBufferPacked", "class_ogre_1_1_index_buffer_packed.html", null ],
+        [ "Ogre::IndirectBufferPacked", "class_ogre_1_1_indirect_buffer_packed.html", null ],
+        [ "Ogre::TexBufferPacked", "class_ogre_1_1_tex_buffer_packed.html", [
+          [ "Ogre::D3D11TexBufferPacked", "class_ogre_1_1_d3_d11_tex_buffer_packed.html", null ],
+          [ "Ogre::GL3PlusTexBufferEmulatedPacked", "class_ogre_1_1_g_l3_plus_tex_buffer_emulated_packed.html", null ],
+          [ "Ogre::GL3PlusTexBufferPacked", "class_ogre_1_1_g_l3_plus_tex_buffer_packed.html", null ],
+          [ "Ogre::GLES2TexBufferEmulatedPacked", "class_ogre_1_1_g_l_e_s2_tex_buffer_emulated_packed.html", null ],
+          [ "Ogre::NULLTexBufferPacked", "class_ogre_1_1_n_u_l_l_tex_buffer_packed.html", null ],
+          [ "Ogre::ReadOnlyBufferPacked", "class_ogre_1_1_read_only_buffer_packed.html", [
+            [ "Ogre::D3D11ReadOnlyBufferPacked", "class_ogre_1_1_d3_d11_read_only_buffer_packed.html", null ],
+            [ "Ogre::GL3PlusReadOnlyBufferEmulatedPacked", "class_ogre_1_1_g_l3_plus_read_only_buffer_emulated_packed.html", null ],
+            [ "Ogre::GL3PlusReadOnlyTexBufferPacked", "class_ogre_1_1_g_l3_plus_read_only_tex_buffer_packed.html", null ],
+            [ "Ogre::GL3PlusReadOnlyUavBufferPacked", "class_ogre_1_1_g_l3_plus_read_only_uav_buffer_packed.html", null ],
+            [ "Ogre::MetalTexBufferPacked", "class_ogre_1_1_metal_tex_buffer_packed.html", [
+              [ "Ogre::MetalReadOnlyBufferPacked", "class_ogre_1_1_metal_read_only_buffer_packed.html", null ]
+            ] ],
+            [ "Ogre::NULLReadOnlyBufferPacked", "class_ogre_1_1_n_u_l_l_read_only_buffer_packed.html", null ],
+            [ "Ogre::VulkanReadOnlyBufferPacked", "class_ogre_1_1_vulkan_read_only_buffer_packed.html", null ]
+          ] ],
+          [ "Ogre::VulkanTexBufferPacked", "class_ogre_1_1_vulkan_tex_buffer_packed.html", null ]
+        ] ],
+        [ "Ogre::UavBufferPacked", "class_ogre_1_1_uav_buffer_packed.html", [
+          [ "Ogre::D3D11UavBufferPacked", "class_ogre_1_1_d3_d11_uav_buffer_packed.html", null ],
+          [ "Ogre::GL3PlusUavBufferPacked", "class_ogre_1_1_g_l3_plus_uav_buffer_packed.html", null ],
+          [ "Ogre::MetalUavBufferPacked", "class_ogre_1_1_metal_uav_buffer_packed.html", null ],
+          [ "Ogre::NULLUavBufferPacked", "class_ogre_1_1_n_u_l_l_uav_buffer_packed.html", null ],
+          [ "Ogre::VulkanUavBufferPacked", "class_ogre_1_1_vulkan_uav_buffer_packed.html", null ]
+        ] ],
+        [ "Ogre::VertexBufferPacked", "class_ogre_1_1_vertex_buffer_packed.html", null ]
+      ] ],
+      [ "Ogre::TextureGpu", "class_ogre_1_1_texture_gpu.html", [
+        [ "Ogre::D3D11TextureGpu", "class_ogre_1_1_d3_d11_texture_gpu.html", null ],
+        [ "Ogre::GL3PlusTextureGpu", "class_ogre_1_1_g_l3_plus_texture_gpu.html", [
+          [ "Ogre::GL3PlusTextureGpuRenderTarget", "class_ogre_1_1_g_l3_plus_texture_gpu_render_target.html", [
+            [ "Ogre::GL3PlusTextureGpuHeadlessWindow", "class_ogre_1_1_g_l3_plus_texture_gpu_headless_window.html", null ],
+            [ "Ogre::GL3PlusTextureGpuWindow", "class_ogre_1_1_g_l3_plus_texture_gpu_window.html", null ]
+          ] ]
+        ] ],
+        [ "Ogre::MetalTextureGpu", "class_ogre_1_1_metal_texture_gpu.html", [
+          [ "Ogre::MetalTextureGpuRenderTarget", "class_ogre_1_1_metal_texture_gpu_render_target.html", [
+            [ "Ogre::MetalTextureGpuWindow", "class_ogre_1_1_metal_texture_gpu_window.html", null ]
+          ] ]
+        ] ],
+        [ "Ogre::NULLTextureGpu", "class_ogre_1_1_n_u_l_l_texture_gpu.html", [
+          [ "Ogre::NULLTextureGpuRenderTarget", "class_ogre_1_1_n_u_l_l_texture_gpu_render_target.html", null ]
+        ] ],
+        [ "Ogre::VulkanTextureGpu", "class_ogre_1_1_vulkan_texture_gpu.html", [
+          [ "Ogre::VulkanTextureGpuRenderTarget", "class_ogre_1_1_vulkan_texture_gpu_render_target.html", [
+            [ "Ogre::VulkanTextureGpuWindow", "class_ogre_1_1_vulkan_texture_gpu_window.html", null ]
+          ] ]
+        ] ]
+      ] ]
     ] ],
     [ "Ogre::HashedVector< T >", "class_ogre_1_1_hashed_vector.html", null ],
     [ "Ogre::HiddenAreaMeshVrGenerator", "class_ogre_1_1_hidden_area_mesh_vr_generator.html", null ],
@@ -1282,11 +634,17 @@ var hierarchy =
     [ "Ogre::Id", "class_ogre_1_1_id.html", null ],
     [ "Ogre::IdObject", "class_ogre_1_1_id_object.html", [
       [ "Ogre::Bone", "class_ogre_1_1_bone.html", null ],
-      [ "Ogre::CompositorNode", "class_ogre_1_1_compositor_node.html", null ],
+      [ "Ogre::CompositorNode", "class_ogre_1_1_compositor_node.html", [
+        [ "Ogre::CompositorShadowNode", "class_ogre_1_1_compositor_shadow_node.html", null ]
+      ] ],
       [ "Ogre::CompositorWorkspace", "class_ogre_1_1_compositor_workspace.html", null ],
       [ "Ogre::IrradianceField", "class_ogre_1_1_irradiance_field.html", null ],
       [ "Ogre::MovableObject", "class_ogre_1_1_movable_object.html", null ],
-      [ "Ogre::Node", "class_ogre_1_1_node.html", null ],
+      [ "Ogre::Node", "class_ogre_1_1_node.html", [
+        [ "Ogre::SceneNode", "class_ogre_1_1_scene_node.html", [
+          [ "Ogre::TagPoint", "class_ogre_1_1_tag_point.html", null ]
+        ] ]
+      ] ],
       [ "Ogre::ParallaxCorrectedCubemapBase", "class_ogre_1_1_parallax_corrected_cubemap_base.html", null ],
       [ "Ogre::SceneManager", "class_ogre_1_1_scene_manager.html", null ],
       [ "Ogre::VctLighting", "class_ogre_1_1_vct_lighting.html", null ],
@@ -1301,7 +659,9 @@ var hierarchy =
     [ "Ogre::InstantRadiosity", "class_ogre_1_1_instant_radiosity.html", null ],
     [ "Ogre::InstantRadiosity::AreaOfInterest", "struct_ogre_1_1_instant_radiosity_1_1_area_of_interest.html", null ],
     [ "Ogre::IntersectionSceneQueryListener", "class_ogre_1_1_intersection_scene_query_listener.html", [
-      [ "Ogre::IntersectionSceneQuery", "class_ogre_1_1_intersection_scene_query.html", null ]
+      [ "Ogre::IntersectionSceneQuery", "class_ogre_1_1_intersection_scene_query.html", [
+        [ "Ogre::DefaultIntersectionSceneQuery", "class_ogre_1_1_default_intersection_scene_query.html", null ]
+      ] ]
     ] ],
     [ "Ogre::IrradianceFieldSettings", "struct_ogre_1_1_irradiance_field_settings.html", null ],
     [ "Ogre::IrradianceVolume", "class_ogre_1_1_irradiance_volume.html", null ],
@@ -1320,7 +680,20 @@ var hierarchy =
     [ "Ogre::isPodLike< unsigned char >", "struct_ogre_1_1is_pod_like_3_01unsigned_01char_01_4.html", null ],
     [ "Ogre::isPodLike< unsigned long >", "struct_ogre_1_1is_pod_like_3_01unsigned_01long_01_4.html", null ],
     [ "Ogre::isPodLike< unsigned short >", "struct_ogre_1_1is_pod_like_3_01unsigned_01short_01_4.html", null ],
-    [ "Ogre::IteratorWrapper< T, IteratorType, ValType >", "class_ogre_1_1_iterator_wrapper.html", null ],
+    [ "Ogre::IteratorWrapper< T, IteratorType, ValType >", "class_ogre_1_1_iterator_wrapper.html", [
+      [ "Ogre::MapIteratorWrapper< T, T::const_iterator >", "class_ogre_1_1_map_iterator_wrapper.html", [
+        [ "Ogre::ConstMapIterator< T >", "class_ogre_1_1_const_map_iterator.html", null ]
+      ] ],
+      [ "Ogre::MapIteratorWrapper< T, T::iterator >", "class_ogre_1_1_map_iterator_wrapper.html", [
+        [ "Ogre::MapIterator< T >", "class_ogre_1_1_map_iterator.html", null ]
+      ] ],
+      [ "Ogre::VectorIteratorWrapper< T, T::const_iterator >", "class_ogre_1_1_vector_iterator_wrapper.html", [
+        [ "Ogre::ConstVectorIterator< T >", "class_ogre_1_1_const_vector_iterator.html", null ]
+      ] ],
+      [ "Ogre::VectorIteratorWrapper< T, T::iterator >", "class_ogre_1_1_vector_iterator_wrapper.html", [
+        [ "Ogre::VectorIterator< T >", "class_ogre_1_1_vector_iterator.html", null ]
+      ] ]
+    ] ],
     [ "Ogre::KeyFrameRig", "struct_ogre_1_1_key_frame_rig.html", null ],
     [ "Ogre::KfTransform", "struct_ogre_1_1_kf_transform.html", null ],
     [ "Ogre::LayerBlendModeEx", "class_ogre_1_1_layer_blend_mode_ex.html", null ],
@@ -1429,6 +802,614 @@ var hierarchy =
     ] ],
     [ "Ogre::ObjectData", "struct_ogre_1_1_object_data.html", null ],
     [ "Ogre::OfflineProfiler", "class_ogre_1_1_offline_profiler.html", null ],
+    [ "Ogre::OgreAllocatedObj", null, [
+      [ "Ogre::AndroidLogListener", "class_ogre_1_1_android_log_listener.html", null ],
+      [ "Ogre::AnimableValue", "class_ogre_1_1_animable_value.html", null ],
+      [ "Ogre::Archive", "class_ogre_1_1_archive.html", [
+        [ "Ogre::APKFileSystemArchive", "class_ogre_1_1_a_p_k_file_system_archive.html", null ],
+        [ "Ogre::FileSystemArchive", "class_ogre_1_1_file_system_archive.html", null ],
+        [ "Ogre::ZipArchive", "class_ogre_1_1_zip_archive.html", null ]
+      ] ],
+      [ "Ogre::ArchiveFactory", "class_ogre_1_1_archive_factory.html", null ],
+      [ "Ogre::ArchiveManager", "class_ogre_1_1_archive_manager.html", null ],
+      [ "Ogre::AsyncTextureTicket", "class_ogre_1_1_async_texture_ticket.html", [
+        [ "Ogre::D3D11AsyncTextureTicket", "class_ogre_1_1_d3_d11_async_texture_ticket.html", null ],
+        [ "Ogre::GL3PlusAsyncTextureTicket", "class_ogre_1_1_g_l3_plus_async_texture_ticket.html", null ],
+        [ "Ogre::MetalAsyncTextureTicket", "class_ogre_1_1_metal_async_texture_ticket.html", null ],
+        [ "Ogre::NULLAsyncTextureTicket", "class_ogre_1_1_n_u_l_l_async_texture_ticket.html", null ],
+        [ "Ogre::VulkanAsyncTextureTicket", "class_ogre_1_1_vulkan_async_texture_ticket.html", null ]
+      ] ],
+      [ "Ogre::AsyncTicket", "class_ogre_1_1_async_ticket.html", [
+        [ "Ogre::D3D11AsyncTicket", "class_ogre_1_1_d3_d11_async_ticket.html", null ],
+        [ "Ogre::GL3PlusAsyncTicket", "class_ogre_1_1_g_l3_plus_async_ticket.html", null ],
+        [ "Ogre::GLES2AsyncTicket", "class_ogre_1_1_g_l_e_s2_async_ticket.html", null ],
+        [ "Ogre::MetalAsyncTicket", "class_ogre_1_1_metal_async_ticket.html", null ],
+        [ "Ogre::NULLAsyncTicket", "class_ogre_1_1_n_u_l_l_async_ticket.html", null ],
+        [ "Ogre::VulkanAsyncTicket", "class_ogre_1_1_vulkan_async_ticket.html", null ]
+      ] ],
+      [ "Ogre::AtmosphereComponent", "class_ogre_1_1_atmosphere_component.html", [
+        [ "Ogre::AtmosphereNpr", "class_ogre_1_1_atmosphere_npr.html", null ]
+      ] ],
+      [ "Ogre::Bone", "class_ogre_1_1_bone.html", null ],
+      [ "Ogre::BufferPacked", "class_ogre_1_1_buffer_packed.html", null ],
+      [ "Ogre::CocoaContext", "class_ogre_1_1_cocoa_context.html", null ],
+      [ "Ogre::Codec", "class_ogre_1_1_codec.html", [
+        [ "Ogre::ImageCodec2", "class_ogre_1_1_image_codec2.html", [
+          [ "Ogre::ASTCCodec", "class_ogre_1_1_a_s_t_c_codec.html", null ],
+          [ "Ogre::DDSCodec2", "class_ogre_1_1_d_d_s_codec2.html", null ],
+          [ "Ogre::ETCCodec", "class_ogre_1_1_e_t_c_codec.html", null ],
+          [ "Ogre::FreeImageCodec2", "class_ogre_1_1_free_image_codec2.html", null ],
+          [ "Ogre::OITDCodec", "class_ogre_1_1_o_i_t_d_codec.html", null ],
+          [ "Ogre::PVRTCCodec", "class_ogre_1_1_p_v_r_t_c_codec.html", null ],
+          [ "Ogre::STBIImageCodec", "class_ogre_1_1_s_t_b_i_image_codec.html", null ]
+        ] ]
+      ] ],
+      [ "Ogre::Codec::CodecData", "class_ogre_1_1_codec_1_1_codec_data.html", [
+        [ "Ogre::ImageCodec2::ImageData2", "class_ogre_1_1_image_codec2_1_1_image_data2.html", null ]
+      ] ],
+      [ "Ogre::CompositorManager2", "class_ogre_1_1_compositor_manager2.html", null ],
+      [ "Ogre::CompositorNode", "class_ogre_1_1_compositor_node.html", null ],
+      [ "Ogre::CompositorPass", "class_ogre_1_1_compositor_pass.html", [
+        [ "Ogre::CompositorPassClear", "class_ogre_1_1_compositor_pass_clear.html", null ],
+        [ "Ogre::CompositorPassCompute", "class_ogre_1_1_compositor_pass_compute.html", null ],
+        [ "Ogre::CompositorPassDepthCopy", "class_ogre_1_1_compositor_pass_depth_copy.html", null ],
+        [ "Ogre::CompositorPassIblSpecular", "class_ogre_1_1_compositor_pass_ibl_specular.html", null ],
+        [ "Ogre::CompositorPassMipmap", "class_ogre_1_1_compositor_pass_mipmap.html", null ],
+        [ "Ogre::CompositorPassQuad", "class_ogre_1_1_compositor_pass_quad.html", null ],
+        [ "Ogre::CompositorPassScene", "class_ogre_1_1_compositor_pass_scene.html", null ],
+        [ "Ogre::CompositorPassShadows", "class_ogre_1_1_compositor_pass_shadows.html", null ],
+        [ "Ogre::CompositorPassStencil", "class_ogre_1_1_compositor_pass_stencil.html", null ],
+        [ "Ogre::CompositorPassTargetBarrier", "class_ogre_1_1_compositor_pass_target_barrier.html", null ],
+        [ "Ogre::CompositorPassUav", "class_ogre_1_1_compositor_pass_uav.html", null ],
+        [ "Ogre::CompositorPassWarmUp", "class_ogre_1_1_compositor_pass_warm_up.html", null ]
+      ] ],
+      [ "Ogre::CompositorPassDef", "class_ogre_1_1_compositor_pass_def.html", [
+        [ "Ogre::CompositorPassClearDef", "class_ogre_1_1_compositor_pass_clear_def.html", null ],
+        [ "Ogre::CompositorPassComputeDef", "class_ogre_1_1_compositor_pass_compute_def.html", null ],
+        [ "Ogre::CompositorPassDepthCopyDef", "class_ogre_1_1_compositor_pass_depth_copy_def.html", null ],
+        [ "Ogre::CompositorPassIblSpecularDef", "class_ogre_1_1_compositor_pass_ibl_specular_def.html", null ],
+        [ "Ogre::CompositorPassMipmapDef", "class_ogre_1_1_compositor_pass_mipmap_def.html", null ],
+        [ "Ogre::CompositorPassQuadDef", "class_ogre_1_1_compositor_pass_quad_def.html", null ],
+        [ "Ogre::CompositorPassSceneDef", "class_ogre_1_1_compositor_pass_scene_def.html", null ],
+        [ "Ogre::CompositorPassShadowsDef", "class_ogre_1_1_compositor_pass_shadows_def.html", null ],
+        [ "Ogre::CompositorPassStencilDef", "class_ogre_1_1_compositor_pass_stencil_def.html", null ],
+        [ "Ogre::CompositorPassTargetBarrierDef", "class_ogre_1_1_compositor_pass_target_barrier_def.html", null ],
+        [ "Ogre::CompositorPassUavDef", "class_ogre_1_1_compositor_pass_uav_def.html", null ],
+        [ "Ogre::CompositorPassWarmUpDef", "class_ogre_1_1_compositor_pass_warm_up_def.html", null ]
+      ] ],
+      [ "Ogre::CompositorPassProvider", "class_ogre_1_1_compositor_pass_provider.html", null ],
+      [ "Ogre::CompositorTargetDef", "class_ogre_1_1_compositor_target_def.html", null ],
+      [ "Ogre::CompositorWorkspace", "class_ogre_1_1_compositor_workspace.html", null ],
+      [ "Ogre::ConcreteNode", "struct_ogre_1_1_concrete_node.html", null ],
+      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
+      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
+      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
+      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
+      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
+      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
+      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
+      [ "Ogre::ConfigDialog", "class_ogre_1_1_config_dialog.html", null ],
+      [ "Ogre::ConfigFile", "class_ogre_1_1_config_file.html", null ],
+      [ "Ogre::Controller< T >", "class_ogre_1_1_controller.html", null ],
+      [ "Ogre::ControllerFunction< T >", "class_ogre_1_1_controller_function.html", null ],
+      [ "Ogre::ControllerManager", "class_ogre_1_1_controller_manager.html", null ],
+      [ "Ogre::ControllerValue< T >", "class_ogre_1_1_controller_value.html", null ],
+      [ "Ogre::CubemapProbe", "class_ogre_1_1_cubemap_probe.html", null ],
+      [ "Ogre::D3D11StereoDriverImpl", "class_ogre_1_1_d3_d11_stereo_driver_impl.html", [
+        [ "Ogre::D3D11StereoDriverAMD", "class_ogre_1_1_d3_d11_stereo_driver_a_m_d.html", null ],
+        [ "Ogre::D3D11StereoDriverNVIDIA", "class_ogre_1_1_d3_d11_stereo_driver_n_v_i_d_i_a.html", null ]
+      ] ],
+      [ "Ogre::DataStream", "class_ogre_1_1_data_stream.html", [
+        [ "Ogre::DeflateStream", "class_ogre_1_1_deflate_stream.html", null ],
+        [ "Ogre::FileHandleDataStream", "class_ogre_1_1_file_handle_data_stream.html", null ],
+        [ "Ogre::FileStreamDataStream", "class_ogre_1_1_file_stream_data_stream.html", null ],
+        [ "Ogre::MemoryDataStream", "class_ogre_1_1_memory_data_stream.html", null ],
+        [ "Ogre::ZipDataStream", "class_ogre_1_1_zip_data_stream.html", null ]
+      ] ],
+      [ "Ogre::DynLib", "class_ogre_1_1_dyn_lib.html", null ],
+      [ "Ogre::DynLibManager", "class_ogre_1_1_dyn_lib_manager.html", null ],
+      [ "Ogre::ExternalTextureSourceManager", "class_ogre_1_1_external_texture_source_manager.html", null ],
+      [ "Ogre::FileSystemLayer", "class_ogre_1_1_file_system_layer.html", null ],
+      [ "Ogre::ForwardPlusBase", "class_ogre_1_1_forward_plus_base.html", [
+        [ "Ogre::Forward3D", "class_ogre_1_1_forward3_d.html", null ],
+        [ "Ogre::ForwardClustered", "class_ogre_1_1_forward_clustered.html", null ]
+      ] ],
+      [ "Ogre::FrameStats", "class_ogre_1_1_frame_stats.html", null ],
+      [ "Ogre::GpuLogicalBufferStruct", "struct_ogre_1_1_gpu_logical_buffer_struct.html", null ],
+      [ "Ogre::GpuNamedConstants", "struct_ogre_1_1_gpu_named_constants.html", null ],
+      [ "Ogre::GpuProgramParameters", "class_ogre_1_1_gpu_program_parameters.html", null ],
+      [ "Ogre::GpuProgramUsage", "class_ogre_1_1_gpu_program_usage.html", null ],
+      [ "Ogre::GpuResource", "class_ogre_1_1_gpu_resource.html", [
+        [ "Ogre::TextureGpu", "class_ogre_1_1_texture_gpu.html", null ]
+      ] ],
+      [ "Ogre::GpuSharedParameters", "class_ogre_1_1_gpu_shared_parameters.html", null ],
+      [ "Ogre::GpuSharedParametersUsage", "class_ogre_1_1_gpu_shared_parameters_usage.html", null ],
+      [ "Ogre::HardwareOcclusionQuery", "class_ogre_1_1_hardware_occlusion_query.html", [
+        [ "Ogre::D3D11HardwareOcclusionQuery", "class_ogre_1_1_d3_d11_hardware_occlusion_query.html", null ],
+        [ "Ogre::GL3PlusHardwareOcclusionQuery", "class_ogre_1_1_g_l3_plus_hardware_occlusion_query.html", null ]
+      ] ],
+      [ "Ogre::HighLevelGpuProgramFactory", "class_ogre_1_1_high_level_gpu_program_factory.html", [
+        [ "Ogre::D3D11HLSLProgramFactory", "class_ogre_1_1_d3_d11_h_l_s_l_program_factory.html", null ],
+        [ "Ogre::GLSLESShaderFactory", "class_ogre_1_1_g_l_s_l_e_s_shader_factory.html", null ],
+        [ "Ogre::GLSLShaderFactory", "class_ogre_1_1_g_l_s_l_shader_factory.html", null ],
+        [ "Ogre::MetalProgramFactory", "class_ogre_1_1_metal_program_factory.html", null ],
+        [ "Ogre::UnifiedHighLevelGpuProgramFactory", "class_ogre_1_1_unified_high_level_gpu_program_factory.html", null ],
+        [ "Ogre::VulkanProgramFactory", "class_ogre_1_1_vulkan_program_factory.html", null ]
+      ] ],
+      [ "Ogre::HlmsComputeJob", "class_ogre_1_1_hlms_compute_job.html", null ],
+      [ "Ogre::HlmsDatablock", "class_ogre_1_1_hlms_datablock.html", [
+        [ "Ogre::HlmsLowLevelDatablock", "class_ogre_1_1_hlms_low_level_datablock.html", null ],
+        [ "Ogre::OGRE_HLMS_TEXTURE_BASE_CLASS", "class_ogre_1_1_o_g_r_e___h_l_m_s___t_e_x_t_u_r_e___b_a_s_e___c_l_a_s_s.html", null ]
+      ] ],
+      [ "Ogre::HlmsDiskCache", "class_ogre_1_1_hlms_disk_cache.html", null ],
+      [ "Ogre::HlmsJson", "class_ogre_1_1_hlms_json.html", null ],
+      [ "Ogre::HlmsJsonCompute", "class_ogre_1_1_hlms_json_compute.html", null ],
+      [ "Ogre::HlmsManager", "class_ogre_1_1_hlms_manager.html", null ],
+      [ "Ogre::IesLoader", "class_ogre_1_1_ies_loader.html", null ],
+      [ "Ogre::Image2", "class_ogre_1_1_image2.html", null ],
+      [ "Ogre::IntersectionSceneQueryResult", "struct_ogre_1_1_intersection_scene_query_result.html", null ],
+      [ "Ogre::IrradianceFieldRaster", "class_ogre_1_1_irradiance_field_raster.html", null ],
+      [ "Ogre::LightProfiles", "class_ogre_1_1_light_profiles.html", null ],
+      [ "Ogre::LodStrategy", "class_ogre_1_1_lod_strategy.html", [
+        [ "Ogre::DistanceLodStrategyBase", "class_ogre_1_1_distance_lod_strategy_base.html", [
+          [ "Ogre::DistanceLodBoxStrategy", "class_ogre_1_1_distance_lod_box_strategy.html", null ],
+          [ "Ogre::DistanceLodSphereStrategy", "class_ogre_1_1_distance_lod_sphere_strategy.html", null ]
+        ] ],
+        [ "Ogre::PixelCountLodStrategyBase", "class_ogre_1_1_pixel_count_lod_strategy_base.html", [
+          [ "Ogre::AbsolutePixelCountLodStrategy", "class_ogre_1_1_absolute_pixel_count_lod_strategy.html", null ],
+          [ "Ogre::ScreenRatioPixelCountLodStrategy", "class_ogre_1_1_screen_ratio_pixel_count_lod_strategy.html", null ]
+        ] ]
+      ] ],
+      [ "Ogre::LodStrategyManager", "class_ogre_1_1_lod_strategy_manager.html", null ],
+      [ "Ogre::Log", "class_ogre_1_1_log.html", null ],
+      [ "Ogre::LogManager", "class_ogre_1_1_log_manager.html", null ],
+      [ "Ogre::ManualObject::ManualObjectSection", "class_ogre_1_1_manual_object_1_1_manual_object_section.html", null ],
+      [ "Ogre::MaterialSerializer", "class_ogre_1_1_material_serializer.html", null ],
+      [ "Ogre::MetalDiscardBuffer", "class_ogre_1_1_metal_discard_buffer.html", null ],
+      [ "Ogre::MetalDiscardBufferManager", "class_ogre_1_1_metal_discard_buffer_manager.html", null ],
+      [ "Ogre::MovableObject", "class_ogre_1_1_movable_object.html", null ],
+      [ "Ogre::MovableObjectFactory", "class_ogre_1_1_movable_object_factory.html", [
+        [ "Ogre::DecalFactory", "class_ogre_1_1_decal_factory.html", null ],
+        [ "Ogre::InternalCubemapProbeFactory", "class_ogre_1_1_internal_cubemap_probe_factory.html", null ],
+        [ "Ogre::ItemFactory", "class_ogre_1_1_item_factory.html", null ],
+        [ "Ogre::LightFactory", "class_ogre_1_1_light_factory.html", null ],
+        [ "Ogre::ManualObjectFactory", "class_ogre_1_1_manual_object_factory.html", null ],
+        [ "Ogre::ParticleSystemFactory", "class_ogre_1_1_particle_system_factory.html", null ],
+        [ "Ogre::Rectangle2DFactory", "class_ogre_1_1_rectangle2_d_factory.html", null ],
+        [ "Ogre::WireAabbFactory", "class_ogre_1_1_wire_aabb_factory.html", null ],
+        [ "Ogre::v1::BillboardChainFactory", "class_ogre_1_1v1_1_1_billboard_chain_factory.html", null ],
+        [ "Ogre::v1::BillboardSetFactory", "class_ogre_1_1v1_1_1_billboard_set_factory.html", null ],
+        [ "Ogre::v1::EntityFactory", "class_ogre_1_1v1_1_1_entity_factory.html", null ],
+        [ "Ogre::v1::ManualObjectFactory", "class_ogre_1_1v1_1_1_manual_object_factory.html", null ],
+        [ "Ogre::v1::Rectangle2DFactory", "class_ogre_1_1v1_1_1_rectangle2_d_factory.html", null ],
+        [ "Ogre::v1::RibbonTrailFactory", "class_ogre_1_1v1_1_1_ribbon_trail_factory.html", null ]
+      ] ],
+      [ "Ogre::Node", "class_ogre_1_1_node.html", null ],
+      [ "Ogre::ObjCmdBuffer", "class_ogre_1_1_obj_cmd_buffer.html", null ],
+      [ "Ogre::Particle", "class_ogre_1_1_particle.html", [
+        [ "Ogre::ParticleEmitter", "class_ogre_1_1_particle_emitter.html", [
+          [ "Ogre::AreaEmitter", "class_ogre_1_1_area_emitter.html", [
+            [ "Ogre::BoxEmitter", "class_ogre_1_1_box_emitter.html", null ],
+            [ "Ogre::CylinderEmitter", "class_ogre_1_1_cylinder_emitter.html", null ],
+            [ "Ogre::EllipsoidEmitter", "class_ogre_1_1_ellipsoid_emitter.html", [
+              [ "Ogre::HollowEllipsoidEmitter", "class_ogre_1_1_hollow_ellipsoid_emitter.html", null ]
+            ] ],
+            [ "Ogre::RingEmitter", "class_ogre_1_1_ring_emitter.html", null ]
+          ] ],
+          [ "Ogre::PointEmitter", "class_ogre_1_1_point_emitter.html", null ]
+        ] ]
+      ] ],
+      [ "Ogre::ParticleAffector", "class_ogre_1_1_particle_affector.html", [
+        [ "Ogre::ColourFaderAffector", "class_ogre_1_1_colour_fader_affector.html", null ],
+        [ "Ogre::ColourFaderAffector2", "class_ogre_1_1_colour_fader_affector2.html", null ],
+        [ "Ogre::ColourImageAffector", "class_ogre_1_1_colour_image_affector.html", null ],
+        [ "Ogre::ColourInterpolatorAffector", "class_ogre_1_1_colour_interpolator_affector.html", null ],
+        [ "Ogre::DeflectorPlaneAffector", "class_ogre_1_1_deflector_plane_affector.html", null ],
+        [ "Ogre::DirectionRandomiserAffector", "class_ogre_1_1_direction_randomiser_affector.html", null ],
+        [ "Ogre::LinearForceAffector", "class_ogre_1_1_linear_force_affector.html", null ],
+        [ "Ogre::RotationAffector", "class_ogre_1_1_rotation_affector.html", null ],
+        [ "Ogre::ScaleAffector", "class_ogre_1_1_scale_affector.html", null ],
+        [ "Ogre::ScaleInterpolatorAffector", "class_ogre_1_1_scale_interpolator_affector.html", null ]
+      ] ],
+      [ "Ogre::ParticleAffectorFactory", "class_ogre_1_1_particle_affector_factory.html", [
+        [ "Ogre::ColourFaderAffectorFactory", "class_ogre_1_1_colour_fader_affector_factory.html", null ],
+        [ "Ogre::ColourFaderAffectorFactory2", "class_ogre_1_1_colour_fader_affector_factory2.html", null ],
+        [ "Ogre::ColourImageAffectorFactory", "class_ogre_1_1_colour_image_affector_factory.html", null ],
+        [ "Ogre::ColourInterpolatorAffectorFactory", "class_ogre_1_1_colour_interpolator_affector_factory.html", null ],
+        [ "Ogre::DeflectorPlaneAffectorFactory", "class_ogre_1_1_deflector_plane_affector_factory.html", null ],
+        [ "Ogre::DirectionRandomiserAffectorFactory", "class_ogre_1_1_direction_randomiser_affector_factory.html", null ],
+        [ "Ogre::LinearForceAffectorFactory", "class_ogre_1_1_linear_force_affector_factory.html", null ],
+        [ "Ogre::RotationAffectorFactory", "class_ogre_1_1_rotation_affector_factory.html", null ],
+        [ "Ogre::ScaleAffectorFactory", "class_ogre_1_1_scale_affector_factory.html", null ],
+        [ "Ogre::ScaleInterpolatorAffectorFactory", "class_ogre_1_1_scale_interpolator_affector_factory.html", null ]
+      ] ],
+      [ "Ogre::ParticleEmitterFactory", "class_ogre_1_1_particle_emitter_factory.html", [
+        [ "Ogre::BoxEmitterFactory", "class_ogre_1_1_box_emitter_factory.html", null ],
+        [ "Ogre::CylinderEmitterFactory", "class_ogre_1_1_cylinder_emitter_factory.html", null ],
+        [ "Ogre::EllipsoidEmitterFactory", "class_ogre_1_1_ellipsoid_emitter_factory.html", null ],
+        [ "Ogre::HollowEllipsoidEmitterFactory", "class_ogre_1_1_hollow_ellipsoid_emitter_factory.html", null ],
+        [ "Ogre::PointEmitterFactory", "class_ogre_1_1_point_emitter_factory.html", null ],
+        [ "Ogre::RingEmitterFactory", "class_ogre_1_1_ring_emitter_factory.html", null ]
+      ] ],
+      [ "Ogre::ParticleSystemManager", "class_ogre_1_1_particle_system_manager.html", null ],
+      [ "Ogre::ParticleSystemRenderer", "class_ogre_1_1_particle_system_renderer.html", [
+        [ "Ogre::v1::BillboardParticleRenderer", "class_ogre_1_1v1_1_1_billboard_particle_renderer.html", null ]
+      ] ],
+      [ "Ogre::ParticleSystemRendererFactory", "class_ogre_1_1_particle_system_renderer_factory.html", null ],
+      [ "Ogre::ParticleVisualData", "class_ogre_1_1_particle_visual_data.html", null ],
+      [ "Ogre::Pass", "class_ogre_1_1_pass.html", null ],
+      [ "Ogre::Plugin", "class_ogre_1_1_plugin.html", [
+        [ "Ogre::D3D11Plugin", "class_ogre_1_1_d3_d11_plugin.html", null ],
+        [ "Ogre::GL3PlusPlugin", "class_ogre_1_1_g_l3_plus_plugin.html", null ],
+        [ "Ogre::GLES2Plugin", "class_ogre_1_1_g_l_e_s2_plugin.html", null ],
+        [ "Ogre::MetalPlugin", "class_ogre_1_1_metal_plugin.html", null ],
+        [ "Ogre::NULLPlugin", "class_ogre_1_1_n_u_l_l_plugin.html", null ],
+        [ "Ogre::ParticleFXPlugin", "class_ogre_1_1_particle_f_x_plugin.html", null ],
+        [ "Ogre::VulkanPlugin", "class_ogre_1_1_vulkan_plugin.html", null ]
+      ] ],
+      [ "Ogre::Profile", "class_ogre_1_1_profile.html", null ],
+      [ "Ogre::ProfileInstance", "class_ogre_1_1_profile_instance.html", null ],
+      [ "Ogre::Profiler", "class_ogre_1_1_profiler.html", null ],
+      [ "Ogre::PsoCacheHelper", "class_ogre_1_1_pso_cache_helper.html", null ],
+      [ "Ogre::RadialDensityMask", "class_ogre_1_1_radial_density_mask.html", null ],
+      [ "Ogre::RenderPassDescriptor", "class_ogre_1_1_render_pass_descriptor.html", [
+        [ "Ogre::D3D11RenderPassDescriptor", "class_ogre_1_1_d3_d11_render_pass_descriptor.html", null ],
+        [ "Ogre::GL3PlusRenderPassDescriptor", "class_ogre_1_1_g_l3_plus_render_pass_descriptor.html", null ],
+        [ "Ogre::MetalRenderPassDescriptor", "class_ogre_1_1_metal_render_pass_descriptor.html", null ],
+        [ "Ogre::VulkanRenderPassDescriptor", "class_ogre_1_1_vulkan_render_pass_descriptor.html", null ]
+      ] ],
+      [ "Ogre::RenderQueue", "class_ogre_1_1_render_queue.html", null ],
+      [ "Ogre::RenderSystem", "class_ogre_1_1_render_system.html", [
+        [ "Ogre::D3D11RenderSystem", "class_ogre_1_1_d3_d11_render_system.html", null ],
+        [ "Ogre::GL3PlusRenderSystem", "class_ogre_1_1_g_l3_plus_render_system.html", null ],
+        [ "Ogre::GLES2RenderSystem", "class_ogre_1_1_g_l_e_s2_render_system.html", null ],
+        [ "Ogre::MetalRenderSystem", "class_ogre_1_1_metal_render_system.html", null ],
+        [ "Ogre::NULLRenderSystem", "class_ogre_1_1_n_u_l_l_render_system.html", null ],
+        [ "Ogre::VulkanRenderSystem", "class_ogre_1_1_vulkan_render_system.html", null ]
+      ] ],
+      [ "Ogre::RenderSystemCapabilities", "class_ogre_1_1_render_system_capabilities.html", null ],
+      [ "Ogre::RenderSystemCapabilitiesManager", "class_ogre_1_1_render_system_capabilities_manager.html", null ],
+      [ "Ogre::RenderSystemCapabilitiesSerializer", "class_ogre_1_1_render_system_capabilities_serializer.html", null ],
+      [ "Ogre::Resource", "class_ogre_1_1_resource.html", [
+        [ "Ogre::Font", "class_ogre_1_1_font.html", null ],
+        [ "Ogre::GpuProgram", "class_ogre_1_1_gpu_program.html", [
+          [ "Ogre::HighLevelGpuProgram", "class_ogre_1_1_high_level_gpu_program.html", [
+            [ "Ogre::D3D11HLSLProgram", "class_ogre_1_1_d3_d11_h_l_s_l_program.html", null ],
+            [ "Ogre::GLSLShader", "class_ogre_1_1_g_l_s_l_shader.html", null ],
+            [ "Ogre::MetalProgram", "class_ogre_1_1_metal_program.html", null ],
+            [ "Ogre::UnifiedHighLevelGpuProgram", "class_ogre_1_1_unified_high_level_gpu_program.html", null ],
+            [ "Ogre::VulkanProgram", "class_ogre_1_1_vulkan_program.html", null ]
+          ] ]
+        ] ],
+        [ "Ogre::Material", "class_ogre_1_1_material.html", null ],
+        [ "Ogre::Mesh", "class_ogre_1_1_mesh.html", null ],
+        [ "Ogre::v1::Mesh", "class_ogre_1_1v1_1_1_mesh.html", [
+          [ "Ogre::v1::PatchMesh", "class_ogre_1_1v1_1_1_patch_mesh.html", null ]
+        ] ],
+        [ "Ogre::v1::Skeleton", "class_ogre_1_1v1_1_1_skeleton.html", [
+          [ "Ogre::v1::OldSkeletonInstance", "class_ogre_1_1v1_1_1_old_skeleton_instance.html", null ]
+        ] ]
+      ] ],
+      [ "Ogre::ResourceBackgroundQueue", "class_ogre_1_1_resource_background_queue.html", null ],
+      [ "Ogre::ResourceGroupManager", "class_ogre_1_1_resource_group_manager.html", null ],
+      [ "Ogre::ResourceManager", "class_ogre_1_1_resource_manager.html", [
+        [ "Ogre::FontManager", "class_ogre_1_1_font_manager.html", null ],
+        [ "Ogre::GpuProgramManager", "class_ogre_1_1_gpu_program_manager.html", [
+          [ "Ogre::D3D11GpuProgramManager", "class_ogre_1_1_d3_d11_gpu_program_manager.html", null ],
+          [ "Ogre::GLES2GpuProgramManager", "class_ogre_1_1_g_l_e_s2_gpu_program_manager.html", null ],
+          [ "Ogre::GLSLShaderManager", "class_ogre_1_1_g_l_s_l_shader_manager.html", null ],
+          [ "Ogre::MetalGpuProgramManager", "class_ogre_1_1_metal_gpu_program_manager.html", null ],
+          [ "Ogre::VulkanGpuProgramManager", "class_ogre_1_1_vulkan_gpu_program_manager.html", null ]
+        ] ],
+        [ "Ogre::HighLevelGpuProgramManager", "class_ogre_1_1_high_level_gpu_program_manager.html", null ],
+        [ "Ogre::MaterialManager", "class_ogre_1_1_material_manager.html", null ],
+        [ "Ogre::MeshManager", "class_ogre_1_1_mesh_manager.html", null ],
+        [ "Ogre::v1::MeshManager", "class_ogre_1_1v1_1_1_mesh_manager.html", null ],
+        [ "Ogre::v1::OldSkeletonManager", "class_ogre_1_1v1_1_1_old_skeleton_manager.html", null ]
+      ] ],
+      [ "Ogre::ResourceManager::ResourcePool", "class_ogre_1_1_resource_manager_1_1_resource_pool.html", null ],
+      [ "Ogre::Root", "class_ogre_1_1_root.html", null ],
+      [ "Ogre::SceneManagerEnumerator", "class_ogre_1_1_scene_manager_enumerator.html", null ],
+      [ "Ogre::SceneManagerFactory", "class_ogre_1_1_scene_manager_factory.html", [
+        [ "Ogre::DefaultSceneManagerFactory", "class_ogre_1_1_default_scene_manager_factory.html", null ]
+      ] ],
+      [ "Ogre::SceneQuery", "class_ogre_1_1_scene_query.html", [
+        [ "Ogre::IntersectionSceneQuery", "class_ogre_1_1_intersection_scene_query.html", null ],
+        [ "Ogre::RaySceneQuery", "class_ogre_1_1_ray_scene_query.html", [
+          [ "Ogre::DefaultRaySceneQuery", "class_ogre_1_1_default_ray_scene_query.html", null ]
+        ] ],
+        [ "Ogre::RegionSceneQuery", "class_ogre_1_1_region_scene_query.html", [
+          [ "Ogre::AxisAlignedBoxSceneQuery", "class_ogre_1_1_axis_aligned_box_scene_query.html", [
+            [ "Ogre::DefaultAxisAlignedBoxSceneQuery", "class_ogre_1_1_default_axis_aligned_box_scene_query.html", null ]
+          ] ],
+          [ "Ogre::PlaneBoundedVolumeListSceneQuery", "class_ogre_1_1_plane_bounded_volume_list_scene_query.html", [
+            [ "Ogre::DefaultPlaneBoundedVolumeListSceneQuery", "class_ogre_1_1_default_plane_bounded_volume_list_scene_query.html", null ]
+          ] ],
+          [ "Ogre::SphereSceneQuery", "class_ogre_1_1_sphere_scene_query.html", [
+            [ "Ogre::DefaultSphereSceneQuery", "class_ogre_1_1_default_sphere_scene_query.html", null ]
+          ] ]
+        ] ]
+      ] ],
+      [ "Ogre::SceneQueryResult", "struct_ogre_1_1_scene_query_result.html", null ],
+      [ "Ogre::ScriptCompiler", "class_ogre_1_1_script_compiler.html", null ],
+      [ "Ogre::ScriptCompiler::Error", "struct_ogre_1_1_script_compiler_1_1_error.html", null ],
+      [ "Ogre::ScriptCompilerManager", "class_ogre_1_1_script_compiler_manager.html", null ],
+      [ "Ogre::ScriptLexer", "class_ogre_1_1_script_lexer.html", null ],
+      [ "Ogre::ScriptParser", "class_ogre_1_1_script_parser.html", null ],
+      [ "Ogre::ScriptTranslator", "class_ogre_1_1_script_translator.html", [
+        [ "Ogre::CompositorLoadActionTranslator", "class_ogre_1_1_compositor_load_action_translator.html", null ],
+        [ "Ogre::CompositorPassTranslator", "class_ogre_1_1_compositor_pass_translator.html", null ],
+        [ "Ogre::CompositorRenderTargetViewTranslator", "class_ogre_1_1_compositor_render_target_view_translator.html", null ],
+        [ "Ogre::CompositorShadowMapRepeatTranslator", "class_ogre_1_1_compositor_shadow_map_repeat_translator.html", null ],
+        [ "Ogre::CompositorShadowMapTargetTranslator", "class_ogre_1_1_compositor_shadow_map_target_translator.html", null ],
+        [ "Ogre::CompositorShadowMapTargetTypeTranslator", "class_ogre_1_1_compositor_shadow_map_target_type_translator.html", null ],
+        [ "Ogre::CompositorStoreActionTranslator", "class_ogre_1_1_compositor_store_action_translator.html", null ],
+        [ "Ogre::CompositorTargetTranslator", "class_ogre_1_1_compositor_target_translator.html", null ],
+        [ "Ogre::CompositorTextureBaseTranslator", "class_ogre_1_1_compositor_texture_base_translator.html", [
+          [ "Ogre::CompositorNodeTranslator", "class_ogre_1_1_compositor_node_translator.html", null ],
+          [ "Ogre::CompositorShadowNodeTranslator", "class_ogre_1_1_compositor_shadow_node_translator.html", null ],
+          [ "Ogre::CompositorWorkspaceTranslator", "class_ogre_1_1_compositor_workspace_translator.html", null ]
+        ] ],
+        [ "Ogre::GpuProgramTranslator", "class_ogre_1_1_gpu_program_translator.html", null ],
+        [ "Ogre::HlmsTranslator", "class_ogre_1_1_hlms_translator.html", null ],
+        [ "Ogre::MaterialTranslator", "class_ogre_1_1_material_translator.html", null ],
+        [ "Ogre::ParticleAffectorTranslator", "class_ogre_1_1_particle_affector_translator.html", null ],
+        [ "Ogre::ParticleEmitterTranslator", "class_ogre_1_1_particle_emitter_translator.html", null ],
+        [ "Ogre::ParticleSystemTranslator", "class_ogre_1_1_particle_system_translator.html", null ],
+        [ "Ogre::PassTranslator", "class_ogre_1_1_pass_translator.html", null ],
+        [ "Ogre::SharedParamsTranslator", "class_ogre_1_1_shared_params_translator.html", null ],
+        [ "Ogre::TechniqueTranslator", "class_ogre_1_1_technique_translator.html", null ],
+        [ "Ogre::TextureSourceTranslator", "class_ogre_1_1_texture_source_translator.html", null ],
+        [ "Ogre::TextureUnitTranslator", "class_ogre_1_1_texture_unit_translator.html", null ]
+      ] ],
+      [ "Ogre::ScriptTranslatorManager", "class_ogre_1_1_script_translator_manager.html", [
+        [ "Ogre::BuiltinScriptTranslatorManager", "class_ogre_1_1_builtin_script_translator_manager.html", null ]
+      ] ],
+      [ "Ogre::Serializer", "class_ogre_1_1_serializer.html", [
+        [ "Ogre::GpuNamedConstantsSerializer", "class_ogre_1_1_gpu_named_constants_serializer.html", null ],
+        [ "Ogre::LodConfigSerializer", "class_ogre_1_1_lod_config_serializer.html", null ],
+        [ "Ogre::MeshSerializer", "class_ogre_1_1_mesh_serializer.html", null ],
+        [ "Ogre::MeshSerializerImpl", "class_ogre_1_1_mesh_serializer_impl.html", [
+          [ "Ogre::MeshSerializerImpl_v2_1_R1", "class_ogre_1_1_mesh_serializer_impl__v2__1___r1.html", [
+            [ "Ogre::MeshSerializerImpl_v2_1_R0", "class_ogre_1_1_mesh_serializer_impl__v2__1___r0.html", null ]
+          ] ]
+        ] ],
+        [ "Ogre::v1::MeshSerializer", "class_ogre_1_1v1_1_1_mesh_serializer.html", null ],
+        [ "Ogre::v1::MeshSerializerImpl", "class_ogre_1_1v1_1_1_mesh_serializer_impl.html", [
+          [ "Ogre::v1::MeshSerializerImpl_v1_10", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__10.html", [
+            [ "Ogre::v1::MeshSerializerImpl_v1_8", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__8.html", [
+              [ "Ogre::v1::MeshSerializerImpl_v1_41", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__41.html", [
+                [ "Ogre::v1::MeshSerializerImpl_v1_4", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__4.html", [
+                  [ "Ogre::v1::MeshSerializerImpl_v1_3", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__3.html", [
+                    [ "Ogre::v1::MeshSerializerImpl_v1_2", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__2.html", [
+                      [ "Ogre::v1::MeshSerializerImpl_v1_1", "class_ogre_1_1v1_1_1_mesh_serializer_impl__v1__1.html", null ]
+                    ] ]
+                  ] ]
+                ] ]
+              ] ]
+            ] ]
+          ] ]
+        ] ],
+        [ "Ogre::v1::SkeletonSerializer", "class_ogre_1_1v1_1_1_skeleton_serializer.html", null ]
+      ] ],
+      [ "Ogre::ShaderParams", "class_ogre_1_1_shader_params.html", null ],
+      [ "Ogre::ShadowCameraSetup", "class_ogre_1_1_shadow_camera_setup.html", [
+        [ "Ogre::DefaultShadowCameraSetup", "class_ogre_1_1_default_shadow_camera_setup.html", [
+          [ "Ogre::ConcentricShadowCamera", "class_ogre_1_1_concentric_shadow_camera.html", null ],
+          [ "Ogre::FocusedShadowCameraSetup", "class_ogre_1_1_focused_shadow_camera_setup.html", [
+            [ "Ogre::PSSMShadowCameraSetup", "class_ogre_1_1_p_s_s_m_shadow_camera_setup.html", null ]
+          ] ]
+        ] ],
+        [ "Ogre::PlaneOptimalShadowCameraSetup", "class_ogre_1_1_plane_optimal_shadow_camera_setup.html", null ]
+      ] ],
+      [ "Ogre::ShadowTextureDefinition", "class_ogre_1_1_shadow_texture_definition.html", null ],
+      [ "Ogre::SkeletonAnimation", "class_ogre_1_1_skeleton_animation.html", null ],
+      [ "Ogre::SkeletonAnimationDef", "class_ogre_1_1_skeleton_animation_def.html", null ],
+      [ "Ogre::SkeletonDef", "class_ogre_1_1_skeleton_def.html", null ],
+      [ "Ogre::SkeletonInstance", "class_ogre_1_1_skeleton_instance.html", null ],
+      [ "Ogre::SkeletonManager", "class_ogre_1_1_skeleton_manager.html", null ],
+      [ "Ogre::SkeletonTrack", "class_ogre_1_1_skeleton_track.html", null ],
+      [ "Ogre::StagingBuffer", "class_ogre_1_1_staging_buffer.html", [
+        [ "Ogre::D3D11StagingBuffer", "class_ogre_1_1_d3_d11_staging_buffer.html", null ],
+        [ "Ogre::GL3PlusStagingBuffer", "class_ogre_1_1_g_l3_plus_staging_buffer.html", null ],
+        [ "Ogre::GLES2StagingBuffer", "class_ogre_1_1_g_l_e_s2_staging_buffer.html", null ],
+        [ "Ogre::MetalStagingBuffer", "class_ogre_1_1_metal_staging_buffer.html", null ],
+        [ "Ogre::NULLStagingBuffer", "class_ogre_1_1_n_u_l_l_staging_buffer.html", null ],
+        [ "Ogre::VulkanStagingBuffer", "class_ogre_1_1_vulkan_staging_buffer.html", null ]
+      ] ],
+      [ "Ogre::StagingTexture", "class_ogre_1_1_staging_texture.html", [
+        [ "Ogre::D3D11StagingTexture", "class_ogre_1_1_d3_d11_staging_texture.html", null ],
+        [ "Ogre::StagingTextureBufferImpl", "class_ogre_1_1_staging_texture_buffer_impl.html", [
+          [ "Ogre::GL3PlusStagingTexture", "class_ogre_1_1_g_l3_plus_staging_texture.html", null ],
+          [ "Ogre::MetalStagingTexture", "class_ogre_1_1_metal_staging_texture.html", null ],
+          [ "Ogre::NULLStagingTexture", "class_ogre_1_1_n_u_l_l_staging_texture.html", null ],
+          [ "Ogre::VulkanStagingTexture", "class_ogre_1_1_vulkan_staging_texture.html", null ]
+        ] ]
+      ] ],
+      [ "Ogre::StreamSerialiser", "class_ogre_1_1_stream_serialiser.html", null ],
+      [ "Ogre::StreamSerialiser::Chunk", "struct_ogre_1_1_stream_serialiser_1_1_chunk.html", null ],
+      [ "Ogre::SubItem", "class_ogre_1_1_sub_item.html", null ],
+      [ "Ogre::SubMesh", "class_ogre_1_1_sub_mesh.html", null ],
+      [ "Ogre::Technique", "class_ogre_1_1_technique.html", null ],
+      [ "Ogre::TextureDefinitionBase", "class_ogre_1_1_texture_definition_base.html", [
+        [ "Ogre::CompositorNodeDef", "class_ogre_1_1_compositor_node_def.html", [
+          [ "Ogre::CompositorShadowNodeDef", "class_ogre_1_1_compositor_shadow_node_def.html", null ]
+        ] ],
+        [ "Ogre::CompositorWorkspaceDef", "class_ogre_1_1_compositor_workspace_def.html", null ]
+      ] ],
+      [ "Ogre::TextureDefinitionBase::BufferDefinition", "struct_ogre_1_1_texture_definition_base_1_1_buffer_definition.html", null ],
+      [ "Ogre::TextureDefinitionBase::TextureDefinition", "class_ogre_1_1_texture_definition_base_1_1_texture_definition.html", null ],
+      [ "Ogre::TextureFilter::FilterBase", "class_ogre_1_1_texture_filter_1_1_filter_base.html", [
+        [ "Ogre::TextureFilter::GenerateHwMipmaps", "class_ogre_1_1_texture_filter_1_1_generate_hw_mipmaps.html", null ],
+        [ "Ogre::TextureFilter::GenerateSwMipmaps", "class_ogre_1_1_texture_filter_1_1_generate_sw_mipmaps.html", null ],
+        [ "Ogre::TextureFilter::LeaveChannelR", "class_ogre_1_1_texture_filter_1_1_leave_channel_r.html", null ],
+        [ "Ogre::TextureFilter::PremultiplyAlpha", "class_ogre_1_1_texture_filter_1_1_premultiply_alpha.html", null ],
+        [ "Ogre::TextureFilter::PrepareForNormalMapping", "class_ogre_1_1_texture_filter_1_1_prepare_for_normal_mapping.html", null ]
+      ] ],
+      [ "Ogre::TextureGpuManager", "class_ogre_1_1_texture_gpu_manager.html", [
+        [ "Ogre::D3D11TextureGpuManager", "class_ogre_1_1_d3_d11_texture_gpu_manager.html", null ],
+        [ "Ogre::GL3PlusTextureGpuManager", "class_ogre_1_1_g_l3_plus_texture_gpu_manager.html", null ],
+        [ "Ogre::MetalTextureGpuManager", "class_ogre_1_1_metal_texture_gpu_manager.html", null ],
+        [ "Ogre::NULLTextureGpuManager", "class_ogre_1_1_n_u_l_l_texture_gpu_manager.html", null ],
+        [ "Ogre::VulkanTextureGpuManager", "class_ogre_1_1_vulkan_texture_gpu_manager.html", null ]
+      ] ],
+      [ "Ogre::TextureUnitState", "class_ogre_1_1_texture_unit_state.html", null ],
+      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
+      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
+      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
+      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
+      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
+      [ "Ogre::Timer", "class_ogre_1_1_timer.html", null ],
+      [ "Ogre::UserObjectBindings", "class_ogre_1_1_user_object_bindings.html", null ],
+      [ "Ogre::VaoManager", "class_ogre_1_1_vao_manager.html", [
+        [ "Ogre::D3D11VaoManager", "class_ogre_1_1_d3_d11_vao_manager.html", null ],
+        [ "Ogre::GL3PlusVaoManager", "class_ogre_1_1_g_l3_plus_vao_manager.html", null ],
+        [ "Ogre::GLES2VaoManager", "class_ogre_1_1_g_l_e_s2_vao_manager.html", null ],
+        [ "Ogre::MetalVaoManager", "class_ogre_1_1_metal_vao_manager.html", null ],
+        [ "Ogre::NULLVaoManager", "class_ogre_1_1_n_u_l_l_vao_manager.html", null ],
+        [ "Ogre::VulkanVaoManager", "class_ogre_1_1_vulkan_vao_manager.html", null ]
+      ] ],
+      [ "Ogre::VertexArrayObject", "struct_ogre_1_1_vertex_array_object.html", [
+        [ "Ogre::D3D11VertexArrayObject", "struct_ogre_1_1_d3_d11_vertex_array_object.html", null ],
+        [ "Ogre::GL3PlusVertexArrayObject", "struct_ogre_1_1_g_l3_plus_vertex_array_object.html", null ],
+        [ "Ogre::GLES2VertexArrayObject", "struct_ogre_1_1_g_l_e_s2_vertex_array_object.html", null ],
+        [ "Ogre::NULLVertexArrayObject", "struct_ogre_1_1_n_u_l_l_vertex_array_object.html", null ]
+      ] ],
+      [ "Ogre::Viewport", "class_ogre_1_1_viewport.html", null ],
+      [ "Ogre::Volume::DualGridGenerator", "class_ogre_1_1_volume_1_1_dual_grid_generator.html", null ],
+      [ "Ogre::Volume::IsoSurface", "class_ogre_1_1_volume_1_1_iso_surface.html", [
+        [ "Ogre::Volume::IsoSurfaceMC", "class_ogre_1_1_volume_1_1_iso_surface_m_c.html", null ]
+      ] ],
+      [ "Ogre::Volume::MeshBuilder", "class_ogre_1_1_volume_1_1_mesh_builder.html", null ],
+      [ "Ogre::Volume::OctreeNode", "class_ogre_1_1_volume_1_1_octree_node.html", null ],
+      [ "Ogre::VulkanCache", "class_ogre_1_1_vulkan_cache.html", null ],
+      [ "Ogre::VulkanDescriptorPool", "class_ogre_1_1_vulkan_descriptor_pool.html", null ],
+      [ "Ogre::VulkanDiscardBuffer", "class_ogre_1_1_vulkan_discard_buffer.html", null ],
+      [ "Ogre::VulkanDiscardBufferManager", "class_ogre_1_1_vulkan_discard_buffer_manager.html", null ],
+      [ "Ogre::VulkanRootLayout", "class_ogre_1_1_vulkan_root_layout.html", null ],
+      [ "Ogre::Window", "class_ogre_1_1_window.html", [
+        [ "Ogre::CocoaWindow", "class_ogre_1_1_cocoa_window.html", null ],
+        [ "Ogre::D3D11Window", "class_ogre_1_1_d3_d11_window.html", null ],
+        [ "Ogre::EGLWindow", "class_ogre_1_1_e_g_l_window.html", [
+          [ "Ogre::AndroidEGLWindow", "class_ogre_1_1_android_e_g_l_window.html", null ],
+          [ "Ogre::EmscriptenEGLWindow", "class_ogre_1_1_emscripten_e_g_l_window.html", null ],
+          [ "Ogre::Win32EGLWindow", "class_ogre_1_1_win32_e_g_l_window.html", null ],
+          [ "Ogre::X11EGLWindow", "class_ogre_1_1_x11_e_g_l_window.html", null ]
+        ] ],
+        [ "Ogre::EglPBufferWindow", "class_ogre_1_1_egl_p_buffer_window.html", null ],
+        [ "Ogre::GLXWindow", "class_ogre_1_1_g_l_x_window.html", null ],
+        [ "Ogre::MetalWindow", "class_ogre_1_1_metal_window.html", null ],
+        [ "Ogre::NULLWindow", "class_ogre_1_1_n_u_l_l_window.html", null ],
+        [ "Ogre::VulkanWindow", "class_ogre_1_1_vulkan_window.html", [
+          [ "Ogre::VulkanWindowNull", "class_ogre_1_1_vulkan_window_null.html", null ],
+          [ "Ogre::VulkanWindowSwapChainBased", "class_ogre_1_1_vulkan_window_swap_chain_based.html", [
+            [ "Ogre::VulkanAndroidWindow", "class_ogre_1_1_vulkan_android_window.html", null ],
+            [ "Ogre::VulkanWin32Window", "class_ogre_1_1_vulkan_win32_window.html", null ],
+            [ "Ogre::VulkanXcbWindow", "class_ogre_1_1_vulkan_xcb_window.html", null ]
+          ] ]
+        ] ],
+        [ "Ogre::Win32Window", "class_ogre_1_1_win32_window.html", null ]
+      ] ],
+      [ "Ogre::WorkQueue", "class_ogre_1_1_work_queue.html", [
+        [ "Ogre::DefaultWorkQueueBase", "class_ogre_1_1_default_work_queue_base.html", [
+          [ "Ogre::DefaultWorkQueue", "class_ogre_1_1_default_work_queue.html", null ],
+          [ "Ogre::DefaultWorkQueue", "class_ogre_1_1_default_work_queue.html", null ]
+        ] ]
+      ] ],
+      [ "Ogre::WorkQueue::Request", "class_ogre_1_1_work_queue_1_1_request.html", null ],
+      [ "Ogre::WorkQueue::Response", "struct_ogre_1_1_work_queue_1_1_response.html", null ],
+      [ "Ogre::v1::Animation", "class_ogre_1_1v1_1_1_animation.html", null ],
+      [ "Ogre::v1::AnimationState", "class_ogre_1_1v1_1_1_animation_state.html", null ],
+      [ "Ogre::v1::AnimationStateSet", "class_ogre_1_1v1_1_1_animation_state_set.html", null ],
+      [ "Ogre::v1::AnimationTrack", "class_ogre_1_1v1_1_1_animation_track.html", [
+        [ "Ogre::v1::NodeAnimationTrack", "class_ogre_1_1v1_1_1_node_animation_track.html", null ],
+        [ "Ogre::v1::NumericAnimationTrack", "class_ogre_1_1v1_1_1_numeric_animation_track.html", null ],
+        [ "Ogre::v1::OldNodeAnimationTrack", "class_ogre_1_1v1_1_1_old_node_animation_track.html", null ],
+        [ "Ogre::v1::VertexAnimationTrack", "class_ogre_1_1v1_1_1_vertex_animation_track.html", null ]
+      ] ],
+      [ "Ogre::v1::Billboard", "class_ogre_1_1v1_1_1_billboard.html", null ],
+      [ "Ogre::v1::BorderRenderable", "class_ogre_1_1v1_1_1_border_renderable.html", null ],
+      [ "Ogre::v1::EdgeData", "class_ogre_1_1v1_1_1_edge_data.html", null ],
+      [ "Ogre::v1::HardwareBuffer", "class_ogre_1_1v1_1_1_hardware_buffer.html", [
+        [ "Ogre::v1::D3D11HardwareBuffer", "class_ogre_1_1v1_1_1_d3_d11_hardware_buffer.html", null ],
+        [ "Ogre::v1::HardwareIndexBuffer", "class_ogre_1_1v1_1_1_hardware_index_buffer.html", [
+          [ "Ogre::v1::D3D11HardwareIndexBuffer", "class_ogre_1_1v1_1_1_d3_d11_hardware_index_buffer.html", null ],
+          [ "Ogre::v1::DefaultHardwareIndexBuffer", "class_ogre_1_1v1_1_1_default_hardware_index_buffer.html", null ],
+          [ "Ogre::v1::GL3PlusDefaultHardwareIndexBuffer", "class_ogre_1_1v1_1_1_g_l3_plus_default_hardware_index_buffer.html", null ],
+          [ "Ogre::v1::GL3PlusHardwareIndexBuffer", "class_ogre_1_1v1_1_1_g_l3_plus_hardware_index_buffer.html", null ],
+          [ "Ogre::v1::GLES2DefaultHardwareIndexBuffer", "class_ogre_1_1v1_1_1_g_l_e_s2_default_hardware_index_buffer.html", null ],
+          [ "Ogre::v1::MetalHardwareIndexBuffer", "class_ogre_1_1v1_1_1_metal_hardware_index_buffer.html", null ],
+          [ "Ogre::v1::VulkanHardwareIndexBuffer", "class_ogre_1_1v1_1_1_vulkan_hardware_index_buffer.html", null ]
+        ] ],
+        [ "Ogre::v1::HardwareVertexBuffer", "class_ogre_1_1v1_1_1_hardware_vertex_buffer.html", [
+          [ "Ogre::v1::D3D11HardwareVertexBuffer", "class_ogre_1_1v1_1_1_d3_d11_hardware_vertex_buffer.html", null ],
+          [ "Ogre::v1::DefaultHardwareVertexBuffer", "class_ogre_1_1v1_1_1_default_hardware_vertex_buffer.html", null ],
+          [ "Ogre::v1::GL3PlusDefaultHardwareVertexBuffer", "class_ogre_1_1v1_1_1_g_l3_plus_default_hardware_vertex_buffer.html", null ],
+          [ "Ogre::v1::GL3PlusHardwareVertexBuffer", "class_ogre_1_1v1_1_1_g_l3_plus_hardware_vertex_buffer.html", null ],
+          [ "Ogre::v1::GLES2DefaultHardwareVertexBuffer", "class_ogre_1_1v1_1_1_g_l_e_s2_default_hardware_vertex_buffer.html", null ],
+          [ "Ogre::v1::MetalHardwareVertexBuffer", "class_ogre_1_1v1_1_1_metal_hardware_vertex_buffer.html", null ],
+          [ "Ogre::v1::VulkanHardwareVertexBuffer", "class_ogre_1_1v1_1_1_vulkan_hardware_vertex_buffer.html", null ]
+        ] ]
+      ] ],
+      [ "Ogre::v1::HardwareBufferManagerBase", "class_ogre_1_1v1_1_1_hardware_buffer_manager_base.html", [
+        [ "Ogre::v1::D3D11HardwareBufferManagerBase", "class_ogre_1_1v1_1_1_d3_d11_hardware_buffer_manager_base.html", null ],
+        [ "Ogre::v1::DefaultHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_default_hardware_buffer_manager_base.html", null ],
+        [ "Ogre::v1::GL3PlusDefaultHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_g_l3_plus_default_hardware_buffer_manager_base.html", null ],
+        [ "Ogre::v1::GL3PlusHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_g_l3_plus_hardware_buffer_manager_base.html", null ],
+        [ "Ogre::v1::GLES2DefaultHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_g_l_e_s2_default_hardware_buffer_manager_base.html", null ],
+        [ "Ogre::v1::GLES2HardwareBufferManagerBase", "class_ogre_1_1v1_1_1_g_l_e_s2_hardware_buffer_manager_base.html", null ],
+        [ "Ogre::v1::HardwareBufferManager", "class_ogre_1_1v1_1_1_hardware_buffer_manager.html", [
+          [ "Ogre::v1::D3D11HardwareBufferManager", "class_ogre_1_1v1_1_1_d3_d11_hardware_buffer_manager.html", null ],
+          [ "Ogre::v1::DefaultHardwareBufferManager", "class_ogre_1_1v1_1_1_default_hardware_buffer_manager.html", null ],
+          [ "Ogre::v1::GL3PlusDefaultHardwareBufferManager", "class_ogre_1_1v1_1_1_g_l3_plus_default_hardware_buffer_manager.html", null ],
+          [ "Ogre::v1::GL3PlusHardwareBufferManager", "class_ogre_1_1v1_1_1_g_l3_plus_hardware_buffer_manager.html", null ],
+          [ "Ogre::v1::GLES2DefaultHardwareBufferManager", "class_ogre_1_1v1_1_1_g_l_e_s2_default_hardware_buffer_manager.html", null ],
+          [ "Ogre::v1::GLES2HardwareBufferManager", "class_ogre_1_1v1_1_1_g_l_e_s2_hardware_buffer_manager.html", null ],
+          [ "Ogre::v1::MetalHardwareBufferManager", "class_ogre_1_1v1_1_1_metal_hardware_buffer_manager.html", null ],
+          [ "Ogre::v1::VulkanHardwareBufferManager", "class_ogre_1_1v1_1_1_vulkan_hardware_buffer_manager.html", null ]
+        ] ],
+        [ "Ogre::v1::MetalHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_metal_hardware_buffer_manager_base.html", null ],
+        [ "Ogre::v1::VulkanHardwareBufferManagerBase", "class_ogre_1_1v1_1_1_vulkan_hardware_buffer_manager_base.html", null ]
+      ] ],
+      [ "Ogre::v1::IndexData", "class_ogre_1_1v1_1_1_index_data.html", null ],
+      [ "Ogre::v1::KeyFrame", "class_ogre_1_1v1_1_1_key_frame.html", [
+        [ "Ogre::v1::NumericKeyFrame", "class_ogre_1_1v1_1_1_numeric_key_frame.html", null ],
+        [ "Ogre::v1::TransformKeyFrame", "class_ogre_1_1v1_1_1_transform_key_frame.html", null ],
+        [ "Ogre::v1::VertexMorphKeyFrame", "class_ogre_1_1v1_1_1_vertex_morph_key_frame.html", null ],
+        [ "Ogre::v1::VertexPoseKeyFrame", "class_ogre_1_1v1_1_1_vertex_pose_key_frame.html", null ]
+      ] ],
+      [ "Ogre::v1::ManualObject::ManualObjectSection", "class_ogre_1_1v1_1_1_manual_object_1_1_manual_object_section.html", null ],
+      [ "Ogre::v1::OldNode", "class_ogre_1_1v1_1_1_old_node.html", [
+        [ "Ogre::v1::OldBone", "class_ogre_1_1v1_1_1_old_bone.html", [
+          [ "Ogre::v1::TagPoint", "class_ogre_1_1v1_1_1_tag_point.html", null ]
+        ] ]
+      ] ],
+      [ "Ogre::v1::OverlayElement", "class_ogre_1_1v1_1_1_overlay_element.html", [
+        [ "Ogre::v1::OverlayContainer", "class_ogre_1_1v1_1_1_overlay_container.html", [
+          [ "Ogre::v1::PanelOverlayElement", "class_ogre_1_1v1_1_1_panel_overlay_element.html", [
+            [ "Ogre::v1::BorderPanelOverlayElement", "class_ogre_1_1v1_1_1_border_panel_overlay_element.html", null ]
+          ] ]
+        ] ],
+        [ "Ogre::v1::TextAreaOverlayElement", "class_ogre_1_1v1_1_1_text_area_overlay_element.html", null ]
+      ] ],
+      [ "Ogre::v1::OverlayElementFactory", "class_ogre_1_1v1_1_1_overlay_element_factory.html", [
+        [ "Ogre::v1::BorderPanelOverlayElementFactory", "class_ogre_1_1v1_1_1_border_panel_overlay_element_factory.html", null ],
+        [ "Ogre::v1::PanelOverlayElementFactory", "class_ogre_1_1v1_1_1_panel_overlay_element_factory.html", null ],
+        [ "Ogre::v1::TextAreaOverlayElementFactory", "class_ogre_1_1v1_1_1_text_area_overlay_element_factory.html", null ]
+      ] ],
+      [ "Ogre::v1::OverlayManager", "class_ogre_1_1v1_1_1_overlay_manager.html", null ],
+      [ "Ogre::v1::OverlaySystem", "class_ogre_1_1v1_1_1_overlay_system.html", null ],
+      [ "Ogre::v1::PatchSurface", "class_ogre_1_1v1_1_1_patch_surface.html", null ],
+      [ "Ogre::v1::Pose", "class_ogre_1_1v1_1_1_pose.html", null ],
+      [ "Ogre::v1::SubEntity", "class_ogre_1_1v1_1_1_sub_entity.html", null ],
+      [ "Ogre::v1::SubMesh", "class_ogre_1_1v1_1_1_sub_mesh.html", null ],
+      [ "Ogre::v1::TempBlendedBufferInfo", "class_ogre_1_1v1_1_1_temp_blended_buffer_info.html", null ],
+      [ "Ogre::v1::VertexBufferBinding", "class_ogre_1_1v1_1_1_vertex_buffer_binding.html", null ],
+      [ "Ogre::v1::VertexCacheProfiler", "class_ogre_1_1v1_1_1_vertex_cache_profiler.html", null ],
+      [ "Ogre::v1::VertexData", "class_ogre_1_1v1_1_1_vertex_data.html", null ],
+      [ "Ogre::v1::VertexDeclaration", "class_ogre_1_1v1_1_1_vertex_declaration.html", null ],
+      [ "Ogre::v1::VertexElement", "class_ogre_1_1v1_1_1_vertex_element.html", null ]
+    ] ],
     [ "Ogre::OptimisedUtil", "class_ogre_1_1_optimised_util.html", null ],
     [ "Ogre::PageProvider", "class_ogre_1_1_page_provider.html", null ],
     [ "Ogre::ParallaxCorrectedCubemapAutoListener", "class_ogre_1_1_parallax_corrected_cubemap_auto_listener.html", [
@@ -1528,6 +1509,8 @@ var hierarchy =
       [ "Ogre::RotationAffector::CmdRotationSpeedRangeEnd", "class_ogre_1_1_rotation_affector_1_1_cmd_rotation_speed_range_end.html", null ],
       [ "Ogre::RotationAffector::CmdRotationSpeedRangeStart", "class_ogre_1_1_rotation_affector_1_1_cmd_rotation_speed_range_start.html", null ],
       [ "Ogre::ScaleAffector::CmdScaleAdjust", "class_ogre_1_1_scale_affector_1_1_cmd_scale_adjust.html", null ],
+      [ "Ogre::ScaleInterpolatorAffector::CmdScaleAdjust", "class_ogre_1_1_scale_interpolator_affector_1_1_cmd_scale_adjust.html", null ],
+      [ "Ogre::ScaleInterpolatorAffector::CmdTimeAdjust", "class_ogre_1_1_scale_interpolator_affector_1_1_cmd_time_adjust.html", null ],
       [ "Ogre::UnifiedHighLevelGpuProgram::CmdDelegate", "class_ogre_1_1_unified_high_level_gpu_program_1_1_cmd_delegate.html", null ],
       [ "Ogre::VulkanProgram::CmdPreprocessorDefines", "class_ogre_1_1_vulkan_program_1_1_cmd_preprocessor_defines.html", null ],
       [ "Ogre::v1::BillboardParticleRenderer::CmdAccurateFacing", "class_ogre_1_1v1_1_1_billboard_particle_renderer_1_1_cmd_accurate_facing.html", null ],
@@ -1537,6 +1520,8 @@ var hierarchy =
       [ "Ogre::v1::BillboardParticleRenderer::CmdCommonDirection", "class_ogre_1_1v1_1_1_billboard_particle_renderer_1_1_cmd_common_direction.html", null ],
       [ "Ogre::v1::BillboardParticleRenderer::CmdCommonUpVector", "class_ogre_1_1v1_1_1_billboard_particle_renderer_1_1_cmd_common_up_vector.html", null ],
       [ "Ogre::v1::BillboardParticleRenderer::CmdPointRendering", "class_ogre_1_1v1_1_1_billboard_particle_renderer_1_1_cmd_point_rendering.html", null ],
+      [ "Ogre::v1::BillboardParticleRenderer::CmdTextureSlices", "class_ogre_1_1v1_1_1_billboard_particle_renderer_1_1_cmd_texture_slices.html", null ],
+      [ "Ogre::v1::BillboardParticleRenderer::CmdTextureStacks", "class_ogre_1_1v1_1_1_billboard_particle_renderer_1_1_cmd_texture_stacks.html", null ],
       [ "Ogre::v1::BorderPanelOverlayElement::CmdBorderBottomLeftUV", "class_ogre_1_1v1_1_1_border_panel_overlay_element_1_1_cmd_border_bottom_left_u_v.html", null ],
       [ "Ogre::v1::BorderPanelOverlayElement::CmdBorderBottomRightUV", "class_ogre_1_1v1_1_1_border_panel_overlay_element_1_1_cmd_border_bottom_right_u_v.html", null ],
       [ "Ogre::v1::BorderPanelOverlayElement::CmdBorderBottomUV", "class_ogre_1_1v1_1_1_border_panel_overlay_element_1_1_cmd_border_bottom_u_v.html", null ],
@@ -1699,6 +1684,7 @@ var hierarchy =
       [ "Ogre::v1::OverlayManager", "class_ogre_1_1v1_1_1_overlay_manager.html", null ]
     ] ],
     [ "Ogre::ScriptToken", "struct_ogre_1_1_script_token.html", null ],
+    [ "Ogre::Semaphore", "class_ogre_1_1_semaphore.html", null ],
     [ "Ogre::ShaderParams::AutoParam", "struct_ogre_1_1_shader_params_1_1_auto_param.html", null ],
     [ "Ogre::ShaderParams::ManualParam", "struct_ogre_1_1_shader_params_1_1_manual_param.html", null ],
     [ "Ogre::ShaderParams::ManualParamEx", "struct_ogre_1_1_shader_params_1_1_manual_param_ex.html", null ],
@@ -1714,35 +1700,29 @@ var hierarchy =
     [ "Ogre::SkeletonDef::BoneData", "struct_ogre_1_1_skeleton_def_1_1_bone_data.html", null ],
     [ "Ogre::SkeletonDef::DepthLevelInfo", "struct_ogre_1_1_skeleton_def_1_1_depth_level_info.html", null ],
     [ "Ogre::SmallVectorBase", "class_ogre_1_1_small_vector_base.html", [
-      [ "Ogre::SmallVectorTemplateCommon< Edge >", "class_ogre_1_1_small_vector_template_common.html", [
-        [ "Ogre::SmallVectorTemplateBase< Edge, isPodLike< Edge >::value >", "class_ogre_1_1_small_vector_template_base.html", [
-          [ "Ogre::SmallVectorImpl< Edge >", "class_ogre_1_1_small_vector_impl.html", [
-            [ "Ogre::SmallVector< Edge, S >", "class_ogre_1_1_small_vector.html", [
-              [ "Ogre::VectorSet< Edge, 8 >", "struct_ogre_1_1_vector_set.html", null ]
-            ] ]
-          ] ]
-        ] ]
-      ] ],
-      [ "Ogre::SmallVectorTemplateCommon< TriangleI >", "class_ogre_1_1_small_vector_template_common.html", [
-        [ "Ogre::SmallVectorTemplateBase< TriangleI, isPodLike< TriangleI >::value >", "class_ogre_1_1_small_vector_template_base.html", [
-          [ "Ogre::SmallVectorImpl< TriangleI >", "class_ogre_1_1_small_vector_impl.html", [
-            [ "Ogre::SmallVector< TriangleI, S >", "class_ogre_1_1_small_vector.html", [
-              [ "Ogre::VectorSet< TriangleI, 7 >", "struct_ogre_1_1_vector_set.html", null ]
-            ] ]
-          ] ]
-        ] ]
-      ] ],
+      [ "Ogre::SmallVectorTemplateCommon< Edge >", "class_ogre_1_1_small_vector_template_common.html", null ],
+      [ "Ogre::SmallVectorTemplateCommon< TriangleI >", "class_ogre_1_1_small_vector_template_common.html", null ],
       [ "Ogre::SmallVectorTemplateCommon< T >", "class_ogre_1_1_small_vector_template_common.html", [
         [ "Ogre::SmallVectorTemplateBase< T, isPodLike< T >::value >", "class_ogre_1_1_small_vector_template_base.html", [
           [ "Ogre::SmallVectorImpl< T >", "class_ogre_1_1_small_vector_impl.html", [
             [ "Ogre::SmallVector< T, S >", "class_ogre_1_1_small_vector.html", [
               [ "Ogre::VectorSet< T, S >", "struct_ogre_1_1_vector_set.html", null ]
             ] ],
-            [ "Ogre::SmallVector< T, N >", "class_ogre_1_1_small_vector.html", null ],
+            [ "Ogre::SmallVector< Edge, S >", "class_ogre_1_1_small_vector.html", null ],
+            [ "Ogre::SmallVector< TriangleI, S >", "class_ogre_1_1_small_vector.html", null ],
+            [ "Ogre::SmallVector< T, N >", "class_ogre_1_1_small_vector.html", [
+              [ "Ogre::VectorSet< Edge, 8 >", "struct_ogre_1_1_vector_set.html", null ],
+              [ "Ogre::VectorSet< TriangleI, 7 >", "struct_ogre_1_1_vector_set.html", null ]
+            ] ],
             [ "Ogre::SmallVector< T, 0 >", "class_ogre_1_1_small_vector_3_01_t_00_010_01_4.html", null ]
           ] ]
         ] ],
-        [ "Ogre::SmallVectorTemplateBase< T, isPodLike >", "class_ogre_1_1_small_vector_template_base.html", null ],
+        [ "Ogre::SmallVectorTemplateBase< Edge, isPodLike< Edge >::value >", "class_ogre_1_1_small_vector_template_base.html", null ],
+        [ "Ogre::SmallVectorTemplateBase< TriangleI, isPodLike< TriangleI >::value >", "class_ogre_1_1_small_vector_template_base.html", null ],
+        [ "Ogre::SmallVectorTemplateBase< T, isPodLike >", "class_ogre_1_1_small_vector_template_base.html", [
+          [ "Ogre::SmallVectorImpl< Edge >", "class_ogre_1_1_small_vector_impl.html", null ],
+          [ "Ogre::SmallVectorImpl< TriangleI >", "class_ogre_1_1_small_vector_impl.html", null ]
+        ] ],
         [ "Ogre::SmallVectorTemplateBase< T, true >", "class_ogre_1_1_small_vector_template_base_3_01_t_00_01true_01_4.html", null ]
       ] ]
     ] ],
@@ -1752,11 +1732,11 @@ var hierarchy =
     [ "Ogre::StagingBuffer::Destination", "struct_ogre_1_1_staging_buffer_1_1_destination.html", null ],
     [ "Ogre::StagingTextureManager", "class_ogre_1_1_staging_texture_manager.html", null ],
     [ "Ogre::StaticCache< cacheSize >", "class_ogre_1_1_static_cache.html", null ],
-    [ "Ogre::StdList< T, A >", "class_ogre_1_1_std_list.html", null ],
-    [ "Ogre::StdMap< K, V, P, A >", "class_ogre_1_1_std_map.html", null ],
-    [ "Ogre::StdMultiMap< K, V, P, A >", "class_ogre_1_1_std_multi_map.html", null ],
-    [ "Ogre::StdUnorderedSet< K, H, E, A >", "class_ogre_1_1_std_unordered_set.html", null ],
-    [ "Ogre::StdVector< T, A >", "class_ogre_1_1_std_vector.html", null ],
+    [ "Ogre::StdList< T >", "class_ogre_1_1_std_list.html", null ],
+    [ "Ogre::StdMap< K, V, P >", "class_ogre_1_1_std_map.html", null ],
+    [ "Ogre::StdMultiMap< K, V, P >", "class_ogre_1_1_std_multi_map.html", null ],
+    [ "Ogre::StdUnorderedSet< K, H, E >", "class_ogre_1_1_std_unordered_set.html", null ],
+    [ "Ogre::StdVector< T >", "class_ogre_1_1_std_vector.html", null ],
     [ "Ogre::StencilParams", "struct_ogre_1_1_stencil_params.html", null ],
     [ "Ogre::StencilStateOp", "struct_ogre_1_1_stencil_state_op.html", null ],
     [ "Ogre::STLAllocator< T, AllocPolicy >::rebind< U >", "struct_ogre_1_1_s_t_l_allocator_1_1rebind.html", null ],
@@ -1909,6 +1889,8 @@ var hierarchy =
     [ "Ogre::VulkanDevice::ExtraVkFeatures", "struct_ogre_1_1_vulkan_device_1_1_extra_vk_features.html", null ],
     [ "Ogre::VulkanDevice::SelectedQueue", "struct_ogre_1_1_vulkan_device_1_1_selected_queue.html", null ],
     [ "Ogre::VulkanDynamicBuffer", "class_ogre_1_1_vulkan_dynamic_buffer.html", null ],
+    [ "Ogre::VulkanExternalDevice", "struct_ogre_1_1_vulkan_external_device.html", null ],
+    [ "Ogre::VulkanExternalInstance", "struct_ogre_1_1_vulkan_external_instance.html", null ],
     [ "Ogre::VulkanFlushOnlyDescValue", "struct_ogre_1_1_vulkan_flush_only_desc_value.html", null ],
     [ "Ogre::VulkanFrameBufferDescValue", "struct_ogre_1_1_vulkan_frame_buffer_desc_value.html", null ],
     [ "Ogre::VulkanGlobalBindingTable", "struct_ogre_1_1_vulkan_global_binding_table.html", null ],
@@ -1926,6 +1908,7 @@ var hierarchy =
     [ "Ogre::VulkanVaoManager::Block", "struct_ogre_1_1_vulkan_vao_manager_1_1_block.html", [
       [ "Ogre::VulkanDiscardBufferManager::UnsafeBlock", "struct_ogre_1_1_vulkan_discard_buffer_manager_1_1_unsafe_block.html", null ]
     ] ],
+    [ "Ogre::VulkanVaoManager::DirtyBlock", "struct_ogre_1_1_vulkan_vao_manager_1_1_dirty_block.html", null ],
     [ "Ogre::VulkanVaoManager::StrideChanger", "struct_ogre_1_1_vulkan_vao_manager_1_1_stride_changer.html", null ],
     [ "Ogre::VulkanVaoManager::Vao::VertexBinding", "struct_ogre_1_1_vulkan_vao_manager_1_1_vao_1_1_vertex_binding.html", null ],
     [ "Ogre::WaitableEvent", "class_ogre_1_1_waitable_event.html", null ],
@@ -1943,6 +1926,33 @@ var hierarchy =
       [ "Ogre::Page", "class_ogre_1_1_page.html", null ],
       [ "Ogre::ResourceBackgroundQueue", "class_ogre_1_1_resource_background_queue.html", null ],
       [ "Ogre::Volume::ChunkHandler", "class_ogre_1_1_volume_1_1_chunk_handler.html", null ]
+    ] ],
+    [ "OgreAllocatedObj", null, [
+      [ "Ogre::Controller< Real >", "class_ogre_1_1_controller.html", null ],
+      [ "Ogre::ControllerFunction< Real >", "class_ogre_1_1_controller_function.html", [
+        [ "Ogre::AnimationControllerFunction", "class_ogre_1_1_animation_controller_function.html", null ],
+        [ "Ogre::LinearControllerFunction", "class_ogre_1_1_linear_controller_function.html", null ],
+        [ "Ogre::PassthroughControllerFunction", "class_ogre_1_1_passthrough_controller_function.html", null ],
+        [ "Ogre::ScaleControllerFunction", "class_ogre_1_1_scale_controller_function.html", null ],
+        [ "Ogre::WaveformControllerFunction", "class_ogre_1_1_waveform_controller_function.html", null ]
+      ] ],
+      [ "Ogre::ControllerValue< Real >", "class_ogre_1_1_controller_value.html", [
+        [ "Ogre::FloatGpuParameterControllerValue", "class_ogre_1_1_float_gpu_parameter_controller_value.html", null ],
+        [ "Ogre::FrameTimeControllerValue", "class_ogre_1_1_frame_time_controller_value.html", null ],
+        [ "Ogre::TexCoordModifierControllerValue", "class_ogre_1_1_tex_coord_modifier_controller_value.html", null ],
+        [ "Ogre::TextureFrameControllerValue", "class_ogre_1_1_texture_frame_controller_value.html", null ],
+        [ "Ogre::v1::AnimationStateControllerValue", "class_ogre_1_1v1_1_1_animation_state_controller_value.html", null ]
+      ] ],
+      [ "Ogre::ControllerValue< Ogre::Real >", "class_ogre_1_1_controller_value.html", [
+        [ "Ogre::TextureAnimationControllerValue", "class_ogre_1_1_texture_animation_controller_value.html", null ]
+      ] ],
+      [ "Ogre::AbstractNode", "class_ogre_1_1_abstract_node.html", [
+        [ "Ogre::AtomAbstractNode", "class_ogre_1_1_atom_abstract_node.html", null ],
+        [ "Ogre::ImportAbstractNode", "class_ogre_1_1_import_abstract_node.html", null ],
+        [ "Ogre::ObjectAbstractNode", "class_ogre_1_1_object_abstract_node.html", null ],
+        [ "Ogre::PropertyAbstractNode", "class_ogre_1_1_property_abstract_node.html", null ],
+        [ "Ogre::VariableAccessAbstractNode", "class_ogre_1_1_variable_access_abstract_node.html", null ]
+      ] ]
     ] ],
     [ "PageAlloc", null, [
       [ "Ogre::Page", "class_ogre_1_1_page.html", null ],
@@ -2180,9 +2190,6 @@ var hierarchy =
       [ "Ogre::SharedPtr< AnimableValue >", "class_ogre_1_1_shared_ptr.html", null ],
       [ "Ogre::SharedPtr< Font >", "class_ogre_1_1_shared_ptr.html", null ],
       [ "Ogre::SharedPtr< T >", "class_ogre_1_1_shared_ptr.html", null ]
-    ] ],
-    [ "StdAlignedAllocPolicy", null, [
-      [ "Ogre::AlignAllocPolicy< align >", "class_ogre_1_1_align_alloc_policy.html", null ]
     ] ],
     [ "Ogre::StdMap< GpuTrackedResource *, ResourceStatus >", "class_ogre_1_1_std_map.html", null ],
     [ "Ogre::StdMap< String, String >", "class_ogre_1_1_std_map.html", null ],
