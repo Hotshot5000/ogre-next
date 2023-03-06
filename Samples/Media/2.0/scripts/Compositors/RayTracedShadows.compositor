@@ -45,6 +45,7 @@ compositor_node RayTracedShadowsRenderingNode
 	in 1 rt_renderwindow
  
     texture shadowTexture target_width target_height PFG_RGBA8_UNORM keep_content depth_pool 0 uav
+    texture renderedScene target_width target_height PFG_RGBA8_UNORM keep_content depth_pool 0 uav
 
     target
     {
@@ -59,7 +60,7 @@ compositor_node RayTracedShadowsRenderingNode
         }
     }
 
-    target rt_renderwindow
+    target renderedScene
     {
         pass clear
         {
@@ -89,8 +90,21 @@ compositor_node RayTracedShadowsRenderingNode
             profiling_id "Main Render"
         }
     }
-
-	
+    
+    target rt_renderwindow
+    {
+        pass clear
+        {
+            colour_value 0.2 0.4 0.6 1
+        }
+        pass render_quad
+        {
+            material RayTracedShadows/Add
+            input 0 shadowTexture
+            input 1 renderedScene
+        }
+        
+    }
 }
 
 compositor_node_shadow RayTracedShadowNode

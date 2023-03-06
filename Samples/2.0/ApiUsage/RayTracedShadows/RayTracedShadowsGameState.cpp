@@ -48,7 +48,7 @@ namespace Demo
         const Ogre::String &helpDescription ) :
         TutorialGameState( helpDescription ),
         mScreenSpaceReflections( 0 ),
-        mAnimateObjects( true )
+        mAnimateObjects( false )
     {
         mDisplayHelpMode = 2;
         mNumDisplayHelpModes = 3;
@@ -172,18 +172,17 @@ namespace Demo
             // automatically create the API block if necessary
             datablock->setSamplerblock( Ogre::PBSM_ROUGHNESS, samplerblock );
             meshCache->addMeshToCache(planeMesh, sceneManager, renderSystem, hlmsManager, item);
-            meshCache->updateAS();
         }
 
-        for( int i = 0; i < 4; ++i )
+        for( int i = 0; i < 1; ++i )
         {
-            for( int j = 0; j < 4; ++j )
+            for( int j = 0; j < 1; ++j )
             {
                 Ogre::String meshName;
 
-                if( i == j )
-                    meshName = "Sphere1000.mesh";
-                else
+//                if( i == j )
+//                    meshName = "Sphere1000.mesh";
+//                else
                     meshName = "Cube_d.mesh";
 
                 Ogre::Item *item = sceneManager->createItem(
@@ -201,74 +200,78 @@ namespace Demo
                 mSceneNode[idx] = sceneManager->getRootSceneNode( Ogre::SCENE_DYNAMIC )
                                       ->createChildSceneNode( Ogre::SCENE_DYNAMIC );
 
-                mSceneNode[idx]->setPosition( ( Ogre::Real( i ) - 1.5f ) * armsLength, 2.0f,
+                mSceneNode[idx]->setPosition( ( Ogre::Real( i ) - 1.5f ) * armsLength, 5.0f,
                                               ( Ogre::Real( j ) - 1.5f ) * armsLength );
                 mSceneNode[idx]->setScale( 0.65f, 0.65f, 0.65f );
 
                 mSceneNode[idx]->roll( Ogre::Radian( (Ogre::Real)idx ) );
 
                 mSceneNode[idx]->attachObject( item );
+                
+                meshCache->addMeshToCache(item->getMesh(), sceneManager, renderSystem, hlmsManager, item);
             }
         }
+        
+        meshCache->updateAS();
 
-        {
-            mNumSpheres = 0;
-            Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
-
-            assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
-
-            Ogre::HlmsPbs *hlmsPbs =
-                static_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) );
-
-            const int numX = 8;
-            const int numZ = 8;
-
-            const float armsLengthSphere = 1.0f;
-            const float startX = ( numX - 1 ) / 2.0f;
-            const float startZ = ( numZ - 1 ) / 2.0f;
-
-            Ogre::Root *root = mGraphicsSystem->getRoot();
-            Ogre::TextureGpuManager *textureMgr = root->getRenderSystem()->getTextureGpuManager();
-
-            for( int x = 0; x < numX; ++x )
-            {
-                for( int z = 0; z < numZ; ++z )
-                {
-                    Ogre::String datablockName =
-                        "Test" + Ogre::StringConverter::toString( mNumSpheres++ );
-                    Ogre::HlmsPbsDatablock *datablock = static_cast<Ogre::HlmsPbsDatablock *>(
-                        hlmsPbs->createDatablock( datablockName, datablockName, Ogre::HlmsMacroblock(),
-                                                  Ogre::HlmsBlendblock(), Ogre::HlmsParamVec() ) );
-
-                    Ogre::TextureGpu *texture = textureMgr->createOrRetrieveTexture(
-                        "SaintPetersBasilica.dds", Ogre::GpuPageOutStrategy::Discard,
-                        Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB, Ogre::TextureTypes::TypeCube,
-                        Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-                        Ogre::TextureFilter::TypeGenerateDefaultMipmaps );
-
-                    datablock->setTexture( Ogre::PBSM_REFLECTION, texture );
-                    datablock->setDiffuse( Ogre::Vector3( 0.0f, 1.0f, 0.0f ) );
-
-                    datablock->setRoughness(
-                        std::max( 0.02f, float( x ) / std::max( 1.0f, (float)( numX - 1 ) ) ) );
-                    datablock->setFresnel(
-                        Ogre::Vector3( float( z ) / std::max( 1.0f, (float)( numZ - 1 ) ) ), false );
-
-                    Ogre::Item *item = sceneManager->createItem(
-                        "Sphere1000.mesh", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
-                        Ogre::SCENE_DYNAMIC );
-                    item->setDatablock( datablock );
-                    item->setVisibilityFlags( 0x000000002 );
-
-                    Ogre::SceneNode *sceneNode = sceneManager->getRootSceneNode( Ogre::SCENE_DYNAMIC )
-                                                     ->createChildSceneNode( Ogre::SCENE_DYNAMIC );
-                    sceneNode->setPosition(
-                        Ogre::Vector3( armsLengthSphere * Ogre::Real( x ) - startX, 1.0f,
-                                       armsLengthSphere * Ogre::Real( z ) - startZ ) );
-                    sceneNode->attachObject( item );
-                }
-            }
-        }
+//        {
+//            mNumSpheres = 0;
+//            Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
+//
+//            assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
+//
+//            Ogre::HlmsPbs *hlmsPbs =
+//                static_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) );
+//
+//            const int numX = 8;
+//            const int numZ = 8;
+//
+//            const float armsLengthSphere = 1.0f;
+//            const float startX = ( numX - 1 ) / 2.0f;
+//            const float startZ = ( numZ - 1 ) / 2.0f;
+//
+//            Ogre::Root *root = mGraphicsSystem->getRoot();
+//            Ogre::TextureGpuManager *textureMgr = root->getRenderSystem()->getTextureGpuManager();
+//
+//            for( int x = 0; x < numX; ++x )
+//            {
+//                for( int z = 0; z < numZ; ++z )
+//                {
+//                    Ogre::String datablockName =
+//                        "Test" + Ogre::StringConverter::toString( mNumSpheres++ );
+//                    Ogre::HlmsPbsDatablock *datablock = static_cast<Ogre::HlmsPbsDatablock *>(
+//                        hlmsPbs->createDatablock( datablockName, datablockName, Ogre::HlmsMacroblock(),
+//                                                  Ogre::HlmsBlendblock(), Ogre::HlmsParamVec() ) );
+//
+//                    Ogre::TextureGpu *texture = textureMgr->createOrRetrieveTexture(
+//                        "SaintPetersBasilica.dds", Ogre::GpuPageOutStrategy::Discard,
+//                        Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB, Ogre::TextureTypes::TypeCube,
+//                        Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+//                        Ogre::TextureFilter::TypeGenerateDefaultMipmaps );
+//
+//                    datablock->setTexture( Ogre::PBSM_REFLECTION, texture );
+//                    datablock->setDiffuse( Ogre::Vector3( 0.0f, 1.0f, 0.0f ) );
+//
+//                    datablock->setRoughness(
+//                        std::max( 0.02f, float( x ) / std::max( 1.0f, (float)( numX - 1 ) ) ) );
+//                    datablock->setFresnel(
+//                        Ogre::Vector3( float( z ) / std::max( 1.0f, (float)( numZ - 1 ) ) ), false );
+//
+//                    Ogre::Item *item = sceneManager->createItem(
+//                        "Sphere1000.mesh", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,
+//                        Ogre::SCENE_DYNAMIC );
+//                    item->setDatablock( datablock );
+//                    item->setVisibilityFlags( 0x000000002 );
+//
+//                    Ogre::SceneNode *sceneNode = sceneManager->getRootSceneNode( Ogre::SCENE_DYNAMIC )
+//                                                     ->createChildSceneNode( Ogre::SCENE_DYNAMIC );
+//                    sceneNode->setPosition(
+//                        Ogre::Vector3( armsLengthSphere * Ogre::Real( x ) - startX, 1.0f,
+//                                       armsLengthSphere * Ogre::Real( z ) - startZ ) );
+//                    sceneNode->attachObject( item );
+//                }
+//            }
+//        }
 
         Ogre::SceneNode *rootNode = sceneManager->getRootSceneNode();
 
