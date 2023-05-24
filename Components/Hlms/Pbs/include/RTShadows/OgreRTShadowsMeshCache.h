@@ -56,6 +56,7 @@ namespace Ogre
         MeshCacheMap mMeshCaches;
         MeshPtrArray mMeshes;
         ItemArray mItems;
+        bool mRebuildAS;
         
     public:
         RTShadowsMeshCache();

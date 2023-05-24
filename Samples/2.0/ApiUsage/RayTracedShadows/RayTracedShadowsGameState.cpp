@@ -48,7 +48,7 @@ namespace Demo
         const Ogre::String &helpDescription ) :
         TutorialGameState( helpDescription ),
         mScreenSpaceReflections( 0 ),
-        mAnimateObjects( false )
+        mAnimateObjects( true )
     {
         mDisplayHelpMode = 2;
         mNumDisplayHelpModes = 3;
@@ -174,9 +174,9 @@ namespace Demo
             meshCache->addMeshToCache(planeMesh, sceneManager, renderSystem, hlmsManager, item);
         }
 
-        for( int i = 0; i < 1; ++i )
+        for( int i = 0; i < 4; ++i )
         {
-            for( int j = 0; j < 1; ++j )
+            for( int j = 0; j < 4; ++j )
             {
                 Ogre::String meshName;
 
@@ -337,6 +337,8 @@ namespace Demo
             for( int i = 0; i < 16; ++i )
                 mSceneNode[i]->yaw( Ogre::Radian( timeSinceLast * float( i ) * 0.125f ) );
         }
+        
+        mRTShadows->getMeshCache()->updateAS();
         
         TutorialGameState::update( timeSinceLast );
 

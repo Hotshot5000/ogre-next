@@ -2828,8 +2828,16 @@ namespace Ogre
         return MTLResourceStorageModeShared;
     #endif
     }
+    
+    void MetalRenderSystem::refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform )
+    {
+        MTLResourceOptions options = getManagedBufferStorageMode();
+        
+        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options);
+    }
+    
     // Create and compact an acceleration structure, given an acceleration structure descriptor.
-    id<MTLAccelerationStructure> MetalRenderSystem::createAccelerationStructureWithDescriptor( MTLAccelerationStructureDescriptor *descriptor )
+    id<MTLAccelerationStructure> MetalRenderSystem::createAccelerationStructureWithDescriptor( MTLAccelerationStructureDescriptor *descriptor, bool refitAccelerationStructure )
     {
         id<MTLDevice> device = mActiveDevice->mDevice;
         // Query for the sizes needed to store and build the acceleration structure.
@@ -2837,7 +2845,7 @@ namespace Ogre
 
         // Allocate an acceleration structure large enough for this descriptor. This doesn't actually
         // build the acceleration structure, just allocates memory.
-        id <MTLAccelerationStructure> accelerationStructure = [device newAccelerationStructureWithSize:accelSizes.accelerationStructureSize];
+        id <MTLAccelerationStructure> accelerationStructure = refitAccelerationStructure ? mInstanceAccelerationStructure : [device newAccelerationStructureWithSize:accelSizes.accelerationStructureSize];
 
         // Allocate scratch space used by Metal to build the acceleration structure.
         // Use MTLResourceStorageModePrivate for best performance since the sample
@@ -2856,10 +2864,21 @@ namespace Ogre
         id <MTLBuffer> compactedSizeBuffer = [device newBufferWithLength:sizeof(uint32_t) options:MTLResourceStorageModeShared];
 
         // Schedule the actual acceleration structure build
-        [commandEncoder buildAccelerationStructure:accelerationStructure
-                                        descriptor:descriptor
-                                     scratchBuffer:scratchBuffer
-                               scratchBufferOffset:0];
+        if( refitAccelerationStructure )
+        {
+            [commandEncoder refitAccelerationStructure:accelerationStructure
+                                            descriptor:descriptor
+                                            destination:nil
+                                         scratchBuffer:scratchBuffer
+                                   scratchBufferOffset:0];
+        }
+        else
+        {
+            [commandEncoder buildAccelerationStructure:accelerationStructure
+                                            descriptor:descriptor
+                                         scratchBuffer:scratchBuffer
+                                   scratchBufferOffset:0];
+        }
 
         // Compute and write the compacted acceleration structure size into the buffer. You
         // must already have a built accelerated structure because Metal determines the compacted
@@ -2913,6 +2932,61 @@ namespace Ogre
 
         return compactedAccelerationStructure;
     }
+    
+    void MetalRenderSystem::updateInstanceAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure )
+    {
+        mAccelerationStructureInstanceBuffer = [mActiveDevice->mDevice newBufferWithLength:sizeof(MTLAccelerationStructureInstanceDescriptor) * instanceMeshIndex.size() options:options];
+        
+        MTLAccelerationStructureInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
+        
+        // Fill out instance descriptors.
+        for (NSUInteger instanceIndex = 0; instanceIndex < instanceMeshIndex.size(); instanceIndex++) {
+            
+            NSUInteger geometryIndex = instanceMeshIndex[instanceIndex];
+            
+            // Map the instance to its acceleration structure.
+            instanceDescriptors[instanceIndex].accelerationStructureIndex = (uint32_t)geometryIndex;
+            
+            // Mark the instance as opaque if it doesn't have an intersection function so that the
+            // ray intersector doesn't attempt to execute a function that doesn't exist.
+            instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
+            
+            // Metal adds the geometry intersection function table offset and instance intersection
+            // function table offset together to determine which intersection function to execute.
+            // The sample mapped geometries directly to their intersection functions above, so it
+            // sets the instance's table offset to 0.
+            instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
+            
+            // Set the instance mask, which the sample uses to filter out intersections between rays
+            // and geometry. For example, it uses masks to prevent light sources from being visible
+            // to secondary rays, which would result in their contribution being double-counted.
+            instanceDescriptors[instanceIndex].mask = (uint32_t) GEOMETRY_MASK_TRIANGLE;//(uint32_t)instance.mask;
+            
+            // Copy the first three rows of the instance transformation matrix. Metal assumes that
+            // the bottom row is (0, 0, 0, 1).
+            // This allows instance descriptors to be tightly packed in memory.
+            const Matrix4& matTrans = instanceTransform[instanceIndex];
+            for (int column = 0; column < 4; column++)
+                for (int row = 0; row < 3; row++)
+                    instanceDescriptors[instanceIndex].transformationMatrix.columns[column][row] = matTrans[row][column];
+        }
+        
+#if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
+        [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
+#endif
+        
+        // Create an instance acceleration structure descriptor.
+        MTLInstanceAccelerationStructureDescriptor *accelDescriptor = [MTLInstanceAccelerationStructureDescriptor descriptor];
+        
+        accelDescriptor.instancedAccelerationStructures = mPrimitiveAccelerationStructures;
+        accelDescriptor.instanceCount = instanceMeshIndex.size();
+        accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
+        
+        // Finally, create the instance acceleration structure containing all of the instances
+        // in the scene.
+        mInstanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
+    }
+    
     //-------------------------------------------------------------------------
     void MetalRenderSystem::createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform )
     {
@@ -3050,61 +3124,9 @@ namespace Ogre
         }
         
         
-
-        
-
         // Allocate a buffer of acceleration structure instance descriptors. Each descriptor represents
         // an instance of one of the primitive acceleration structures created above, with its own
         // transformation matrix.
-        mAccelerationStructureInstanceBuffer = [mActiveDevice->mDevice newBufferWithLength:sizeof(MTLAccelerationStructureInstanceDescriptor) * instanceMeshIndex.size() options:options];
-
-        MTLAccelerationStructureInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
-
-        // Fill out instance descriptors.
-        for (NSUInteger instanceIndex = 0; instanceIndex < instanceMeshIndex.size(); instanceIndex++) {
-
-            NSUInteger geometryIndex = instanceMeshIndex[instanceIndex];
-
-            // Map the instance to its acceleration structure.
-            instanceDescriptors[instanceIndex].accelerationStructureIndex = (uint32_t)geometryIndex;
-
-            // Mark the instance as opaque if it doesn't have an intersection function so that the
-            // ray intersector doesn't attempt to execute a function that doesn't exist.
-            instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
-
-            // Metal adds the geometry intersection function table offset and instance intersection
-            // function table offset together to determine which intersection function to execute.
-            // The sample mapped geometries directly to their intersection functions above, so it
-            // sets the instance's table offset to 0.
-            instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
-
-            // Set the instance mask, which the sample uses to filter out intersections between rays
-            // and geometry. For example, it uses masks to prevent light sources from being visible
-            // to secondary rays, which would result in their contribution being double-counted.
-            instanceDescriptors[instanceIndex].mask = (uint32_t) GEOMETRY_MASK_TRIANGLE;//(uint32_t)instance.mask;
-
-            // Copy the first three rows of the instance transformation matrix. Metal assumes that
-            // the bottom row is (0, 0, 0, 1).
-            // This allows instance descriptors to be tightly packed in memory.
-            const Matrix4& matTrans = instanceTransform[instanceIndex];
-            for (int column = 0; column < 4; column++)
-                for (int row = 0; row < 3; row++)
-                    instanceDescriptors[instanceIndex].transformationMatrix.columns[column][row] = matTrans[row][column];
-        }
-
-#if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
-        [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
-#endif
-
-        // Create an instance acceleration structure descriptor.
-        MTLInstanceAccelerationStructureDescriptor *accelDescriptor = [MTLInstanceAccelerationStructureDescriptor descriptor];
-
-        accelDescriptor.instancedAccelerationStructures = mPrimitiveAccelerationStructures;
-        accelDescriptor.instanceCount = instanceMeshIndex.size();
-        accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
-
-        // Finally, create the instance acceleration structure containing all of the instances
-        // in the scene.
-        mInstanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
+        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options);
     }
 }

@@ -40,7 +40,8 @@ THE SOFTWARE.
 
 namespace Ogre
 {
-    RTShadowsMeshCache::RTShadowsMeshCache()
+    RTShadowsMeshCache::RTShadowsMeshCache() :
+    mRebuildAS( true )
     {
         
     }
@@ -129,7 +130,16 @@ namespace Ogre
         }
         
         RenderSystem *renderSystem = Root::getSingleton().getRenderSystem();
-        renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform );
+        if( mRebuildAS )
+        {
+            renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform );
+            mRebuildAS = false;
+        }
+        else
+        {
+            renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform );
+        }
+        
         
 //        MeshCacheMap::iterator itor = mMeshCaches.begin();
 //        MeshCacheMap::iterator end = mMeshCaches.end();
