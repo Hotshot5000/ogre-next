@@ -59,6 +59,11 @@ compositor_node RayTracedShadowsRenderingNode
             
         }
     }
+    
+    rtv renderedScene
+    {
+        depth_stencil gBufferDepthBuffer
+    }
 
     target renderedScene
     {
@@ -81,8 +86,8 @@ compositor_node RayTracedShadowsRenderingNode
             store
             {
                 colour    store_or_resolve
-                depth    dont_care
-                stencil    dont_care
+                depth     dont_care
+                stencil   dont_care
             }
             overlays    on
             //shadows        RayTracedShadowNode

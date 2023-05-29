@@ -180,9 +180,9 @@ namespace Demo
             {
                 Ogre::String meshName;
 
-//                if( i == j )
-//                    meshName = "Sphere1000.mesh";
-//                else
+                if( i == j )
+                    meshName = "Sphere1000.mesh";
+                else
                     meshName = "Cube_d.mesh";
 
                 Ogre::Item *item = sceneManager->createItem(

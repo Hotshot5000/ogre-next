@@ -57,20 +57,16 @@ namespace Ogre
     {
         const String &meshName = mesh->getName();
         MeshCacheMap::iterator itor = mMeshCaches.find( meshName );
-        if( itor != mMeshCaches.end() )
-        {
-            
-        }
-        else
+        if( itor == mMeshCaches.end() )
         {
             ShadowsCachedMesh shadowCachedMesh;
             shadowCachedMesh.meshName = meshName;
             shadowCachedMesh.mesh = mesh.get();
             shadowCachedMesh.meshIndex = mMeshes.size();
             itor = mMeshCaches.insert( std::pair<IdString, ShadowsCachedMesh>( meshName, shadowCachedMesh ) ).first;
-            mItems.push_back( refItem );
             mMeshes.push_back( mesh );
         }
+        mItems.push_back( refItem );
         return itor->second;
     }
     //-------------------------------------------------------------------------
