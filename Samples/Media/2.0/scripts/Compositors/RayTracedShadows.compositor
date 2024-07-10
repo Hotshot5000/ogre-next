@@ -1,12 +1,12 @@
 compositor_node DepthPrePassNode
 {
-	//texture gBufferNormals			target_width target_height PFG_R10G10B10A2_UNORM	msaa_auto explicit_resolve
-	//texture gBufferShadowRoughness	target_width target_height PFG_RG16_UNORM			msaa_auto explicit_resolve
+	texture gBufferNormals			target_width target_height PFG_R10G10B10A2_UNORM	keep_content msaa_auto explicit_resolve
+	texture gBufferShadowRoughness	target_width target_height PFG_RG16_UNORM			keep_content msaa_auto explicit_resolve
 	texture gBufferDepthBuffer		target_width target_height PFG_D32_FLOAT			    keep_content msaa_auto
 
 	rtv mrtGBuffer
 	{
-		//colour	gBufferNormals gBufferShadowRoughness
+		colour	gBufferNormals gBufferShadowRoughness
 		depth	gBufferDepthBuffer
 	}
 
@@ -22,6 +22,7 @@ compositor_node DepthPrePassNode
 			store
 			{
 				//Do not resolve
+                colour store
 				depth store
 			}
 
@@ -32,20 +33,20 @@ compositor_node DepthPrePassNode
 	}
 
 	out 0 gBufferDepthBuffer
-	//out 1 gBufferNormals
+	out 1 gBufferNormals
 	//out 2 gBufferShadowRoughness
 }
 
 compositor_node RayTracedShadowsRenderingNode
 {
 	in 0 gBufferDepthBuffer
-	//in 1 gBufferNormals
+	in 1 gBufferNormals
 	//in 2 gBufferShadowRoughness
 	//in 3 resolvedDepthBuffer
-	in 1 rt_renderwindow
+	in 2 rt_renderwindow
  
-    texture shadowTexture target_width target_height PFG_RGBA8_UNORM keep_content depth_pool 0 uav
-    texture renderedScene target_width target_height PFG_RGBA8_UNORM keep_content depth_pool 0 uav
+    texture shadowTexture target_width target_height PFG_RGBA8_UNORM depth_pool 0 uav
+    texture renderedScene target_width target_height PFG_RGBA8_UNORM depth_pool 0 uav
 
     target
     {
@@ -55,6 +56,7 @@ compositor_node RayTracedShadowsRenderingNode
             
             //uav # textureName read write allow_write_after_write
             input 0 gBufferDepthBuffer
+            input 1 gBufferNormals
             uav 0 shadowTexture    write
             
         }
@@ -146,6 +148,7 @@ compositor_node_shadow RayTracedShadowNode
 workspace RayTracedShadowsWorkspace
 {
 	connect			DepthPrePassNode	0	RayTracedShadowsRenderingNode	0
-	connect_output												RayTracedShadowsRenderingNode	1
+    connect            DepthPrePassNode    1    RayTracedShadowsRenderingNode    1
+	connect_output												RayTracedShadowsRenderingNode	2
 }
 

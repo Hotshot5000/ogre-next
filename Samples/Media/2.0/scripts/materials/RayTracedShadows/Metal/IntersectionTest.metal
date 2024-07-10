@@ -48,10 +48,29 @@ struct Light
 #define lightTexProfileIdx spotDirection.w
 };
 
+float origin() { return 1.0f / 32.0f; }
+float float_scale() { return 1.0f / 65536.0f; }
+float int_scale() { return 256.0f; }
+// Normal points outward for rays exiting the surface, else is flipped. 6 float3 offset_ray(const float3 p, const float3 n)
+float3 offset_ray(const float3 p, const float3 n)
+{
+    int3 of_i(int_scale() * n.x, int_scale() * n.y, int_scale() * n.z);
+    
+    float3 p_i(
+    float(int(p.x)+((p.x < 0) ? -of_i.x : of_i.x)),
+               float(int(p.y)+((p.y < 0) ? -of_i.y : of_i.y)),
+               float(int(p.z)+((p.z < 0) ? -of_i.z : of_i.z)));
+    
+    return float3(fabs(p.x) < origin() ? p.x+ float_scale()*n.x : p_i.x,
+                  fabs(p.y) < origin() ? p.y+ float_scale()*n.y : p_i.y,
+                  fabs(p.z) < origin() ? p.z+ float_scale()*n.z : p_i.z);
+}
+
 kernel void main_metal
 (
     depth2d<@insertpiece(texture0_pf_type), access::read> depthTexture [[texture(0)]],
-    //sampler  samplerState    [[sampler(0)]],
+    texture2d<@insertpiece(texture1_pf_type), access::read> normalsTexture [[texture(1)]],
+//    sampler  samplerState    [[sampler(0)]],
 	texture2d<float, access::write> shadowTexture [[texture(UAV_SLOT_START)]], // Destination
  
  
@@ -77,7 +96,8 @@ kernel void main_metal
 //        ushort3 pixelPos = ( gl_GlobalInvocationID /* * gl_WorkGroupID*/ ) + gl_LocalInvocationID;
         ushort3 pixelPos = gl_GlobalInvocationID;
         float fDepth = depthTexture.read( pixelPos.xy );
-        
+        float3 fNormal = normalize( normalsTexture.read( pixelPos.xy ).xyz * 2.0 - 1.0 );
+        fNormal.z = -fNormal.z; //Normal should be left handed.
         float linearDepth = in->projectionParams.y / (fDepth - in->projectionParams.x);
         
 //        float3 viewSpacePosition = in->cameraFront.xyz * linearDepth;
@@ -176,7 +196,7 @@ kernel void main_metal
         typename intersector<triangle_data, instancing>::result_type intersection;
         
         // Rays start at the camera position.
-        shadowRay.origin = worldSpacePosition.xyz;//in->cameraPos.xyz;//float3( pixel.x - pixel.x * 0.5f, 2.0f, pixel.y - pixel.y * 0.5f );
+        shadowRay.origin = offset_ray(worldSpacePosition.xyz, fNormal);//worldSpacePosition.xyz;//in->cameraPos.xyz;//float3( pixel.x - pixel.x * 0.5f, 2.0f, pixel.y - pixel.y * 0.5f );
         
         //for( int lightIndex = 0; lightIndex < /*lightCount*/1; ++i )
         //{
@@ -193,7 +213,7 @@ kernel void main_metal
             
             // Don't limit intersection distance.
             shadowRay.max_distance = INFINITY;
-            shadowRay.min_distance = 0.45f;
+            shadowRay.min_distance = 0.001f;
             
             intersection = i.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
             

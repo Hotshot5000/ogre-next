@@ -10,9 +10,11 @@ syntax: glob
 *.rule
 *.sdf
 .DS_Store
-Dependencies/*
+Dependencies
 iOSDependencies
 build/*
+build_mac/*
+build_ios/*
 SDK/OSX/sdk_contents
 SDK/iOS/sdk_contents
 Samples/2.0/AndroidAppTemplate/Autogen/

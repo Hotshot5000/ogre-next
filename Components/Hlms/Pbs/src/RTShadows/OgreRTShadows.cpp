@@ -136,9 +136,11 @@ namespace Ogre
 //        mShadowTex = mVaoManager->createUavBuffer( textureSize, 4,
 //                                                  BP_TYPE_UAV, 0, false );
         
-        Ogre::CompositorNode *shadowsNode = workspace->findNode( "RayTracedShadowsRenderingNode" );
-        mShadowTexture = shadowsNode->getDefinedTexture( "shadowTexture" );
-        mDepthTexture = shadowsNode->getDefinedTexture( "gBufferDepthBuffer" );
+        Ogre::CompositorNode *rayTracedShadowsNode = workspace->findNode( "RayTracedShadowsRenderingNode" );
+        Ogre::CompositorNode *depthPrepassNode = workspace->findNode( "DepthPrePassNode" );
+        mShadowTexture = rayTracedShadowsNode->getDefinedTexture( "shadowTexture" );
+        mDepthTexture = rayTracedShadowsNode->getDefinedTexture( "gBufferDepthBuffer" );
+        mNormalsTexture = depthPrepassNode->getDefinedTexture( "gBufferNormals" );
         
         mLightsConstBuffer = mVaoManager->createConstBuffer( sizeof( RTLight ) * 16u,
                                                             BT_DYNAMIC_PERSISTENT, 0, false );
@@ -285,6 +287,11 @@ namespace Ogre
 //            DescriptorSetTexture2::TextureSlot::makeEmpty() );
 //        texSlot.texture = mDepthTexture;
 //        mShadowIntersectionJob->setTexture( 0, texSlot );
+        
+        DescriptorSetTexture2::TextureSlot texSlot2(
+            DescriptorSetTexture2::TextureSlot::makeEmpty() );
+        texSlot2.texture = mNormalsTexture;
+        mShadowIntersectionJob->setTexture( 1, texSlot2 );
         
         DescriptorSetUav::TextureSlot bufferSlot( DescriptorSetUav::TextureSlot::makeEmpty() );
         bufferSlot.texture = mShadowTexture;

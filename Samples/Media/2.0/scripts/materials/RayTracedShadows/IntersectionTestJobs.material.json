@@ -14,9 +14,7 @@
             
             "textures" :
             [
-                {
-                    
-                }
+                {}, {}
             ],
 
 
@@ -25,7 +23,7 @@
             "params_glsl" :
             [
                 ["depthBuffer",     [0], "int"],
-                ["testTexture",     [0], "int"]
+                ["normalTexture",   [1], "float"]
             ]
         }
     }

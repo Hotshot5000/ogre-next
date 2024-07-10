@@ -57,6 +57,7 @@ namespace Ogre
         TextureGpu         *mRenderWindow;
         TextureGpu         *mShadowTexture;
         TextureGpu         *mDepthTexture;
+        TextureGpu         *mNormalsTexture;
         
         HlmsComputeJob     *mShadowIntersectionJob;
         ConstBufferPacked  *mLightsConstBuffer;
