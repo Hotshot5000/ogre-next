@@ -49,6 +49,7 @@ namespace Ogre
     {
         float invProjectionMat[16];
         float invViewMat[16];
+        float invViewProjMat[16];
         float cameraCorner[16];
         float cameraPos[4];
         float cameraRight[4];
@@ -57,6 +58,7 @@ namespace Ogre
         float projectionParams[2];
         float width;
         float height;
+        float fovY;
         
 //        float cameraDir[16];
         
@@ -275,10 +277,34 @@ namespace Ogre
     void RTShadows::update( SceneManager *sceneManager )
     {
         HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
+        Ogre::Matrix4 projMat = mCamera->getProjectionMatrix();
         Ogre::Matrix4 viewProj = mCamera->getProjectionMatrixWithRSDepth() * mCamera->getViewMatrix( true );
         Ogre::Matrix4 invViewProj = viewProj.inverse();
-        Ogre::Matrix4 invProjMat = mCamera->getProjectionMatrixWithRSDepth().inverse();
+        Ogre::Matrix4 invProjMat = mCamera->getProjectionMatrix().inverse();
         Ogre::Matrix4 invViewMat = mCamera->getViewMatrix( true ).inverse();
+        Ogre::Vector4 cameraDir( 0, 0, -1, 1 );
+        Ogre::Vector4 cameraDirInViewSpace = invProjMat * cameraDir;
+        cameraDirInViewSpace /= cameraDirInViewSpace.w;
+        cameraDirInViewSpace.w = 0.0f;
+        Ogre::Vector4 cameraDirInWorldSpace = invViewMat * cameraDirInViewSpace;
+        Ogre::Vector4 cameraDirCombined = invViewProj * cameraDir;
+        Ogre::Ray ray = mCamera->getCameraToViewportRay( 0.0f, 0.0f );
+        
+        float Px = 2 * ( 0.0f ) - 1;// * tan( in->fovY * 0.5 ) * imageAspectRatio;
+        float Py = 1 - 2 * ( 0.0f );// * tan( in->fovY * 0.5 );
+//        float3 rayOrigin = float3( in->cameraPos.xyz );
+        Ogre::Vector3 rayOrigin = ( invViewProj * Ogre::Vector3( Px, Py, -1 ) );
+        Ogre::Vector3 rayOrigNorm = rayOrigin.normalisedCopy();
+        Ogre::Vector3 rayOrigNormScreenSpace = ( rayOrigNorm + 1.0f ) * 0.5f;
+        Ogre::Vector3 midPoint = ( invViewProj * Ogre::Vector3( Px, Py, 0 ) );
+        Ogre::Vector3 midPointNorm = midPoint.normalisedCopy();
+        Ogre::Vector3 midPointNormScreenSpace = ( midPointNorm + 1.0f ) * 0.5f;
+        Ogre::Vector3 rayDirection = midPoint - rayOrigin;
+        rayDirection.normalise();
+        
+//        Ogre::Vector3 cameraDirWS( rayDirection.x, rayDirection.y, rayDirection.z );
+//        cameraDirWS.normalise();
+        Ogre::Vector3 cameraPos = mCamera->getDerivedPosition();
         Ogre::Vector3 cameraRight = mCamera->getRight();
         Ogre::Vector3 cameraUp = mCamera->getUp();
         Ogre::Vector3 cameraFront = mCamera->getDirection();
@@ -375,7 +401,8 @@ namespace Ogre
         RTInput *RESTRICT_ALIAS rtInput = reinterpret_cast<RTInput *>(
             mInputDataConstBuffer->map( 0, mInputDataConstBuffer->getNumElements() ) );
         
-        const Ogre::Vector3 cameraPos = mCamera->getDerivedPosition();
+        // CompositorPassQuadDef::WORLD_SPACE_CORNERS_CENTERED
+//        const Ogre::Vector3 cameraPos = mCamera->getDerivedPosition();
 //        const Ogre::Vector3 cameraDir = mCamera->getRealDirection();
         const Vector3 *corners = mCamera->getWorldSpaceCorners();
         
@@ -448,9 +475,12 @@ namespace Ogre
         
         rtInput->width = mRenderWindow->getWidth();
         rtInput->height = mRenderWindow->getHeight();
+        rtInput->fovY = mCamera->getFOVy().valueRadians();
+        float aspectRatio = mCamera->getAspectRatio();
         
-        memcpy( rtInput->invProjectionMat, &invViewProj, 4 * 4 * sizeof( float ) );
-        memcpy( rtInput->invViewMat, &viewProj, 4 * 4 * sizeof( float ) );
+        memcpy( rtInput->invProjectionMat, &invProjMat, 4 * 4 * sizeof( float ) );
+        memcpy( rtInput->invViewMat, &invViewMat, 4 * 4 * sizeof( float ) );
+        memcpy( rtInput->invViewProjMat, &invViewProj, 4 * 4 * sizeof( float ) );
         
         mInputDataConstBuffer->unmap( UO_KEEP_PERSISTENT );
 

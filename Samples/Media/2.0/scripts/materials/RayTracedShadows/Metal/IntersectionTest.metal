@@ -18,6 +18,7 @@ struct INPUT
 {
     float4x4 invProjectionMat;
     float4x4 invViewMat;
+    float4x4 invViewProjMat;
     float4 cameraCorner0;
     float4 cameraCorner1;
     float4 cameraCorner2;
@@ -29,6 +30,7 @@ struct INPUT
     float2 projectionParams;
     float width;
     float height;
+    float fovY;
 };
 
 struct Light
@@ -57,9 +59,9 @@ float3 offset_ray(const float3 p, const float3 n)
     int3 of_i(int_scale() * n.x, int_scale() * n.y, int_scale() * n.z);
     
     float3 p_i(
-    float(int(p.x)+((p.x < 0) ? -of_i.x : of_i.x)),
-               float(int(p.y)+((p.y < 0) ? -of_i.y : of_i.y)),
-               float(int(p.z)+((p.z < 0) ? -of_i.z : of_i.z)));
+               as_type<float>(as_type<int>(p.x)+((p.x < 0) ? -of_i.x : of_i.x)),
+               as_type<float>(as_type<int>(p.y)+((p.y < 0) ? -of_i.y : of_i.y)),
+               as_type<float>(as_type<int>(p.z)+((p.z < 0) ? -of_i.z : of_i.z)));
     
     return float3(fabs(p.x) < origin() ? p.x+ float_scale()*n.x : p_i.x,
                   fabs(p.y) < origin() ? p.y+ float_scale()*n.y : p_i.y,
@@ -91,6 +93,8 @@ kernel void main_metal
     // The sample aligns the thread count to the threadgroup size. which means the thread count
     // may be different than the bounds of the texture. Test to make sure this thread
     // is referencing a pixel within the bounds of the texture.
+    if (gl_GlobalInvocationID.x > in->width && gl_GlobalInvocationID.y > in->height)
+        return;
     //if (gl_GlobalInvocationID.x < uniforms.width && gl_GlobalInvocationID.y < uniforms.height)
     //{
 //        ushort3 pixelPos = ( gl_GlobalInvocationID /* * gl_WorkGroupID*/ ) + gl_LocalInvocationID;
@@ -98,7 +102,7 @@ kernel void main_metal
         float fDepth = depthTexture.read( pixelPos.xy );
         float3 fNormal = normalize( normalsTexture.read( pixelPos.xy ).xyz * 2.0 - 1.0 );
         fNormal.z = -fNormal.z; //Normal should be left handed.
-        float linearDepth = in->projectionParams.y / (fDepth - in->projectionParams.x);
+        float linearDepth = in->projectionParams.y / ( fDepth - in->projectionParams.x );
         
 //        float3 viewSpacePosition = in->cameraFront.xyz * linearDepth;
 //        viewSpacePosition /= 10.0f;
@@ -128,6 +132,16 @@ kernel void main_metal
         
 //        pixel += r;
     
+        float4x4 invViewProjectionMat = float4x4( float4( 0.552284837, -0, 0, -0 ),
+                                                  float4( 0, 0.392957568, -12.4975071, 12.1862793 ),
+                                                  float4( -0, -0.130985677, -37.4925194, 36.5588379 ),
+                                                  float4( -0, 2.13242703E-8, -2.49950123, 2.50050116 ) );
+    
+        float4x4 invViewProjectionMatRSDepth = float4x4( float4( 0.552284777, 0, -0, 0 ),
+                                                  float4( 0, 0.392957479, 24.9949989, -0.311227739 ),
+                                                  float4( 0, -0.130985826, 74.984993, -0.933683276 ),
+                                                  float4( -0, -7.40843671E-12, 4.9989996, 0.000999999931 ) );
+    
 //        float4x4 invProjectionMat = float4x4( float4( 0.552284837, 0, -0, 0 ),
 //                                              float4( 0, 0.414213568, 0, -0 ),
 //                                              float4( -0, 0, -0, -1 ),
@@ -140,8 +154,55 @@ kernel void main_metal
         
         // Map pixel coordinates to -1..1.
         float2 uv = float2( pixel.x / in->width, pixel.y / in->height );
-//        uv.x = uv.x * 2.0f - 1.0f;
-//        uv.y = ( 1.0f - uv.y ) * 2.0f - 1.0f;
+        uv.x = uv.x * 2.0f - 1.0f;
+        uv.y = ( 1.0f - uv.y ) * 2.0f - 1.0f;
+//    uv.y /= 2;
+    
+        invViewProjectionMatRSDepth = in->invViewProjMat;
+        float imageAspectRatio = in->width / in->height; // assuming width > height
+        float Px = 2 * ( pixel.x / in->width ) - 1;// * tan( in->fovY * 0.5 ) * imageAspectRatio;
+        float Py = 1 - 2 * ( pixel.y / in->height );// * tan( in->fovY * 0.5 );
+//        float3 rayOrigin = float3( in->cameraPos.xyz );
+//        invViewProjectionMatRSDepth = transpose( in->invViewProjMat );
+        float4 rayOrigin = ( float4( Px, Py, -1, 1 ) * invViewProjectionMatRSDepth );
+//        float4 rayOrigin = float4( (0.552284777 * -1 + 0 * 1 + -0 * -1 + 0 * 1),
+//                             (-1 * 0 + 0.392957479 + -1 * 24.9949989 + -0.311227739),
+//                             (0 * -1 + -0.130985826 + 74.984993 * -1 + -0.933683276),
+//                             (-0 + -7.40843671E-12 + 4.9989996 * -1 + 0.000999999931) );
+        rayOrigin.xyz /= rayOrigin.w;
+        float4 midPoint = ( float4( Px, Py, 0, 1 ) * invViewProjectionMatRSDepth );
+        midPoint.xyz /= midPoint.w;
+        float3 rayDirection = midPoint.xyz - rayOrigin.xyz;
+//        rayDirection.z = -rayDirection.z;
+//        rayDirection.w = 1.0 / rayDirection.w;
+//        rayDirection.xyz /= rayDirection.w;
+//        rayDirection.y /= rayDirection.w;
+//        rayDirection.z /= rayDirection.w;
+//        rayDirection.w = 0;
+//        rayDirection = ( in->invViewMat * rayDirection );
+//        rayDirection /= rayDirection.w;
+//        rayDirection = normalize( rayDirection );
+    
+        // The rays start at the camera position.
+        float4 normalInWorldSpace = in->invViewMat * float4( fNormal.xyz, 1.0f );
+        shadowRay.origin = rayOrigin.xyz;//offset_ray( rayOrigin.xyz, normalInWorldSpace.xyz );//rayOrigin;//in->cameraPos.xyz;
+
+        // Map normalized pixel coordinates into the camera's coordinate system.
+//        float4 invProjPos = ( in->invProjectionMat * float4( uv.x, uv.y, -1, 1 ) );
+//        float4 worldSpaceDirection = ( in->invViewMat * float4( invProjPos.x, invProjPos.y, invProjPos.z, invProjPos.w ) );
+//        worldSpaceDirection /= worldSpaceDirection.w;
+//        shadowRay.direction = worldSpaceDirection.xyz;
+//        shadowRay.direction = normalize(shadowRay.direction);
+        shadowRay.direction = normalize( rayDirection.xyz );
+//    rayDirection.xyz = normalize( rayDirection.xyz );
+//    rayDirection.xyz += 1.0;
+//    rayDirection.xyz *= 0.5;
+//    shadowTexture.write( float4( rayDirection.xyz, 1.0f ), pixelPos.xy );
+//    return;
+//        shadowRay.direction = normalize( float3( rayDirection.xyz ) - rayOrigin);
+//        shadowRay.direction = normalize( float3( uv.x * normalize( in->cameraRight.xyz ) +
+//                                  uv.y * normalize( in->cameraUp.xyz ) +
+//                                  normalize( in->cameraFront.xyz ) ) );
     
 //        // far
 //        mWorldSpaceCorners[4] = eyeToWorld.transformAffine( Vector3( farRight, farTop, -farDist ) );
@@ -196,13 +257,14 @@ kernel void main_metal
         typename intersector<triangle_data, instancing>::result_type intersection;
         
         // Rays start at the camera position.
-        shadowRay.origin = offset_ray(worldSpacePosition.xyz, fNormal);//worldSpacePosition.xyz;//in->cameraPos.xyz;//float3( pixel.x - pixel.x * 0.5f, 2.0f, pixel.y - pixel.y * 0.5f );
+//        float4 normalInWorldSpace = in->invViewMat * float4( fNormal.xyz, 1.0f );
+//        shadowRay.origin = worldSpacePosition.xyz;//offset_ray( worldSpacePosition.xyz, normalInWorldSpace.xyz );////in->cameraPos.xyz;//float3( pixel.x - pixel.x * 0.5f, 2.0f, pixel.y - pixel.y * 0.5f );
         
         //for( int lightIndex = 0; lightIndex < /*lightCount*/1; ++i )
         //{
             
             // Map normalized pixel coordinates into camera's coordinate system.
-            shadowRay.direction = normalize( lights[0].position.xyz /*- worldSpacePosition*/ );//normalize( float3( 1.0f, 1.0f, 1.0f ) );
+//            shadowRay.direction = normalize( /*float3( 0.0f, 1.0f, 0.0f )*/ lights[0].position.xyz /*- worldSpacePosition*/ );//normalize( float3( 1.0f, 1.0f, 1.0f ) );
     
 //            uv.y = -uv.y;
 //            shadowRay.direction = ( normalize(uv.x * in->cameraRight +
@@ -213,15 +275,35 @@ kernel void main_metal
             
             // Don't limit intersection distance.
             shadowRay.max_distance = INFINITY;
-            shadowRay.min_distance = 0.001f;
+//            shadowRay.min_distance = 0.01f;
             
             intersection = i.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
+    
+//            shadowTexture.write( float4( fNormal.x, fNormal.y, fNormal.z, 1.0f ), gl_GlobalInvocationID.xy );
             
             if( intersection.type == intersection_type::triangle )
             {
+//                shadowTexture.write( float4( 1.0f, 1.0f, 1.0f, 1.0f ), gl_GlobalInvocationID.xy );
                 // Compute intersection point in world space.
                 float3 worldSpaceIntersectionPoint = shadowRay.origin + shadowRay.direction * intersection.distance;
-                float4 ndc = in->invViewMat * float4( worldSpaceIntersectionPoint, 1.0f );
+                // The rays start at the camera position.
+                ray ray;
+                ray.origin = worldSpaceIntersectionPoint;
+
+                // Map normalized pixel coordinates into the camera's coordinate system.
+                ray.direction = normalize( float3( 0.0f, 1.0f, 0.0f ) );
+                ray.min_distance = 0.001;
+                ray.max_distance = INFINITY;
+                intersection = i.intersect( ray, accelerationStructure, RAY_MASK_SHADOW );
+                if( intersection.type == intersection_type::triangle )
+                {
+                    shadowTexture.write( float4( 1.0f, 1.0f, 1.0f, 1.0f ), gl_GlobalInvocationID.xy );
+                }
+                else
+                {
+                    shadowTexture.write( float4( 0.0f, 1.0f, 0.0f, 1.0f ), gl_GlobalInvocationID.xy );
+                }
+                /*float4 ndc = in->invViewMat * float4( worldSpaceIntersectionPoint, 1.0f );
                 ndc.xyz /= ndc.w;
                 ndc.y = -ndc.y;
                 float2 texCoords = ( ndc.xy * 0.5f ) + 1.0f;
@@ -235,7 +317,7 @@ kernel void main_metal
                     finalCol += float4( 1.0f, 1.0f, 0.0f, 0.0f );
                 texPos.x = clamp( texPos.x, (ushort) 0, (ushort) in->width );
                 texPos.y = clamp( texPos.y, (ushort) 0, (ushort) in->height );
-                shadowTexture.write( float4( 1.0f, 1.0f, 1.0f, 1.0f ), gl_GlobalInvocationID.xy );
+                shadowTexture.write( float4( 1.0f, 1.0f, 1.0f, 1.0f ), gl_GlobalInvocationID.xy );*/
 //                shadowTexture.write( finalCol, ushort2( 0, 0) );
             }
             else
