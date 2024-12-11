@@ -105,8 +105,9 @@ var class_ogre_1_1_metal_render_system =
     [ "setConfigOption", "class_ogre_1_1_metal_render_system.html#a16bd25724c25737d17e470c1c7c9a476", null ],
     [ "setStencilBufferParams", "class_ogre_1_1_metal_render_system.html#a1ba04ed7d28d217a1f6e53cabd6c8970", null ],
     [ "shutdown", "class_ogre_1_1_metal_render_system.html#aafe67099839ff9f49fc3c9e8ad8b8540", null ],
+    [ "supportsMultithreadedShaderCompilation", "class_ogre_1_1_metal_render_system.html#a2caf8c04a9dcac6cea5a6269fb70d0a6", null ],
     [ "unregisterThread", "class_ogre_1_1_metal_render_system.html#a9f4ba98e059508597e1eaf840f0f9cbe", null ],
     [ "updateCompositorManager", "class_ogre_1_1_metal_render_system.html#ab4df2ce9888c73ad4c28e53494aac9c8", null ],
     [ "validateConfigOptions", "class_ogre_1_1_metal_render_system.html#a5828774815232707266737b42b6046ae", null ],
-    [ "validateSampleDescription", "class_ogre_1_1_metal_render_system.html#a20e5d6a69cf7439a2b7ae1bce323ed31", null ]
+    [ "validateSampleDescription", "class_ogre_1_1_metal_render_system.html#af3617a26dc60a91cfbac29275db53792", null ]
 ];

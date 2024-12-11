@@ -29,7 +29,7 @@
   <td id="projectlogo"><img alt="Logo" src="ogre-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">OGRE-Next
-   &#160;<span id="projectnumber">3.0.0unstable</span>
+   &#160;<span id="projectnumber">4.0.0unstable</span>
    </div>
    <div id="projectbrief">Object-Oriented Graphics Rendering Engine</div>
   </td>
@@ -113,7 +113,7 @@ $(document).ready(function(){initNavTree('_ogre20_changes.html',''); initResizab
 <li class="level1"><a href="#GUIWashedOut">I activated gamma correction, but now my GUI textures look washed out!</a></li>
 </ul>
 </div>
-<div class="textblock"><p><a class="anchor" id="md_manual_changes"></a></p>
+<div class="textblock"><p><a class="anchor" id="md_manual_Introduction_changes"></a></p>
 <h1><a class="anchor" id="NamesAreNowOptional"></a>
 Names are now optional</h1>
 <p>Names no longer need to be unique and are optional (ie. two SceneNodes can have the same name). To identify uniqueness, classes derive from <code>IdObject</code>, and use <code>IdObject::getId()</code></p>
@@ -124,8 +124,8 @@ Names are now optional</h1>
 </div><!-- fragment --><p>However the new definition of create <code>Entity</code> is as follows:</p>
 <div class="fragment"><div class="line">Entity* createEntity( <span class="keyword">const</span> <a class="code" href="namespace_ogre.html#af73bbdc8bed8a3e6fcd56bb8fa188c45">String</a>&amp; meshName, <span class="keyword">const</span> <a class="code" href="namespace_ogre.html#af73bbdc8bed8a3e6fcd56bb8fa188c45">String</a>&amp; groupName = ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME,</div>
 <div class="line">        <a class="code" href="group___general.html#ga635aa2486e7e05c17c1fdec1913094a6">SceneMemoryMgrTypes</a> sceneType = <a class="code" href="group___general.html#gga635aa2486e7e05c17c1fdec1913094a6a1ea35787f06b0a63e0dd130cce754204">SCENE_DYNAMIC</a> );</div>
-<div class="ttc" id="agroup___general_html_ga635aa2486e7e05c17c1fdec1913094a6"><div class="ttname"><a href="group___general.html#ga635aa2486e7e05c17c1fdec1913094a6">Ogre::SceneMemoryMgrTypes</a></div><div class="ttdeci">SceneMemoryMgrTypes</div><div class="ttdoc">The types of NodeMemoryManager &amp; ObjectMemoryManagers.</div><div class="ttdef"><b>Definition:</b> OgreCommon.h:488</div></div>
-<div class="ttc" id="agroup___general_html_gga635aa2486e7e05c17c1fdec1913094a6a1ea35787f06b0a63e0dd130cce754204"><div class="ttname"><a href="group___general.html#gga635aa2486e7e05c17c1fdec1913094a6a1ea35787f06b0a63e0dd130cce754204">Ogre::SCENE_DYNAMIC</a></div><div class="ttdeci">@ SCENE_DYNAMIC</div><div class="ttdef"><b>Definition:</b> OgreCommon.h:489</div></div>
+<div class="ttc" id="agroup___general_html_ga635aa2486e7e05c17c1fdec1913094a6"><div class="ttname"><a href="group___general.html#ga635aa2486e7e05c17c1fdec1913094a6">Ogre::SceneMemoryMgrTypes</a></div><div class="ttdeci">SceneMemoryMgrTypes</div><div class="ttdoc">The types of NodeMemoryManager &amp; ObjectMemoryManagers.</div><div class="ttdef"><b>Definition:</b> OgreCommon.h:499</div></div>
+<div class="ttc" id="agroup___general_html_gga635aa2486e7e05c17c1fdec1913094a6a1ea35787f06b0a63e0dd130cce754204"><div class="ttname"><a href="group___general.html#gga635aa2486e7e05c17c1fdec1913094a6a1ea35787f06b0a63e0dd130cce754204">Ogre::SCENE_DYNAMIC</a></div><div class="ttdeci">@ SCENE_DYNAMIC</div><div class="ttdef"><b>Definition:</b> OgreCommon.h:500</div></div>
 <div class="ttc" id="anamespace_ogre_html_af73bbdc8bed8a3e6fcd56bb8fa188c45"><div class="ttname"><a href="namespace_ogre.html#af73bbdc8bed8a3e6fcd56bb8fa188c45">Ogre::String</a></div><div class="ttdeci">_StringBase String</div><div class="ttdef"><b>Definition:</b> OgreCommon.h:40</div></div>
 </div><!-- fragment --><p>In other words, your old snippet will try to look for the mesh <code>myEntityName</code> in the group <code>meshName.mesh</code>; which will probably fail. To port to <a class="el" href="namespace_ogre.html" title="bswapNN may be defined as macros in &lt;sys/endian.h&gt; or &lt;sys/bswap.h&gt;">Ogre</a> 2.0; one would just need to write:</p>
 <div class="fragment"><div class="line">Entity *myEnt = sceneManager-&gt;createEntity( <span class="stringliteral">&quot;meshName.mesh&quot;</span> );</div>
@@ -169,7 +169,7 @@ How to debug MovableObjects' (and Nodes) data</h1>
 <div class="line">    <span class="comment">/* ... */</span></div>
 <div class="line">    <span class="keywordtype">bool</span>    * <a class="code" href="_ogre_platform_8h.html#a6decd303d90f9cd75d6bb79d51ea2154">RESTRICT_ALIAS</a> mInheritOrientation;</div>
 <div class="line">};</div>
-<div class="ttc" id="a_ogre_platform_8h_html_a6decd303d90f9cd75d6bb79d51ea2154"><div class="ttname"><a href="_ogre_platform_8h.html#a6decd303d90f9cd75d6bb79d51ea2154">RESTRICT_ALIAS</a></div><div class="ttdeci">#define RESTRICT_ALIAS</div><div class="ttdef"><b>Definition:</b> OgrePlatform.h:567</div></div>
+<div class="ttc" id="a_ogre_platform_8h_html_a6decd303d90f9cd75d6bb79d51ea2154"><div class="ttname"><a href="_ogre_platform_8h.html#a6decd303d90f9cd75d6bb79d51ea2154">RESTRICT_ALIAS</a></div><div class="ttdeci">#define RESTRICT_ALIAS</div><div class="ttdef"><b>Definition:</b> OgrePlatform.h:571</div></div>
 </div><!-- fragment --><p>When <code>ARRAY_PACKED_REALS</code> = 4 (i.e. SSE builds), though not strictly correct, we could say <code>mParents</code> is declared as:</p>
 <div class="fragment"><div class="line"><span class="keyword">struct </span>Transform</div>
 <div class="line">{</div>
@@ -356,7 +356,7 @@ How do I set the element offsets, vertex buffer's source and index?</h1>
 <div class="line">                                            <a class="code" href="namespace_ogre.html#a0a62b3f2ede8992ff365bb013a8bc00d">VertexElementSemantic</a> semantic,</div>
 <div class="line">                                            <span class="keywordtype">unsigned</span> <span class="keywordtype">short</span> index = 0);</div>
 <div class="line">};</div>
-<div class="ttc" id="anamespace_ogre_html_a027109503a988ba85f4c63b55082907f"><div class="ttname"><a href="namespace_ogre.html#a027109503a988ba85f4c63b55082907f">Ogre::VertexElementType</a></div><div class="ttdeci">VertexElementType</div><div class="ttdoc">Vertex element type, used to identify the base types of the vertex contents Note that all attributes ...</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:72</div></div>
+<div class="ttc" id="anamespace_ogre_html_a027109503a988ba85f4c63b55082907f"><div class="ttname"><a href="namespace_ogre.html#a027109503a988ba85f4c63b55082907f">Ogre::VertexElementType</a></div><div class="ttdeci">VertexElementType</div><div class="ttdoc">Vertex element type, used to identify the base types of the vertex contents Note that all attributes ...</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:74</div></div>
 <div class="ttc" id="anamespace_ogre_html_a0a62b3f2ede8992ff365bb013a8bc00d"><div class="ttname"><a href="namespace_ogre.html#a0a62b3f2ede8992ff365bb013a8bc00d">Ogre::VertexElementSemantic</a></div><div class="ttdeci">VertexElementSemantic</div><div class="ttdoc">Vertex element semantics, used to identify the meaning of vertex buffer contents.</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:40</div></div>
 </div><!-- fragment --><p>The offset can be automatically calculated from the previous element's size. The index parameter can also be automatically calculated by counting the numbers of elements already in the array. And the source can be arranged by having an array of vertex elements.</p>
 <p>The following code is equivalent, v1 vs v2 format:</p>
@@ -374,9 +374,9 @@ How do I set the element offsets, vertex buffer's source and index?</h1>
 <div class="line">offset += vertexDecl.getVertexSize();</div>
 <div class="line"><span class="comment">//Third pair of tex coords, in a second buffer</span></div>
 <div class="line">vertexDecl.addElement( 1, 0, <a class="code" href="namespace_ogre.html#a027109503a988ba85f4c63b55082907fa0993ccf616ec6e7bf60fff2ef1705ce6">VET_FLOAT2</a>, <a class="code" href="namespace_ogre.html#a0a62b3f2ede8992ff365bb013a8bc00da17abb855311f3a67bc31414cad8d6212">VES_TEXTURE_COORDINATES</a>, 2 );</div>
-<div class="ttc" id="anamespace_ogre_html_a027109503a988ba85f4c63b55082907fa0993ccf616ec6e7bf60fff2ef1705ce6"><div class="ttname"><a href="namespace_ogre.html#a027109503a988ba85f4c63b55082907fa0993ccf616ec6e7bf60fff2ef1705ce6">Ogre::VET_FLOAT2</a></div><div class="ttdeci">@ VET_FLOAT2</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:74</div></div>
-<div class="ttc" id="anamespace_ogre_html_a027109503a988ba85f4c63b55082907fa9ccf920d2572b15896f75ccf30fb150c"><div class="ttname"><a href="namespace_ogre.html#a027109503a988ba85f4c63b55082907fa9ccf920d2572b15896f75ccf30fb150c">Ogre::VET_FLOAT3</a></div><div class="ttdeci">@ VET_FLOAT3</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:75</div></div>
-<div class="ttc" id="anamespace_ogre_html_a0a62b3f2ede8992ff365bb013a8bc00da17abb855311f3a67bc31414cad8d6212"><div class="ttname"><a href="namespace_ogre.html#a0a62b3f2ede8992ff365bb013a8bc00da17abb855311f3a67bc31414cad8d6212">Ogre::VES_TEXTURE_COORDINATES</a></div><div class="ttdeci">@ VES_TEXTURE_COORDINATES</div><div class="ttdoc">Texture coordinates.</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:55</div></div>
+<div class="ttc" id="anamespace_ogre_html_a027109503a988ba85f4c63b55082907fa0993ccf616ec6e7bf60fff2ef1705ce6"><div class="ttname"><a href="namespace_ogre.html#a027109503a988ba85f4c63b55082907fa0993ccf616ec6e7bf60fff2ef1705ce6">Ogre::VET_FLOAT2</a></div><div class="ttdeci">@ VET_FLOAT2</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:76</div></div>
+<div class="ttc" id="anamespace_ogre_html_a027109503a988ba85f4c63b55082907fa9ccf920d2572b15896f75ccf30fb150c"><div class="ttname"><a href="namespace_ogre.html#a027109503a988ba85f4c63b55082907fa9ccf920d2572b15896f75ccf30fb150c">Ogre::VET_FLOAT3</a></div><div class="ttdeci">@ VET_FLOAT3</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:77</div></div>
+<div class="ttc" id="anamespace_ogre_html_a0a62b3f2ede8992ff365bb013a8bc00da17abb855311f3a67bc31414cad8d6212"><div class="ttname"><a href="namespace_ogre.html#a0a62b3f2ede8992ff365bb013a8bc00da17abb855311f3a67bc31414cad8d6212">Ogre::VES_TEXTURE_COORDINATES</a></div><div class="ttdeci">@ VES_TEXTURE_COORDINATES</div><div class="ttdoc">Texture coordinates.</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:57</div></div>
 <div class="ttc" id="anamespace_ogre_html_a0a62b3f2ede8992ff365bb013a8bc00da1dec7d36a64625348e23af26c9231227"><div class="ttname"><a href="namespace_ogre.html#a0a62b3f2ede8992ff365bb013a8bc00da1dec7d36a64625348e23af26c9231227">Ogre::VES_NORMAL</a></div><div class="ttdeci">@ VES_NORMAL</div><div class="ttdoc">Normal, 3 reals per vertex.</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:48</div></div>
 <div class="ttc" id="anamespace_ogre_html_a0a62b3f2ede8992ff365bb013a8bc00dad04d50e91c2ec5377e610b3f5b9b07f2"><div class="ttname"><a href="namespace_ogre.html#a0a62b3f2ede8992ff365bb013a8bc00dad04d50e91c2ec5377e610b3f5b9b07f2">Ogre::VES_POSITION</a></div><div class="ttdeci">@ VES_POSITION</div><div class="ttdoc">Position, 3 reals per vertex.</div><div class="ttdef"><b>Definition:</b> OgreVertexElements.h:42</div></div>
 </div><!-- fragment --><div class="fragment"><div class="line"><span class="comment">//V2 format</span></div>
@@ -436,7 +436,7 @@ I activated gamma correction, but now my GUI textures look washed out!</h1>
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="manual.html">Manual</a></li>
+    <li class="navelem"><a class="el" href="manual.html">Manual</a></li><li class="navelem"><a class="el" href="_introduction_and_changes.html">Introduction &amp; Changes from Ogre 1.x</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1 </li>
   </ul>
 </div>

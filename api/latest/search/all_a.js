@@ -1,19 +1,8 @@
 var searchData=
 [
-  ['kernel_6799',['kernel',['../struct_ogre_1_1_filter_kernel.html#a93574bfded04faa589728d1a437a14f2',1,'Ogre::FilterKernel::kernel()'],['../struct_ogre_1_1_filter_separable_kernel.html#aaaacfb4a8f2e3d76a2a699c865afe5b0',1,'Ogre::FilterSeparableKernel::kernel()']]],
-  ['kernelend_6800',['kernelEnd',['../struct_ogre_1_1_filter_separable_kernel.html#a3efa443520ae81bb086b7b08578dfb74',1,'Ogre::FilterSeparableKernel']]],
-  ['kernelendx_6801',['kernelEndX',['../struct_ogre_1_1_filter_kernel.html#af93213e3a85be61c92a2887b8a454605',1,'Ogre::FilterKernel']]],
-  ['kernelendy_6802',['kernelEndY',['../struct_ogre_1_1_filter_kernel.html#ac077fb95195f8bb4514f9204ef614ff0',1,'Ogre::FilterKernel']]],
-  ['kernelstart_6803',['kernelStart',['../struct_ogre_1_1_filter_separable_kernel.html#a603f05fafdab69b79a159789c5859e88',1,'Ogre::FilterSeparableKernel']]],
-  ['kernelstartx_6804',['kernelStartX',['../struct_ogre_1_1_filter_kernel.html#a17fba608e01aacbcdcec89ca700e424d',1,'Ogre::FilterKernel']]],
-  ['kernelstarty_6805',['kernelStartY',['../struct_ogre_1_1_filter_kernel.html#ab5e8d585d8b7a7f398703be291a7b76b',1,'Ogre::FilterKernel']]],
-  ['keyframe_6806',['KeyFrame',['../class_ogre_1_1v1_1_1_key_frame.html#ab2caa6e494dd6bb4c1717a596de75755',1,'Ogre::v1::KeyFrame::KeyFrame()'],['../class_ogre_1_1v1_1_1_key_frame.html',1,'Ogre::v1::KeyFrame']]],
-  ['keyframerig_6807',['KeyFrameRig',['../struct_ogre_1_1_key_frame_rig.html',1,'Ogre']]],
-  ['keyframerigvec_6808',['KeyFrameRigVec',['../namespace_ogre.html#a9f0c771fba79bbaccf4bfa5b8bd0618d',1,'Ogre']]],
-  ['keyname_6809',['keyName',['../struct_ogre_1_1_hlms_property.html#a4b151398f7322b75f2ce6dd125c3c964',1,'Ogre::HlmsProperty']]],
-  ['keytype_6810',['KeyType',['../class_ogre_1_1_map_iterator_wrapper.html#aba5a8ef400da4e0338f9b257727e9377',1,'Ogre::MapIteratorWrapper']]],
-  ['kftransform_6811',['KfTransform',['../struct_ogre_1_1_kf_transform.html',1,'Ogre']]],
-  ['kftransformarraymemorymanager_6812',['KfTransformArrayMemoryManager',['../class_ogre_1_1_kf_transform_array_memory_manager.html#a693325eae28043c1b61db228b1e99e75',1,'Ogre::KfTransformArrayMemoryManager::KfTransformArrayMemoryManager()'],['../class_ogre_1_1_kf_transform_array_memory_manager.html',1,'Ogre::KfTransformArrayMemoryManager']]],
-  ['kftransformtype_6813',['KfTransformType',['../class_ogre_1_1_kf_transform_array_memory_manager.html#a2cb021538ea5c89a6d80287eb4ab05bba800bccaf0f6fd61d3a0b2988e8051efa',1,'Ogre::KfTransformArrayMemoryManager']]],
-  ['knownkeyframesvec_6814',['KnownKeyFramesVec',['../namespace_ogre.html#a1e96064c317c518a2d7e0c22dcb27847',1,'Ogre']]]
+  ['jnienv_7335',['JNIEnv',['../_ogre_vulkan_android_window_8h.html#a5e00c24a0dc9623ad0f968347487d093',1,'OgreVulkanAndroidWindow.h']]],
+  ['job_7336',['job',['../struct_ogre_1_1_voxelizer_bucket.html#ae57998ae32e3fb4ede73edf19dfbcc98',1,'Ogre::VoxelizerBucket']]],
+  ['jobject_7337',['jobject',['../_ogre_vulkan_android_window_8h.html#a27ece82c688e24084c36da05df46d21b',1,'OgreVulkanAndroidWindow.h']]],
+  ['json_20materials_7338',['JSON Materials',['../_j_s_o_n-_materials.html',1,'Scripts']]],
+  ['jsonmaterials_2emd_7339',['JsonMaterials.md',['../_json_materials_8md.html',1,'']]]
 ];

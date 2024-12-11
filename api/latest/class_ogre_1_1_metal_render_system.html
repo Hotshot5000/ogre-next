@@ -29,7 +29,7 @@
   <td id="projectlogo"><img alt="Logo" src="ogre-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">OGRE-Next
-   &#160;<span id="projectnumber">3.0.0unstable</span>
+   &#160;<span id="projectnumber">4.0.0unstable</span>
    </div>
    <div id="projectbrief">Object-Oriented Graphics Rendering Engine</div>
   </td>
@@ -377,6 +377,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aafe67099839ff9f49fc3c9e8ad8b8540"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_metal_render_system.html#aafe67099839ff9f49fc3c9e8ad8b8540">shutdown</a> () override</td></tr>
 <tr class="memdesc:aafe67099839ff9f49fc3c9e8ad8b8540"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shutdown the renderer and cleanup resources.  <a href="class_ogre_1_1_metal_render_system.html#aafe67099839ff9f49fc3c9e8ad8b8540">More...</a><br /></td></tr>
 <tr class="separator:aafe67099839ff9f49fc3c9e8ad8b8540"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2caf8c04a9dcac6cea5a6269fb70d0a6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_metal_render_system.html#a2caf8c04a9dcac6cea5a6269fb70d0a6">supportsMultithreadedShaderCompilation</a> () const override</td></tr>
+<tr class="memdesc:a2caf8c04a9dcac6cea5a6269fb70d0a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns true if <a class="el" href="class_ogre_1_1_render_system.html" title="Defines the functionality of a 3D API.">RenderSystem</a> supports multithreaded shader and PSO compilation.  <a href="class_ogre_1_1_metal_render_system.html#a2caf8c04a9dcac6cea5a6269fb70d0a6">More...</a><br /></td></tr>
+<tr class="separator:a2caf8c04a9dcac6cea5a6269fb70d0a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9f4ba98e059508597e1eaf840f0f9cbe"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_metal_render_system.html#a9f4ba98e059508597e1eaf840f0f9cbe">unregisterThread</a> () override</td></tr>
 <tr class="memdesc:a9f4ba98e059508597e1eaf840f0f9cbe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unregister an additional thread which may make calls to rendersystem-related objects.  <a href="class_ogre_1_1_metal_render_system.html#a9f4ba98e059508597e1eaf840f0f9cbe">More...</a><br /></td></tr>
 <tr class="separator:a9f4ba98e059508597e1eaf840f0f9cbe"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -386,9 +389,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a5828774815232707266737b42b6046ae"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespace_ogre.html#af73bbdc8bed8a3e6fcd56bb8fa188c45">String</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_metal_render_system.html#a5828774815232707266737b42b6046ae">validateConfigOptions</a> () override</td></tr>
 <tr class="memdesc:a5828774815232707266737b42b6046ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Validates the options set for the rendering system, returning a message if there are problems.  <a href="class_ogre_1_1_metal_render_system.html#a5828774815232707266737b42b6046ae">More...</a><br /></td></tr>
 <tr class="separator:a5828774815232707266737b42b6046ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a20e5d6a69cf7439a2b7ae1bce323ed31"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_ogre_1_1_sample_description.html">SampleDescription</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_metal_render_system.html#a20e5d6a69cf7439a2b7ae1bce323ed31">validateSampleDescription</a> (const <a class="el" href="struct_ogre_1_1_sample_description.html">SampleDescription</a> &amp;sampleDesc, <a class="el" href="group___image.html#ga71f09fe41a1db41186262f1aa5814a18">PixelFormatGpu</a> format) override</td></tr>
-<tr class="memdesc:a20e5d6a69cf7439a2b7ae1bce323ed31"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns supported sample description for requested FSAA mode, with graceful downgrading.  <a href="class_ogre_1_1_metal_render_system.html#a20e5d6a69cf7439a2b7ae1bce323ed31">More...</a><br /></td></tr>
-<tr class="separator:a20e5d6a69cf7439a2b7ae1bce323ed31"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3617a26dc60a91cfbac29275db53792"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_ogre_1_1_sample_description.html">SampleDescription</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_metal_render_system.html#af3617a26dc60a91cfbac29275db53792">validateSampleDescription</a> (const <a class="el" href="struct_ogre_1_1_sample_description.html">SampleDescription</a> &amp;sampleDesc, <a class="el" href="group___image.html#ga71f09fe41a1db41186262f1aa5814a18">PixelFormatGpu</a> format, <a class="el" href="namespace_ogre.html#a5a7c15d68e8c7d585c410bc5a93682f4">uint32</a> textureFlags) override</td></tr>
+<tr class="memdesc:af3617a26dc60a91cfbac29275db53792"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns supported sample description for requested FSAA mode, with graceful downgrading.  <a href="class_ogre_1_1_metal_render_system.html#af3617a26dc60a91cfbac29275db53792">More...</a><br /></td></tr>
+<tr class="separator:af3617a26dc60a91cfbac29275db53792"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_class_ogre_1_1_render_system"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_ogre_1_1_render_system')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_ogre_1_1_render_system.html">Ogre::RenderSystem</a></td></tr>
 <tr class="memitem:a3391b683d588628272d8d9de633e472e inherit pub_methods_class_ogre_1_1_render_system"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_system.html#a3391b683d588628272d8d9de633e472e">RenderSystem</a> ()</td></tr>
 <tr class="memdesc:a3391b683d588628272d8d9de633e472e inherit pub_methods_class_ogre_1_1_render_system"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default Constructor.  <a href="class_ogre_1_1_render_system.html#a3391b683d588628272d8d9de633e472e">More...</a><br /></td></tr>
@@ -601,6 +604,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a387d5fa07b1c096496ce6a97c4f68505 inherit pub_methods_class_ogre_1_1_render_system"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a319564dc746b19bb9a1490a473227b20 inherit pub_methods_class_ogre_1_1_render_system"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_system.html#a319564dc746b19bb9a1490a473227b20">isStaticBufferLockable</a> () const</td></tr>
 <tr class="separator:a319564dc746b19bb9a1490a473227b20 inherit pub_methods_class_ogre_1_1_render_system"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8378cd3e1aa2ccd4a26214fefdb10ce0 inherit pub_methods_class_ogre_1_1_render_system"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_system.html#a8378cd3e1aa2ccd4a26214fefdb10ce0">loadPipelineCache</a> (<a class="el" href="namespace_ogre.html#a8a2a961b4205aacff9c01e81e08d7781">DataStreamPtr</a> stream)</td></tr>
+<tr class="memdesc:a8378cd3e1aa2ccd4a26214fefdb10ce0 inherit pub_methods_class_ogre_1_1_render_system"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the pipeline cache from disk.  <a href="class_ogre_1_1_render_system.html#a8378cd3e1aa2ccd4a26214fefdb10ce0">More...</a><br /></td></tr>
+<tr class="separator:a8378cd3e1aa2ccd4a26214fefdb10ce0 inherit pub_methods_class_ogre_1_1_render_system"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:add71b4fa521a3d13c727c5afe9225bbb inherit pub_methods_class_ogre_1_1_render_system"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_system.html#add71b4fa521a3d13c727c5afe9225bbb">loadRenderDocApi</a> ()</td></tr>
 <tr class="memdesc:add71b4fa521a3d13c727c5afe9225bbb inherit pub_methods_class_ogre_1_1_render_system"><td class="mdescLeft">&#160;</td><td class="mdescRight">Explicitly loads RenderDoc.  <a href="class_ogre_1_1_render_system.html#add71b4fa521a3d13c727c5afe9225bbb">More...</a><br /></td></tr>
 <tr class="separator:add71b4fa521a3d13c727c5afe9225bbb inherit pub_methods_class_ogre_1_1_render_system"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -613,6 +619,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a46a9b1385638112a80bf22fa1a5bf531 inherit pub_methods_class_ogre_1_1_render_system"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_system.html#a46a9b1385638112a80bf22fa1a5bf531">resetClipPlanes</a> ()</td></tr>
 <tr class="memdesc:a46a9b1385638112a80bf22fa1a5bf531 inherit pub_methods_class_ogre_1_1_render_system"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears the user clipping region.  <a href="class_ogre_1_1_render_system.html#a46a9b1385638112a80bf22fa1a5bf531">More...</a><br /></td></tr>
 <tr class="separator:a46a9b1385638112a80bf22fa1a5bf531 inherit pub_methods_class_ogre_1_1_render_system"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7fa3447da967174c882bbc445d715eab inherit pub_methods_class_ogre_1_1_render_system"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_system.html#a7fa3447da967174c882bbc445d715eab">savePipelineCache</a> (<a class="el" href="namespace_ogre.html#a8a2a961b4205aacff9c01e81e08d7781">DataStreamPtr</a> stream) const</td></tr>
+<tr class="memdesc:a7fa3447da967174c882bbc445d715eab inherit pub_methods_class_ogre_1_1_render_system"><td class="mdescLeft">&#160;</td><td class="mdescRight">Saves the pipeline cache to disk.  <a href="class_ogre_1_1_render_system.html#a7fa3447da967174c882bbc445d715eab">More...</a><br /></td></tr>
+<tr class="separator:a7fa3447da967174c882bbc445d715eab inherit pub_methods_class_ogre_1_1_render_system"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a23cc0a7d87b77ec3d0a34e92335bec1a inherit pub_methods_class_ogre_1_1_render_system"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_system.html#a23cc0a7d87b77ec3d0a34e92335bec1a">setClipPlanes</a> (const <a class="el" href="group___math.html#gaa4714a0d3d8a5ddd765acb42b78499ad">PlaneList</a> &amp;clipPlanes)</td></tr>
 <tr class="memdesc:a23cc0a7d87b77ec3d0a34e92335bec1a inherit pub_methods_class_ogre_1_1_render_system"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the user clipping region.  <a href="class_ogre_1_1_render_system.html#a23cc0a7d87b77ec3d0a34e92335bec1a">More...</a><br /></td></tr>
 <tr class="separator:a23cc0a7d87b77ec3d0a34e92335bec1a inherit pub_methods_class_ogre_1_1_render_system"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -4230,6 +4239,36 @@ Once this init sequence is completed the threads are independent but this startu
 
 </div>
 </div>
+<a id="a2caf8c04a9dcac6cea5a6269fb70d0a6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2caf8c04a9dcac6cea5a6269fb70d0a6">&#9670;&nbsp;</a></span>supportsMultithreadedShaderCompilation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Ogre::MetalRenderSystem::supportsMultithreadedShaderCompilation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">override</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Returns true if <a class="el" href="class_ogre_1_1_render_system.html" title="Defines the functionality of a 3D API.">RenderSystem</a> supports multithreaded shader and PSO compilation. </p>
+<p>Support depends on the API, our implementation, and CMake setting OGRE_SHADER_COMPILATION_THREADING_MODE with which OgreNext was built. </p>
+
+<p>Reimplemented from <a class="el" href="class_ogre_1_1_render_system.html#a0d8af43ee8a36aac5f48c82d914ed10f">Ogre::RenderSystem</a>.</p>
+
+</div>
+</div>
 <a id="a9f4ba98e059508597e1eaf840f0f9cbe"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a9f4ba98e059508597e1eaf840f0f9cbe">&#9670;&nbsp;</a></span>unregisterThread()</h2>
 
@@ -4323,8 +4362,8 @@ Once this init sequence is completed the threads are independent but this startu
 
 </div>
 </div>
-<a id="a20e5d6a69cf7439a2b7ae1bce323ed31"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a20e5d6a69cf7439a2b7ae1bce323ed31">&#9670;&nbsp;</a></span>validateSampleDescription()</h2>
+<a id="af3617a26dc60a91cfbac29275db53792"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3617a26dc60a91cfbac29275db53792">&#9670;&nbsp;</a></span>validateSampleDescription()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -4342,7 +4381,13 @@ Once this init sequence is completed the threads are independent but this startu
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype"><a class="el" href="group___image.html#ga71f09fe41a1db41186262f1aa5814a18">PixelFormatGpu</a>&#160;</td>
-          <td class="paramname"><em>format</em>&#160;</td>
+          <td class="paramname"><em>format</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespace_ogre.html#a5a7c15d68e8c7d585c410bc5a93682f4">uint32</a>&#160;</td>
+          <td class="paramname"><em>textureFlags</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -4358,8 +4403,18 @@ Once this init sequence is completed the threads are independent but this startu
 </div><div class="memdoc">
 
 <p>Returns supported sample description for requested FSAA mode, with graceful downgrading. </p>
+<dl class="section note"><dt>Note</dt><dd>Depth/Stencil-only buffer formats combined with <a class="el" href="namespace_ogre_1_1_texture_flags.html#a59b71e36a14465bd82595d6d467e1434af47a81e993767e84b31d42bcbe27be16" title="Texture can be used as an UAV.">TextureFlags::Uav</a> is valid but a rarely-supported combination. Don't ask for it unless that's truly what you want. </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">sampleDesc</td><td>Reqiested sample description. </td></tr>
+    <tr><td class="paramname">format</td><td>Use PF_NULL returns to query support for framebuffer-less rendering. </td></tr>
+    <tr><td class="paramname">textureFlags</td><td>See <a class="el" href="namespace_ogre_1_1_texture_flags.html#a59b71e36a14465bd82595d6d467e1434">TextureFlags::TextureFlags</a>. Relevant flags are: NotTexture RenderToTexture Uav RenderWindowSpecific </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Supported sample description for requested FSAA mode, with graceful downgrading. </dd></dl>
 
-<p>Reimplemented from <a class="el" href="class_ogre_1_1_render_system.html#a1681d824b46321ab26f5566371c9fcb8">Ogre::RenderSystem</a>.</p>
+<p>Reimplemented from <a class="el" href="class_ogre_1_1_render_system.html#ac4dab5e3913f88477b272ba842a07a4c">Ogre::RenderSystem</a>.</p>
 
 </div>
 </div>

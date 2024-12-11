@@ -17,8 +17,6 @@ var class_ogre_1_1_d3_d11_render_system =
     [ "_getDevice", "class_ogre_1_1_d3_d11_render_system.html#afd58a20fc530467210747dbd715de8fa", null ],
     [ "_getFeatureLevel", "class_ogre_1_1_d3_d11_render_system.html#aa7e43dffc65f93ba22f51268a218d7f1", null ],
     [ "_getFrameBufferDescMap", "class_ogre_1_1_d3_d11_render_system.html#a2ea1951e00bc8ed4ef19ef984566c3ec", null ],
-    [ "_hlmsBlendblockCreated", "class_ogre_1_1_d3_d11_render_system.html#ad16931bff617872b07a21236376a5cca", null ],
-    [ "_hlmsBlendblockDestroyed", "class_ogre_1_1_d3_d11_render_system.html#ad207842945d55749ce5bd53e120dd942", null ],
     [ "_hlmsComputePipelineStateObjectCreated", "class_ogre_1_1_d3_d11_render_system.html#aaac841be04cea97807ad24242369d4cb", null ],
     [ "_hlmsComputePipelineStateObjectDestroyed", "class_ogre_1_1_d3_d11_render_system.html#a42770978cee5425ae6d31e600493a125", null ],
     [ "_hlmsMacroblockCreated", "class_ogre_1_1_d3_d11_render_system.html#a782ca224256c6b4bfe2a76b0fb870731", null ],
@@ -40,7 +38,7 @@ var class_ogre_1_1_d3_d11_render_system =
     [ "_setComputePso", "class_ogre_1_1_d3_d11_render_system.html#a18b2c5c8f9e3e67314cc78918f30cf61", null ],
     [ "_setCurrentDeviceFromTexture", "class_ogre_1_1_d3_d11_render_system.html#a33c3becd6df458bf07985767cafdc12d", null ],
     [ "_setGeometryTexture", "class_ogre_1_1_d3_d11_render_system.html#a3468b7c40866b7d07a27a96610e1056c", null ],
-    [ "_setHlmsBlendblock", "class_ogre_1_1_d3_d11_render_system.html#ac351524106d6c2d3aecdbca5cdaad613", null ],
+    [ "_setHlmsBlendblock", "class_ogre_1_1_d3_d11_render_system.html#a249175176a090793a7a601fa8bc86def", null ],
     [ "_setHlmsMacroblock", "class_ogre_1_1_d3_d11_render_system.html#abb27018fff2c2a8df6aad20198d86ef8", null ],
     [ "_setHlmsSamplerblock", "class_ogre_1_1_d3_d11_render_system.html#a22557781e06af9bcb806ef473db76f48", null ],
     [ "_setIndirectBuffer", "class_ogre_1_1_d3_d11_render_system.html#a900bca588a93a386192932158289fb0e", null ],
@@ -125,5 +123,5 @@ var class_ogre_1_1_d3_d11_render_system =
     [ "unregisterThread", "class_ogre_1_1_d3_d11_render_system.html#ad200bf1fb2a807c66b8531d85a70b368", null ],
     [ "validateConfigOptions", "class_ogre_1_1_d3_d11_render_system.html#a3d7e0738522b0144613a690f5ff118f8", null ],
     [ "validateDevice", "class_ogre_1_1_d3_d11_render_system.html#aef0108b035ba4efa9a5ba004966c4a91", null ],
-    [ "validateSampleDescription", "class_ogre_1_1_d3_d11_render_system.html#ac3a3b7bc23a569d870e3332e3be2b26b", null ]
+    [ "validateSampleDescription", "class_ogre_1_1_d3_d11_render_system.html#a6fc36c28010a8d304b968f06ad72c7e3", null ]
 ];

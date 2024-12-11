@@ -29,7 +29,7 @@
   <td id="projectlogo"><img alt="Logo" src="ogre-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">OGRE-Next
-   &#160;<span id="projectnumber">3.0.0unstable</span>
+   &#160;<span id="projectnumber">4.0.0unstable</span>
    </div>
    <div id="projectbrief">Object-Oriented Graphics Rendering Engine</div>
   </td>
@@ -104,7 +104,7 @@ $(document).ready(function(){initNavTree('class_ogre_1_1_vulkan_program.html',''
 <div id="dynsection-0-summary" class="dynsummary" style="display:block;">
 </div>
 <div id="dynsection-0-content" class="dyncontent" style="display:none;">
-<div class="center"><iframe scrolling="no" frameborder="0" src="class_ogre_1_1_vulkan_program__inherit__graph.svg" width="328" height="336"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe>
+<div class="center"><iframe scrolling="no" frameborder="0" src="class_ogre_1_1_vulkan_program__inherit__graph.svg" width="512" height="336"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe>
 </div>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
@@ -140,8 +140,8 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ac64bd22ce660596b050c84536703986b"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="namespace_ogre.html#af73bbdc8bed8a3e6fcd56bb8fa188c45">String</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_vulkan_program.html#ac64bd22ce660596b050c84536703986b">getLanguage</a> () const override</td></tr>
 <tr class="memdesc:ac64bd22ce660596b050c84536703986b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Overridden from <a class="el" href="class_ogre_1_1_gpu_program.html" title="Defines a program which runs on the GPU such as a vertex or fragment program.">GpuProgram</a>.  <a href="class_ogre_1_1_vulkan_program.html#ac64bd22ce660596b050c84536703986b">More...</a><br /></td></tr>
 <tr class="separator:ac64bd22ce660596b050c84536703986b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a144e5e355ac546f8e917d409737fc630"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_vulkan_program.html#a144e5e355ac546f8e917d409737fc630">getLayoutForPso</a> (const <a class="el" href="namespace_ogre.html#abdf543378d3741e0b20039e582e55a16">VertexElement2VecVec</a> &amp;vertexElements, <a class="el" href="class_ogre_1_1_fast_array.html">FastArray</a>&lt; VkVertexInputBindingDescription &gt; &amp;outBufferBindingDescs, <a class="el" href="class_ogre_1_1_fast_array.html">FastArray</a>&lt; VkVertexInputAttributeDescription &gt; &amp;outVertexInputs)</td></tr>
-<tr class="separator:a144e5e355ac546f8e917d409737fc630"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c3d9ae0cdbdf704191d6bfbd04e9c63"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_vulkan_program.html#a1c3d9ae0cdbdf704191d6bfbd04e9c63">getLayoutForPso</a> (const <a class="el" href="namespace_ogre.html#abdf543378d3741e0b20039e582e55a16">VertexElement2VecVec</a> &amp;vertexElements, <a class="el" href="class_ogre_1_1_fast_array.html">FastArray</a>&lt; VkVertexInputBindingDescription &gt; &amp;outBufferBindingDescs, <a class="el" href="class_ogre_1_1_fast_array.html">FastArray</a>&lt; VkVertexInputAttributeDescription &gt; &amp;outVertexInputs) const</td></tr>
+<tr class="separator:a1c3d9ae0cdbdf704191d6bfbd04e9c63"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad90722f003cf2d5251caa292968d9588"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_vulkan_program.html#ad90722f003cf2d5251caa292968d9588">getPassFogStates</a> () const override</td></tr>
 <tr class="memdesc:ad90722f003cf2d5251caa292968d9588"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether a fragment program wants fog state to be passed through fixed pipeline low level API rendering calls (default true, subclasses can override)  <a href="class_ogre_1_1_vulkan_program.html#ad90722f003cf2d5251caa292968d9588">More...</a><br /></td></tr>
 <tr class="separator:ad90722f003cf2d5251caa292968d9588"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -240,9 +240,6 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ad32d6024efaa2c26489fcd734533879f inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#ad32d6024efaa2c26489fcd734533879f">hasDefaultParameters</a> () const</td></tr>
 <tr class="memdesc:ad32d6024efaa2c26489fcd734533879f inherit pub_methods_class_ogre_1_1_gpu_program"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns true if default parameters have been set up.  <a href="class_ogre_1_1_gpu_program.html#ad32d6024efaa2c26489fcd734533879f">More...</a><br /></td></tr>
 <tr class="separator:ad32d6024efaa2c26489fcd734533879f inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac5f89eae6b10645fd069679030d5adf7 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#ac5f89eae6b10645fd069679030d5adf7">isAdjacencyInfoRequired</a> () const</td></tr>
-<tr class="memdesc:ac5f89eae6b10645fd069679030d5adf7 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether this geometry program requires adjacency information from the input primitives.  <a href="class_ogre_1_1_gpu_program.html#ac5f89eae6b10645fd069679030d5adf7">More...</a><br /></td></tr>
-<tr class="separator:ac5f89eae6b10645fd069679030d5adf7 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:addb9af3735c17437f6ac807dd10e0ab3 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#addb9af3735c17437f6ac807dd10e0ab3">isMorphAnimationIncluded</a> () const</td></tr>
 <tr class="memdesc:addb9af3735c17437f6ac807dd10e0ab3 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether a vertex program includes the required instructions to perform morph animation.  <a href="class_ogre_1_1_gpu_program.html#addb9af3735c17437f6ac807dd10e0ab3">More...</a><br /></td></tr>
 <tr class="separator:addb9af3735c17437f6ac807dd10e0ab3 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -261,12 +258,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a349f67352f147b7d8112db7b5508db17 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#a349f67352f147b7d8112db7b5508db17">isVpAndRtArrayIndexFromAnyShaderRequired</a> () const</td></tr>
 <tr class="memdesc:a349f67352f147b7d8112db7b5508db17 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns whether this program requires support for choosing viewport or render target index in any program or only geometry one.  <a href="class_ogre_1_1_gpu_program.html#a349f67352f147b7d8112db7b5508db17">More...</a><br /></td></tr>
 <tr class="separator:a349f67352f147b7d8112db7b5508db17 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60ae5ceeb573e9758882e7e797a24db5 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#a60ae5ceeb573e9758882e7e797a24db5">OGRE_DEPRECATED_VER</a> (4) virtual bool isAdjacencyInfoRequired() const</td></tr>
+<tr class="separator:a60ae5ceeb573e9758882e7e797a24db5 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a13d566c858ff0c52c121ac92cc261b4f inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#a13d566c858ff0c52c121ac92cc261b4f">OGRE_DEPRECATED_VER</a> (4) virtual void setAdjacencyInfoRequired(bool r)</td></tr>
+<tr class="separator:a13d566c858ff0c52c121ac92cc261b4f inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae0e74c68c668da059c6e4096a43760b1 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#ae0e74c68c668da059c6e4096a43760b1">resetCompileError</a> ()</td></tr>
 <tr class="memdesc:ae0e74c68c668da059c6e4096a43760b1 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reset a compile error if it occurred, allowing the load to be retried.  <a href="class_ogre_1_1_gpu_program.html#ae0e74c68c668da059c6e4096a43760b1">More...</a><br /></td></tr>
 <tr class="separator:ae0e74c68c668da059c6e4096a43760b1 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a39b43157d6b40626101e5de8f9c77bf5 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#a39b43157d6b40626101e5de8f9c77bf5">setAdjacencyInfoRequired</a> (bool r)</td></tr>
-<tr class="memdesc:a39b43157d6b40626101e5de8f9c77bf5 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets whether this geometry program requires adjacency information from the input primitives.  <a href="class_ogre_1_1_gpu_program.html#a39b43157d6b40626101e5de8f9c77bf5">More...</a><br /></td></tr>
-<tr class="separator:a39b43157d6b40626101e5de8f9c77bf5 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a91663e447c0a4addd142cc2be5c1800b inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#a91663e447c0a4addd142cc2be5c1800b">setBuildParametersFromReflection</a> (bool buildParams)</td></tr>
 <tr class="separator:a91663e447c0a4addd142cc2be5c1800b inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a84c3904bfaeeb1166dbca41e0c9f3b29 inherit pub_methods_class_ogre_1_1_gpu_program"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_gpu_program.html#a84c3904bfaeeb1166dbca41e0c9f3b29">setComputeGroupDimensions</a> (<a class="el" href="class_ogre_1_1_vector3.html">Vector3</a> dimensions)</td></tr>
@@ -773,8 +771,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a144e5e355ac546f8e917d409737fc630"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a144e5e355ac546f8e917d409737fc630">&#9670;&nbsp;</a></span>getLayoutForPso()</h2>
+<a id="a1c3d9ae0cdbdf704191d6bfbd04e9c63"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1c3d9ae0cdbdf704191d6bfbd04e9c63">&#9670;&nbsp;</a></span>getLayoutForPso()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -800,7 +798,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td></td>
+          <td></td><td> const</td>
         </tr>
       </table>
 </div><div class="memdoc">

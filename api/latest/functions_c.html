@@ -29,7 +29,7 @@
   <td id="projectlogo"><img alt="Logo" src="ogre-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">OGRE-Next
-   &#160;<span id="projectnumber">3.0.0unstable</span>
+   &#160;<span id="projectnumber">4.0.0unstable</span>
    </div>
    <div id="projectbrief">Object-Oriented Graphics Rendering Engine</div>
   </td>
@@ -98,6 +98,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>cacheData()
 : <a class="el" href="class_ogre_1_1_static_cache.html#a5b61f6d3a1c376811aedbd7718890d99">Ogre::StaticCache&lt; cacheSize &gt;</a>
 </li>
+<li>CachedCustomPieceFileStatus
+: <a class="el" href="class_ogre_1_1_hlms.html#af48f2ddfdb19ffc1bca099ab8602b361">Ogre::Hlms</a>
+</li>
 <li>CachedGridBuffer()
 : <a class="el" href="struct_ogre_1_1_forward_plus_base_1_1_cached_grid_buffer.html#aa61eb7fcd5abc27b0f0eb56a057e32c5">Ogre::ForwardPlusBase::CachedGridBuffer</a>
 </li>
@@ -139,6 +142,8 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>calculateHash()
 : <a class="el" href="class_ogre_1_1_hlms_datablock.html#aa55bf43e01f95d05f3e28da6d4c49464">Ogre::HlmsDatablock</a>
+, <a class="el" href="class_ogre_1_1_hlms_pbs_datablock.html#a196cc0ff404bb01ebe3ccb28fdd9530b">Ogre::HlmsPbsDatablock</a>
+, <a class="el" href="class_ogre_1_1_hlms_unlit_datablock.html#a89df7dbb4553682c456d2d21d0ca4e9f">Ogre::HlmsUnlitDatablock</a>
 </li>
 <li>calculateHashFor()
 : <a class="el" href="class_ogre_1_1_hlms.html#a5b71158453ed0a2411a92ecf767af130">Ogre::Hlms</a>
@@ -215,6 +220,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>cameraDestroyed()
 : <a class="el" href="class_ogre_1_1_camera_1_1_listener.html#a7195d8b8c12193eda52cc747262bd35b">Ogre::Camera::Listener</a>
 </li>
+<li>cameraDir
+: <a class="el" href="struct_ogre_1_1_cull_frustum_prepared_data.html#a0ac4a26559d896a9621d94a188a1f573">Ogre::CullFrustumPreparedData</a>
+</li>
 <li>CameraIterator
 : <a class="el" href="class_ogre_1_1_scene_manager.html#a460e50da4b97d1beaef1a64bfa039928">Ogre::SceneManager</a>
 </li>
@@ -223,6 +231,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>cameraMatches()
 : <a class="el" href="class_ogre_1_1_planar_reflections.html#a08baa1e192558155350dc4cae0779c39">Ogre::PlanarReflections</a>
+</li>
+<li>cameraPos
+: <a class="el" href="struct_ogre_1_1_cull_frustum_prepared_data.html#a5da57c571d32f4ab9546e8d7deab6ef6">Ogre::CullFrustumPreparedData</a>
 </li>
 <li>cameraPostRenderScene()
 : <a class="el" href="class_ogre_1_1_camera_1_1_listener.html#a9359c80e745123e503311edbfc1d829a">Ogre::Camera::Listener</a>
@@ -238,6 +249,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>CameraSortMode
 : <a class="el" href="class_ogre_1_1_camera.html#a206f478311219fe2f78037b4eeb5ad6f">Ogre::Camera</a>
+</li>
+<li>cameraStepSize
+: <a class="el" href="struct_ogre_1_1_vct_cascade_setting.html#a98a8511ad2b1ce0566b4d1801951ea75">Ogre::VctCascadeSetting</a>
 </li>
 <li>cancel()
 : <a class="el" href="class_ogre_1_1_config_dialog.html#a145ff70301c38309e3a441a9d97cc50f">Ogre::ConfigDialog</a>
@@ -294,6 +308,12 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="struct_ogre_1_1_cb_low_level_material.html#a91146d38a2fe8a5f5a21f8317f2830f9">Ogre::CbLowLevelMaterial</a>
 , <a class="el" href="struct_ogre_1_1_cull_frustum_request.html#a0e98b3dbbac76a171614fcd1000a600e">Ogre::CullFrustumRequest</a>
 </li>
+<li>castFromRenderable()
+: <a class="el" href="class_ogre_1_1_particle_system_def.html#ac167d104d7aa4aa8550796965e21754a">Ogre::ParticleSystemDef</a>
+</li>
+<li>castToRenderable()
+: <a class="el" href="class_ogre_1_1_particle_system_def.html#ab24a24e8131fcee8622c971fd33fcdd0">Ogre::ParticleSystemDef</a>
+</li>
 <li>CbBase()
 : <a class="el" href="struct_ogre_1_1_cb_base.html#a3d84db43d70753501c890c8a6c5ca472">Ogre::CbBase</a>
 </li>
@@ -341,6 +361,15 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>CbVao()
 : <a class="el" href="struct_ogre_1_1_cb_vao.html#ada054026948f57de0e67549aeffe866f">Ogre::CbVao</a>
+</li>
+<li>CCPFS_CriticalError
+: <a class="el" href="class_ogre_1_1_hlms.html#af48f2ddfdb19ffc1bca099ab8602b361adad26ddd15ee5571d3444ee3c48f2350">Ogre::Hlms</a>
+</li>
+<li>CCPFS_OutOfDate
+: <a class="el" href="class_ogre_1_1_hlms.html#af48f2ddfdb19ffc1bca099ab8602b361ad760b55e4d3bc80fc4cbefdd574490ff">Ogre::Hlms</a>
+</li>
+<li>CCPFS_Success
+: <a class="el" href="class_ogre_1_1_hlms.html#af48f2ddfdb19ffc1bca099ab8602b361a37396b0dc949a8417950a6b058033172">Ogre::Hlms</a>
 </li>
 <li>CE_DUPLICATEOVERRIDE
 : <a class="el" href="class_ogre_1_1_script_compiler.html#a121f76a964c5f305289a75dd68092062a0785658f79556b5d9928f9bd89c45ce3">Ogre::ScriptCompiler</a>
@@ -397,6 +426,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>changeGroupOwnership()
 : <a class="el" href="class_ogre_1_1_resource.html#aa5d6f3f7e73b77b233fc62b11f270e4d">Ogre::Resource</a>
 </li>
+<li>changeVolumeData()
+: <a class="el" href="class_ogre_1_1_irradiance_volume.html#ab73da949007542f72d9080c69bac3945">Ogre::IrradianceVolume</a>
+</li>
 <li>ChannelRoute()
 : <a class="el" href="struct_ogre_1_1_compositor_workspace_def_1_1_channel_route.html#a270888353010f33ba32571540a5243e7">Ogre::CompositorWorkspaceDef::ChannelRoute</a>
 </li>
@@ -407,7 +439,6 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_g_l3_plus_support.html#a4f53bfb02b1f21018d2902d466c1208c">Ogre::GL3PlusSupport</a>
 , <a class="el" href="class_ogre_1_1_g_l_e_s2_render_system.html#a62169442a5c4b920527d8ef09d12f5d8">Ogre::GLES2RenderSystem</a>
 , <a class="el" href="class_ogre_1_1_g_l_e_s2_support.html#a9045ff50fe96c0cc75f846a701958969">Ogre::GLES2Support</a>
-, <a class="el" href="class_ogre_1_1_g_t_k_g_l_support.html#a76aa67cbaaa384906347653c82f1b492">Ogre::GTKGLSupport</a>
 , <a class="el" href="class_ogre_1_1_render_system.html#ae869e9f5ca12313ee49fa0743dbcf1f3">Ogre::RenderSystem</a>
 </li>
 <li>checkFormat()
@@ -419,9 +450,6 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>checkHardwareSupport()
 : <a class="el" href="class_ogre_1_1_technique.html#a2acb60df20fcd4e4ef5d59c83daff3c0">Ogre::Technique</a>
-</li>
-<li>checkMinGLVersion()
-: <a class="el" href="class_ogre_1_1_g_t_k_g_l_support.html#acf568b93c3362cb12866011b5f581cd5">Ogre::GTKGLSupport</a>
 </li>
 <li>checkoutTempCopies()
 : <a class="el" href="class_ogre_1_1v1_1_1_temp_blended_buffer_info.html#a01fa18a6685779b0381c126e14bd6cac">Ogre::v1::TempBlendedBufferInfo</a>
@@ -544,6 +572,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 , <a class="el" href="class_ogre_1_1_d3_d11_driver_list.html#a09704e049a194c1830b83a81ad914774">Ogre::D3D11DriverList</a>
 , <a class="el" href="class_ogre_1_1_fast_array.html#aa70b29c206f1c7f0df3ef96b8df38be9">Ogre::FastArray&lt; T &gt;</a>
 , <a class="el" href="class_ogre_1_1_hashed_vector.html#a6995fdfb17173f0ac21ef581dad47d7d">Ogre::HashedVector&lt; T &gt;</a>
+, <a class="el" href="class_ogre_1_1_instant_radiosity.html#a4a1748f3ec8ac291c2abd7cde391e318">Ogre::InstantRadiosity</a>
 , <a class="el" href="struct_ogre_1_1_lod_input_buffer.html#a8804206bc5ce9cd384d9d3e358fe1bbf">Ogre::LodInputBuffer</a>
 , <a class="el" href="class_ogre_1_1_lw_string.html#a99d828c4c35bb330f98bcfee7fc3e560">Ogre::LwString</a>
 , <a class="el" href="class_ogre_1_1_manual_object.html#a2d2c7b7754328e5a9e309eb9d243389a">Ogre::ManualObject</a>
@@ -591,6 +620,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>clearChain()
 : <a class="el" href="class_ogre_1_1v1_1_1_billboard_chain.html#aa29937b890bfd89874ad483ba566dbc2">Ogre::v1::BillboardChain</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_ribbon_trail.html#a27eaa0ce534cffdca6b1452bb8e2cd26">Ogre::v1::RibbonTrail</a>
+</li>
+<li>ClearCoat
+: <a class="el" href="struct_ogre_1_1_pbs_property.html#a6b4e9583d96f7c910a35d46e62c767e5">Ogre::PbsProperty</a>
 </li>
 <li>clearCodePointRanges()
 : <a class="el" href="class_ogre_1_1_font.html#aff75a40e8ca00a64f19c265e90c61733">Ogre::Font</a>
@@ -686,8 +718,11 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>clearVertices()
 : <a class="el" href="class_ogre_1_1v1_1_1_pose.html#afce896bc28c80ad878d38d9a67778c5f">Ogre::v1::Pose</a>
 </li>
+<li>clearVolumeData()
+: <a class="el" href="class_ogre_1_1_irradiance_volume.html#a2202a58267f60823b0949df278d72e0e">Ogre::IrradianceVolume</a>
+</li>
 <li>clip()
-: <a class="el" href="class_ogre_1_1_convex_body.html#a132ccd23a0b43b15077605d813051c4d">Ogre::ConvexBody</a>
+: <a class="el" href="class_ogre_1_1_convex_body.html#ac8a3f100f1b91cadf03ec2b9d9d6f684">Ogre::ConvexBody</a>
 </li>
 <li>clipDistances
 : <a class="el" href="struct_ogre_1_1_hlms_pso.html#a5b992d10857a9d5dc699b56983966917">Ogre::HlmsPso</a>
@@ -712,6 +747,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 , <a class="el" href="class_ogre_1_1_material.html#a28e13cc77ce7deb5f0cbe2388251224d">Ogre::Material</a>
 , <a class="el" href="class_ogre_1_1_mesh.html#ab85133a4f30a0eb9254339b5af8416d9">Ogre::Mesh</a>
 , <a class="el" href="class_ogre_1_1_object_abstract_node.html#a1f0cc7a79e4bc5097acb78810281436f">Ogre::ObjectAbstractNode</a>
+, <a class="el" href="class_ogre_1_1_particle_system_def.html#ab16df3a37655714028af2bd0940bd4e1">Ogre::ParticleSystemDef</a>
 , <a class="el" href="class_ogre_1_1_property_abstract_node.html#a4d3184616d8b093f24c59d253a75f048">Ogre::PropertyAbstractNode</a>
 , <a class="el" href="class_ogre_1_1_sub_mesh.html#a7dd5f3ab8123d75232ee19360457d00b">Ogre::SubMesh</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_animation.html#a1f402b54caa4420b8e69926cacd22348">Ogre::v1::Animation</a>
@@ -766,13 +802,23 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>clz64()
 : <a class="el" href="class_ogre_1_1_bitwise.html#a9fedac9598bcac068a1f36d9aef0bc16">Ogre::Bitwise</a>
 </li>
+<li>CmdBeginDebugUtilsLabelEXT
+: <a class="el" href="class_ogre_1_1_vulkan_instance.html#a3279676d2bc06e3c4a2ec7ee09a038ae">Ogre::VulkanInstance</a>
+</li>
+<li>CmdEndDebugUtilsLabelEXT
+: <a class="el" href="class_ogre_1_1_vulkan_instance.html#a714daa850e929f7a202bcb41c183fc1b">Ogre::VulkanInstance</a>
+</li>
 <li>Cmov4()
-: <a class="el" href="class_ogre_1_1_array_quaternion.html#acde78171ef7f96a8d853559694204ba1">Ogre::ArrayQuaternion</a>
+: <a class="el" href="class_ogre_1_1_array_quaternion.html#a3cd4d3f42af2a8331282988de78d98ad">Ogre::ArrayQuaternion</a>
+, <a class="el" href="class_ogre_1_1_array_vector2.html#a3b9d94ae1ab44a3a7542b12c1b12762b">Ogre::ArrayVector2</a>
 , <a class="el" href="class_ogre_1_1_array_vector3.html#afb4e1c7d15b5819e3cdb720bc133fb96">Ogre::ArrayVector3</a>
+, <a class="el" href="class_ogre_1_1_array_vector4.html#ab5dc7104c2379c57fc3bb26c477171a0">Ogre::ArrayVector4</a>
 , <a class="el" href="class_ogre_1_1_mathlib_c.html#ad1247bb457f65e41e895b4567fe27299">Ogre::MathlibC</a>
 </li>
 <li>CmovRobust()
-: <a class="el" href="class_ogre_1_1_array_vector3.html#a40431a5fffe7c96ecf4fce6dd455e5ff">Ogre::ArrayVector3</a>
+: <a class="el" href="class_ogre_1_1_array_vector2.html#ad85650bafe25b0b71d47afc0bf876f4b">Ogre::ArrayVector2</a>
+, <a class="el" href="class_ogre_1_1_array_vector3.html#a40431a5fffe7c96ecf4fce6dd455e5ff">Ogre::ArrayVector3</a>
+, <a class="el" href="class_ogre_1_1_array_vector4.html#abba200b94865ebee0a9e120ade8c3690">Ogre::ArrayVector4</a>
 , <a class="el" href="class_ogre_1_1_mathlib_c.html#adcfb12520c51062df3faff5b12db8a2d">Ogre::MathlibC</a>
 </li>
 <li>CocoaContext()
@@ -831,11 +877,13 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="struct_ogre_1_1_lod_data.html#aa824bab5fc70cddb033b6e18bd6e0b6a">Ogre::LodData</a>
 </li>
 <li>collapseMax()
-: <a class="el" href="class_ogre_1_1_array_vector3.html#adb882c4c156ca3eb74f28334e5d31df3">Ogre::ArrayVector3</a>
+: <a class="el" href="class_ogre_1_1_array_vector2.html#ad8b2ce48989b21d8b5fe54b96d06f577">Ogre::ArrayVector2</a>
+, <a class="el" href="class_ogre_1_1_array_vector3.html#adb882c4c156ca3eb74f28334e5d31df3">Ogre::ArrayVector3</a>
 , <a class="el" href="class_ogre_1_1_vector3.html#a900d8f2931e8c69fec828980ef53c282">Ogre::Vector3</a>
 </li>
 <li>collapseMin()
-: <a class="el" href="class_ogre_1_1_array_vector3.html#ab255c905ea93eca9f7eeb09d19f62019">Ogre::ArrayVector3</a>
+: <a class="el" href="class_ogre_1_1_array_vector2.html#aec54b4b49330085db779449e383dfb18">Ogre::ArrayVector2</a>
+, <a class="el" href="class_ogre_1_1_array_vector3.html#ab255c905ea93eca9f7eeb09d19f62019">Ogre::ArrayVector3</a>
 , <a class="el" href="class_ogre_1_1_vector3.html#afefe2929782f80f685885be661e0255b">Ogre::Vector3</a>
 </li>
 <li>collapser
@@ -844,10 +892,20 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>collapseToi
 : <a class="el" href="struct_ogre_1_1_lod_data_1_1_vertex.html#a72b170607d883e21fbd8abae3d21177e">Ogre::LodData::Vertex</a>
 </li>
+<li>Collect
+: <a class="el" href="class_ogre_1_1_compositor_pass_warm_up_def.html#a1b7d900a5e4e78d26e6be93186549639a58275ed3fcd58c8d922abea40edf6b28">Ogre::CompositorPassWarmUpDef</a>
+</li>
+<li>CollectAndTrigger
+: <a class="el" href="class_ogre_1_1_compositor_pass_warm_up_def.html#a1b7d900a5e4e78d26e6be93186549639a4ab983b4074d9e7a156c48832698df0b">Ogre::CompositorPassWarmUpDef</a>
+</li>
 <li>collectLights()
 : <a class="el" href="class_ogre_1_1_forward3_d.html#aed25ff0b6fe94f4c12b1ee92e6f46dbc">Ogre::Forward3D</a>
 , <a class="el" href="class_ogre_1_1_forward_clustered.html#aa9d7d72f1f4fe72949a8b0006b91024c">Ogre::ForwardClustered</a>
 , <a class="el" href="class_ogre_1_1_forward_plus_base.html#a97751799f350a90a3a30388c82b4af4e">Ogre::ForwardPlusBase</a>
+</li>
+<li>collectSamplerblocks()
+: <a class="el" href="class_ogre_1_1_hlms_json_pbs.html#aecb2be94f24516da955eca0ad0193a08">Ogre::HlmsJsonPbs</a>
+, <a class="el" href="class_ogre_1_1_hlms_json_unlit.html#aff82115381fe9ddc34ebf8bb9fb3840f">Ogre::HlmsJsonUnlit</a>
 </li>
 <li>colormap
 : <a class="el" href="struct_x_set_window_attributes.html#a271193ecb505f8cdbde2c12589babc93">XSetWindowAttributes</a>
@@ -913,14 +971,26 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>ColourFaderAffector2()
 : <a class="el" href="class_ogre_1_1_colour_fader_affector2.html#a84abaa1df7f11b91f5c7db79a6a4b38f">Ogre::ColourFaderAffector2</a>
 </li>
+<li>ColourFaderAffector2FX2()
+: <a class="el" href="class_ogre_1_1_colour_fader_affector2_f_x2.html#a9d64e5a6f9253a12dcbb8a91462b8349">Ogre::ColourFaderAffector2FX2</a>
+</li>
+<li>ColourFaderAffectorFX2()
+: <a class="el" href="class_ogre_1_1_colour_fader_affector_f_x2.html#a7e12cfe6ca1ae580f10d0b4d2579ee3b">Ogre::ColourFaderAffectorFX2</a>
+</li>
 <li>colourFormat
 : <a class="el" href="struct_ogre_1_1_hlms_pass_pso.html#a3931e31bb2d0b7e23e33b21249a29c40">Ogre::HlmsPassPso</a>
 </li>
 <li>ColourImageAffector()
 : <a class="el" href="class_ogre_1_1_colour_image_affector.html#a7118e0cf5c7cefcbbf004580add48ae5">Ogre::ColourImageAffector</a>
 </li>
+<li>ColourImageAffector2()
+: <a class="el" href="class_ogre_1_1_colour_image_affector2.html#a54978a36e73af2092f1fe9cca8ab2e14">Ogre::ColourImageAffector2</a>
+</li>
 <li>ColourInterpolatorAffector()
 : <a class="el" href="class_ogre_1_1_colour_interpolator_affector.html#a23342275feed700c10a601e5edb17152">Ogre::ColourInterpolatorAffector</a>
+</li>
+<li>ColourInterpolatorAffector2()
+: <a class="el" href="class_ogre_1_1_colour_interpolator_affector2.html#a636541e318c34ee02c9e091e4eaf7750">Ogre::ColourInterpolatorAffector2</a>
 </li>
 <li>ColourValue()
 : <a class="el" href="class_ogre_1_1_colour_value.html#acc033c4828ad9f7469269933d24850f5">Ogre::ColourValue</a>
@@ -969,7 +1039,10 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 , <a class="el" href="class_ogre_1_1_vulkan_program.html#a03934eae1c4173580ff9bf4fd2ce1ecf">Ogre::VulkanProgram</a>
 </li>
 <li>compileShaderCode()
-: <a class="el" href="class_ogre_1_1_hlms.html#a9a1b12239e46b90448d960ed784148d8">Ogre::Hlms</a>
+: <a class="el" href="class_ogre_1_1_hlms.html#a0ef77fcae4df5d51475d7e5ff3baafd8">Ogre::Hlms</a>
+</li>
+<li>compileStubEntry()
+: <a class="el" href="class_ogre_1_1_hlms.html#a0bfc990f4f1edf446ca68b6f2f971c32">Ogre::Hlms</a>
 </li>
 <li>COMPOSITOR
 : <a class="el" href="class_ogre_1_1_process_resource_name_script_compiler_event.html#afd04c7f48ef0823ba70812b83fde1acca79d98608fb92fdd1ff492f56d86b2ba1">Ogre::ProcessResourceNameScriptCompilerEvent</a>
@@ -1071,7 +1144,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_compositor_pass_uav_def.html#a8b6f6e13d9999d4c1484c8894a623bd3">Ogre::CompositorPassUavDef</a>
 </li>
 <li>CompositorPassWarmUp()
-: <a class="el" href="class_ogre_1_1_compositor_pass_warm_up.html#ac9e9d7e8691265820c9a0d6d51a4c6ff">Ogre::CompositorPassWarmUp</a>
+: <a class="el" href="group___effects.html#gac9e9d7e8691265820c9a0d6d51a4c6ff">Ogre::CompositorPassWarmUp</a>
 </li>
 <li>CompositorPassWarmUpDef()
 : <a class="el" href="class_ogre_1_1_compositor_pass_warm_up_def.html#a8570a1e632c350925a8a5ce5575002d5">Ogre::CompositorPassWarmUpDef</a>
@@ -1194,7 +1267,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_compositor_workspace_def.html#a4ae38b595a596cc3e7c320458e25f9b3">Ogre::CompositorWorkspaceDef</a>
 </li>
 <li>connectBuffer()
-: <a class="el" href="class_ogre_1_1_compositor_workspace_def.html#ae1bb003d0a1fe4d37ce1de39030b0480">Ogre::CompositorWorkspaceDef</a>
+: <a class="el" href="class_ogre_1_1_compositor_workspace_def.html#a8dc8d26d041a00b3ba6a32991707762e">Ogre::CompositorWorkspaceDef</a>
 </li>
 <li>connectBufferTo()
 : <a class="el" href="class_ogre_1_1_compositor_node.html#a5dd2960e9ca1de509c9c3ff36d847997">Ogre::CompositorNode</a>
@@ -1237,6 +1310,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>ConstBoneIterator
 : <a class="el" href="class_ogre_1_1v1_1_1_skeleton.html#af39ab762efce530e4a8783ba622082b9">Ogre::v1::Skeleton</a>
+</li>
+<li>constBuffer
+: <a class="el" href="struct_ogre_1_1_vct_material_1_1_datablock_conversion_result.html#a0d0807b1ea9d5b14dc6e0dafc47be42f">Ogre::VctMaterial::DatablockConversionResult</a>
 </li>
 <li>ConstBufferPacked()
 : <a class="el" href="class_ogre_1_1_const_buffer_packed.html#aac4c0ecc5b5189f3821deb162916b6fd">Ogre::ConstBufferPacked</a>
@@ -1281,7 +1357,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="struct_ogre_1_1_gpu_constant_definition.html#a2313e6ce0fa661a5814099230846b82d">Ogre::GpuConstantDefinition</a>
 </li>
 <li>ConstVectorIterator()
-: <a class="el" href="class_ogre_1_1_const_vector_iterator.html#ab3b47789235e17783c2c7926220dbced">Ogre::ConstVectorIterator&lt; T &gt;</a>
+: <a class="el" href="class_ogre_1_1_const_vector_iterator.html#a261f81ccce80c89491f50a7d18ff1ef3">Ogre::ConstVectorIterator&lt; T &gt;</a>
 </li>
 <li>ConstVertexOffsetIterator
 : <a class="el" href="class_ogre_1_1v1_1_1_pose.html#a9642793a9643a047cd3e61298d0ea71a">Ogre::v1::Pose</a>
@@ -1291,7 +1367,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>contains()
 : <a class="el" href="struct_ogre_1_1_aabb.html#afd80b94b06d5e79b1d656f7be3a13fa4">Ogre::Aabb</a>
-, <a class="el" href="class_ogre_1_1_array_aabb.html#a097f281a3b02f6285b1a2508918c8962">Ogre::ArrayAabb</a>
+, <a class="el" href="class_ogre_1_1_array_aabb.html#ae2dc8dd876986aa00b92c78c49c03ed6">Ogre::ArrayAabb</a>
 , <a class="el" href="class_ogre_1_1_axis_aligned_box.html#add94e07188153b2814c5854066b1626b">Ogre::AxisAlignedBox</a>
 , <a class="el" href="struct_ogre_1_1_box.html#a7d29d3b112980c25bd0250dc41cf6ed2">Ogre::Box</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_overlay_element.html#ac0ad51c78a8a1a69f87beac6c77317f5">Ogre::v1::OverlayElement</a>
@@ -1354,7 +1430,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_image2.html#aaf13aa1cedd6abda976a6f837d1bd29b">Ogre::Image2</a>
 </li>
 <li>convertFromV2()
-: <a class="el" href="class_ogre_1_1v1_1_1_vertex_declaration.html#a9d49c249074b89d0cd26da7b14e590b8">Ogre::v1::VertexDeclaration</a>
+: <a class="el" href="class_ogre_1_1v1_1_1_vertex_declaration.html#a9dbeb34f2aad96d51a88dc03d3261253">Ogre::v1::VertexDeclaration</a>
 </li>
 <li>convertGridToWorldSpace()
 : <a class="el" href="class_ogre_1_1_grid2_d_page_strategy_data.html#ae5e29254ddfbf7d7dedee5a274a78947">Ogre::Grid2DPageStrategyData</a>
@@ -1390,6 +1466,12 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>convertStencilOp()
 : <a class="el" href="class_ogre_1_1_g_l3_plus_render_system.html#aece11cff2cd94b652fcbc8054c6b8798">Ogre::GL3PlusRenderSystem</a>
 , <a class="el" href="class_ogre_1_1_g_l_e_s2_render_system.html#ae96b47494abeb2761223b9408a37b2b9">Ogre::GLES2RenderSystem</a>
+</li>
+<li>ConvertToF32()
+: <a class="el" href="class_ogre_1_1_mathlib_c.html#a2da438cdb92b77f10ce14b39330d9f5c">Ogre::MathlibC</a>
+</li>
+<li>convertToImage1D()
+: <a class="el" href="class_ogre_1_1_ies_loader.html#a81f6f66e99fec3d707b4a2f415bc2138">Ogre::IesLoader</a>
 </li>
 <li>convertToMesh()
 : <a class="el" href="class_ogre_1_1_manual_object.html#ae10978b3d4b08b615fad01386099f574">Ogre::ManualObject</a>
@@ -1435,9 +1517,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>copyContentsToMemory()
 : <a class="el" href="class_ogre_1_1_e_g_l_window.html#adfad418204ed0a3e78adadee9e6c2648">Ogre::EGLWindow</a>
-, <a class="el" href="class_ogre_1_1_g_t_k_window.html#a206bdfe2158ef14dbe49459f5773dcea">Ogre::GTKWindow</a>
 , <a class="el" href="class_ogre_1_1_image2.html#a1a837e1213f1d754d01d08075f0e5379">Ogre::Image2</a>
-, <a class="el" href="class_ogre_1_1_s_d_l_window.html#a89fca69d63fec98ca44fedc78359f6ce">Ogre::SDLWindow</a>
 , <a class="el" href="class_ogre_1_1_texture_gpu.html#a50b8aace07a416886cc0f871b32f078c">Ogre::TextureGpu</a>
 </li>
 <li>copyData()
@@ -1449,7 +1529,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 , <a class="el" href="class_ogre_1_1v1_1_1_g_l_e_s2_hardware_index_buffer.html#a7b4614920dc66f13fb395dedff641b49">Ogre::v1::GLES2HardwareIndexBuffer</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_g_l_e_s2_hardware_uniform_buffer.html#a469826917326e9f83adc5f18f12223ae">Ogre::v1::GLES2HardwareUniformBuffer</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_g_l_e_s2_hardware_vertex_buffer.html#a2bb285555629728d85eb07463c0b3636">Ogre::v1::GLES2HardwareVertexBuffer</a>
-, <a class="el" href="class_ogre_1_1v1_1_1_hardware_buffer.html#a5caebd4b5db7696029eb412351d7767f">Ogre::v1::HardwareBuffer</a>
+, <a class="el" href="class_ogre_1_1v1_1_1_hardware_buffer.html#a4c89e8f3e555b5baf18bcae16d5fb8dd">Ogre::v1::HardwareBuffer</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_metal_hardware_buffer_common.html#a7e167c554b0ef1445da0bd341f14a7c0">Ogre::v1::MetalHardwareBufferCommon</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_metal_hardware_index_buffer.html#a425a22ff45362040189c61ebaaca9ff7">Ogre::v1::MetalHardwareIndexBuffer</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_metal_hardware_vertex_buffer.html#a61d33a048fc1ed3cd0e7824fe09b3fa4">Ogre::v1::MetalHardwareVertexBuffer</a>
@@ -1566,13 +1646,11 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 , <a class="el" href="class_ogre_1_1_g_l_s_l_e_s_shader_factory.html#a86b9b1a016c5249bd81937765a4625f8">Ogre::GLSLESShaderFactory</a>
 , <a class="el" href="class_ogre_1_1_g_l_s_l_shader_factory.html#abe7a271e286aead4dfb44fecaad19395">Ogre::GLSLShaderFactory</a>
 , <a class="el" href="class_ogre_1_1_gpu_program_manager.html#a964ed591329cc8046c9fbab0713a35ce">Ogre::GpuProgramManager</a>
-, <a class="el" href="class_ogre_1_1_g_t_k_window.html#a04e25bb2fdc39df437fe48647a8d647f">Ogre::GTKWindow</a>
 , <a class="el" href="class_ogre_1_1_high_level_gpu_program_factory.html#abf88ca9ec682fc13dd2a076b81a093c4">Ogre::HighLevelGpuProgramFactory</a>
 , <a class="el" href="class_ogre_1_1_material_manager.html#a3068599a5b10421e6203d568006f5f93">Ogre::MaterialManager</a>
 , <a class="el" href="class_ogre_1_1_mesh_manager.html#acd142135740c3298d88efdcd81b127e8">Ogre::MeshManager</a>
 , <a class="el" href="class_ogre_1_1_metal_program_factory.html#afcbc082eb614d6a149daf735a96be32e">Ogre::MetalProgramFactory</a>
 , <a class="el" href="class_ogre_1_1_metal_window.html#a5ccc4ddcdd716c8229fe1da9594f3a6d">Ogre::MetalWindow</a>
-, <a class="el" href="class_ogre_1_1_s_d_l_window.html#a1aea1cf6c4a526695e4ee34ffe029dfe">Ogre::SDLWindow</a>
 , <a class="el" href="class_ogre_1_1_unified_high_level_gpu_program_factory.html#a7f8b1f945d8a68224a77f8efb4196319">Ogre::UnifiedHighLevelGpuProgramFactory</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_mesh_manager.html#a0ae07ad35a65f5b09ac358888cc4fb5a">Ogre::v1::MeshManager</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_old_skeleton_manager.html#ae38ea7327fa904db96255531acb95cab">Ogre::v1::OldSkeletonManager</a>
@@ -1586,7 +1664,8 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#a2cb1523180fcc65b6093b6330725c823">Ogre::SceneManager</a>
 </li>
 <li>createAffector()
-: <a class="el" href="class_ogre_1_1_particle_affector_factory.html#a7989506f2f5452593f0a377c06d2f61f">Ogre::ParticleAffectorFactory</a>
+: <a class="el" href="class_ogre_1_1_particle_affector_factory2.html#a06de7ed6cad6b9096643491e48f6f594">Ogre::ParticleAffectorFactory2</a>
+, <a class="el" href="class_ogre_1_1_particle_affector_factory.html#a7989506f2f5452593f0a377c06d2f61f">Ogre::ParticleAffectorFactory</a>
 </li>
 <li>createAllFromMatrix4()
 : <a class="el" href="class_ogre_1_1_array_matrix4.html#a3cff98756e40389205f83da2521122ed">Ogre::ArrayMatrix4</a>
@@ -1635,7 +1714,11 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#a7ed1f8508aab6937936e59131d37b015">Ogre::SceneManager</a>
 </li>
 <li>createBillboardSet()
-: <a class="el" href="class_ogre_1_1_scene_manager.html#addb069837e615efa614dacce8fb46567">Ogre::SceneManager</a>
+: <a class="el" href="class_ogre_1_1_particle_system_manager2.html#a7eb2f8e67d3b331f07dcb804e72f3c55">Ogre::ParticleSystemManager2</a>
+, <a class="el" href="class_ogre_1_1_scene_manager.html#addb069837e615efa614dacce8fb46567">Ogre::SceneManager</a>
+</li>
+<li>createBillboardSet2()
+: <a class="el" href="class_ogre_1_1_scene_manager.html#a7c0763a2e25e20b8f0254539d9688ad8">Ogre::SceneManager</a>
 </li>
 <li>createBlendMask()
 : <a class="el" href="class_ogre_1_1v1_1_1_animation_state.html#aaefa730f2a86a09168a7c32e60096909">Ogre::v1::AnimationState</a>
@@ -1713,6 +1796,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>createDatablock()
 : <a class="el" href="class_ogre_1_1_hlms.html#a335481b26695a97d83885780235ee0e5">Ogre::Hlms</a>
 </li>
+<li>CreateDebugReportCallback
+: <a class="el" href="class_ogre_1_1_vulkan_instance.html#a5a64e27083105a4b73daacde15879bdc">Ogre::VulkanInstance</a>
+</li>
 <li>createDecal()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#a6c56dbf46094a1c4d03e01b3469e029d">Ogre::SceneManager</a>
 </li>
@@ -1729,7 +1815,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>createDevice()
 : <a class="el" href="class_ogre_1_1_d3_d11_vendor_extension.html#aeea63b2eb5c2cfff3b52db22342f24f5">Ogre::D3D11VendorExtension</a>
-, <a class="el" href="struct_ogre_1_1_vulkan_device.html#a85acdf7f991b9f09a6cbde24bb4beb0c">Ogre::VulkanDevice</a>
+, <a class="el" href="struct_ogre_1_1_vulkan_device.html#a7f0ebc6139895cd1e5909a0e6d1bdd31">Ogre::VulkanDevice</a>
 </li>
 <li>createDirectory()
 : <a class="el" href="class_ogre_1_1_file_system_layer.html#a0a2d92288292403038f30364043ee753">Ogre::FileSystemLayer</a>
@@ -1745,12 +1831,19 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="struct_ogre_1_1_volume_1_1_chunk_parameters.html#a61d33b21a20c4fe9645545bdfe3029c3">Ogre::Volume::ChunkParameters</a>
 </li>
 <li>createEmitter()
-: <a class="el" href="class_ogre_1_1_box_emitter_factory.html#a3ab66202e2615f36a33531240a54d8ff">Ogre::BoxEmitterFactory</a>
+: <a class="el" href="class_ogre_1_1_box_emitter_factory2.html#a1be90e4938d1142a580eb3b90be9f069">Ogre::BoxEmitterFactory2</a>
+, <a class="el" href="class_ogre_1_1_box_emitter_factory.html#a3ab66202e2615f36a33531240a54d8ff">Ogre::BoxEmitterFactory</a>
+, <a class="el" href="class_ogre_1_1_cylinder_emitter_factory2.html#acf56fc8d77c980f6291bb625e44ca968">Ogre::CylinderEmitterFactory2</a>
 , <a class="el" href="class_ogre_1_1_cylinder_emitter_factory.html#a19b97bd46db1d6420d3baf91a6fe6d5a">Ogre::CylinderEmitterFactory</a>
+, <a class="el" href="class_ogre_1_1_ellipsoid_emitter_factory2.html#a3447720ed3b0314f8f02c5165824f668">Ogre::EllipsoidEmitterFactory2</a>
 , <a class="el" href="class_ogre_1_1_ellipsoid_emitter_factory.html#a5ca4c6179a2a8eecd140072d6f1657d0">Ogre::EllipsoidEmitterFactory</a>
+, <a class="el" href="class_ogre_1_1_hollow_ellipsoid_emitter_factory2.html#a5f0a90285a12fcaec6cd8f0ab0b13f44">Ogre::HollowEllipsoidEmitterFactory2</a>
 , <a class="el" href="class_ogre_1_1_hollow_ellipsoid_emitter_factory.html#a085e687cf0b63b44d4938ff614170a26">Ogre::HollowEllipsoidEmitterFactory</a>
+, <a class="el" href="class_ogre_1_1_particle_emitter_def_data_factory.html#a287b01b7c790714be2fc7cc8b8304878">Ogre::ParticleEmitterDefDataFactory</a>
 , <a class="el" href="class_ogre_1_1_particle_emitter_factory.html#ad724bb97fa00667c2bc6056631991f82">Ogre::ParticleEmitterFactory</a>
+, <a class="el" href="class_ogre_1_1_point_emitter_factory2.html#afcbd68882e870e793b7064427a0c6b52">Ogre::PointEmitterFactory2</a>
 , <a class="el" href="class_ogre_1_1_point_emitter_factory.html#aec37d1d4134bc8047b178b947232577d">Ogre::PointEmitterFactory</a>
+, <a class="el" href="class_ogre_1_1_ring_emitter_factory2.html#a4c73199bab3b911f4ae537d0e81a62bd">Ogre::RingEmitterFactory2</a>
 , <a class="el" href="class_ogre_1_1_ring_emitter_factory.html#ad1ee45915c1085689fd67ff02410ed8f">Ogre::RingEmitterFactory</a>
 </li>
 <li>createEmitterParticle()
@@ -1776,6 +1869,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>createFrameTimePassthroughController()
 : <a class="el" href="class_ogre_1_1_controller_manager.html#aee6987d8cf3b28e404ddaf7305746093">Ogre::ControllerManager</a>
+</li>
+<li>createFrom()
+: <a class="el" href="group___effects.html#ga58ef88b78a3f0af026fb54e93c9ac75e">Ogre::WarmUpHelper</a>
 </li>
 <li>createGeneratedLodLevel()
 : <a class="el" href="struct_ogre_1_1_lod_config.html#a197e4bbdc17c5645e9775d0ea1863c4d">Ogre::LodConfig</a>
@@ -1849,11 +1945,13 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 , <a class="el" href="class_ogre_1_1v1_1_1_billboard_particle_renderer_factory.html#ae2acb83490f92319ff736d9e952c6091">Ogre::v1::BillboardParticleRendererFactory</a>
 , <a class="el" href="class_ogre_1_1_volume_1_1_chunk.html#a4cc25c800696ba2e52748461b65ed4c6">Ogre::Volume::Chunk</a>
 , <a class="el" href="class_ogre_1_1_volume_1_1_octree_node.html#a4cfcb6bd6200a1776c33e5908648cc43">Ogre::Volume::OctreeNode</a>
-, <a class="el" href="struct_ogre_1_1_vulkan_device.html#a456458f51a1947894637a78bcccd5aca">Ogre::VulkanDevice</a>
 , <a class="el" href="class_ogre_1_1_zip_archive_factory.html#aad8dd053829878bffe191a9082fc18af">Ogre::ZipArchiveFactory</a>
 </li>
 <li>createIntersectionQuery()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#a7058a41df70af9d57a5f9174bdb75b8b">Ogre::SceneManager</a>
+</li>
+<li>createIrradianceVolumeTexture()
+: <a class="el" href="class_ogre_1_1_irradiance_volume.html#a17dccafb34da34dfbdd4dad49c424566">Ogre::IrradianceVolume</a>
 </li>
 <li>createItem()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#afd9c7d17df54212ef80f451533895461">Ogre::SceneManager</a>
@@ -1963,6 +2061,13 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>createParticleSystem()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#a1a4ee617b2e251f10cea239e31407e69">Ogre::SceneManager</a>
 </li>
+<li>createParticleSystem2()
+: <a class="el" href="class_ogre_1_1_scene_manager.html#a330136c3762d09401ddcd3efb68d3892">Ogre::SceneManager</a>
+</li>
+<li>createParticleSystemDef()
+: <a class="el" href="class_ogre_1_1_particle_system_manager2.html#a9b1256301ab87150ee0b5a30c68c7290">Ogre::ParticleSystemManager2</a>
+, <a class="el" href="class_ogre_1_1_scene_manager.html#afc6a698e7db380b0733b45d63561292f">Ogre::SceneManager</a>
+</li>
 <li>CreateParticleSystemScriptCompilerEvent()
 : <a class="el" href="class_ogre_1_1_create_particle_system_script_compiler_event.html#ae5d353f53c585c185969c67c01b80890">Ogre::CreateParticleSystemScriptCompilerEvent</a>
 </li>
@@ -1990,12 +2095,18 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>createPrefab()
 : <a class="el" href="class_ogre_1_1v1_1_1_prefab_factory.html#abace8a39d457300328af502e4e8f00f2">Ogre::v1::PrefabFactory</a>
 </li>
+<li>createProbe()
+: <a class="el" href="class_ogre_1_1_parallax_corrected_cubemap_base.html#ada26075693396ed5d821ad0f6935bf4f">Ogre::ParallaxCorrectedCubemapBase</a>
+</li>
 <li>createProgram()
 : <a class="el" href="class_ogre_1_1_gpu_program_manager.html#a3fa0473ad1390af99f69325c2eced427">Ogre::GpuProgramManager</a>
 , <a class="el" href="class_ogre_1_1_high_level_gpu_program_manager.html#a992de8146fdd698d1cd6774fb15a2001">Ogre::HighLevelGpuProgramManager</a>
 </li>
 <li>createProgramFromString()
 : <a class="el" href="class_ogre_1_1_gpu_program_manager.html#a1eadda53bbed16d5a3804cdba2ad687e">Ogre::GpuProgramManager</a>
+</li>
+<li>createProxyItems()
+: <a class="el" href="class_ogre_1_1_parallax_corrected_cubemap.html#a3ad440168a41c8aafd487305e9ebd394">Ogre::ParallaxCorrectedCubemap</a>
 </li>
 <li>createRayQuery()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#a3166eafec7c9234170371b4dcf66552d">Ogre::SceneManager</a>
@@ -2048,7 +2159,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#a9a989e4040a897a224cc62ad39d97ed4">Ogre::SceneManager</a>
 </li>
 <li>createSceneManager()
-: <a class="el" href="class_ogre_1_1_root.html#a385d2895803f02e61ed676c835873cff">Ogre::Root</a>
+: <a class="el" href="class_ogre_1_1_root.html#adbc9b55f9d91e8cc462ce5bbfafab1b4">Ogre::Root</a>
 , <a class="el" href="class_ogre_1_1_scene_manager_enumerator.html#a537fce9b9d55a08bf48568142a7b4501">Ogre::SceneManagerEnumerator</a>
 </li>
 <li>createSceneNode()
@@ -2076,7 +2187,7 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>createSrv()
 : <a class="el" href="class_ogre_1_1_d3_d11_read_only_buffer_packed.html#a1e68ddc1caca2e1d1d8f5a72a76d99d7">Ogre::D3D11ReadOnlyBufferPacked</a>
 , <a class="el" href="class_ogre_1_1_d3_d11_tex_buffer_packed.html#a2e67cfa0ee7a77f0d9f9b264a70bda24">Ogre::D3D11TexBufferPacked</a>
-, <a class="el" href="class_ogre_1_1_d3_d11_texture_gpu.html#a5d5b459da425f90b585cc45af34e85d2">Ogre::D3D11TextureGpu</a>
+, <a class="el" href="class_ogre_1_1_d3_d11_texture_gpu.html#aa523801e53221bb61e6e17bbb9e218ba">Ogre::D3D11TextureGpu</a>
 </li>
 <li>createStagingBuffer()
 : <a class="el" href="class_ogre_1_1_d3_d11_vao_manager.html#af42126d8367ea0feb2a9593936c35106">Ogre::D3D11VaoManager</a>
@@ -2098,8 +2209,14 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_mesh.html#afd8f8725c5277d5f05b857bc404916bc">Ogre::Mesh</a>
 , <a class="el" href="class_ogre_1_1v1_1_1_mesh.html#a94284544838b11da3de794061181d39e">Ogre::v1::Mesh</a>
 </li>
+<li>createSubsamples()
+: <a class="el" href="struct_ogre_1_1_irradiance_field_settings.html#ab5716c07be8f8f2c91ca4ea56a07b3af">Ogre::IrradianceFieldSettings</a>
+</li>
+<li>createSurface()
+: <a class="el" href="class_ogre_1_1_vulkan_window_swap_chain_based.html#aac55c9c7515807471069cebe1b13d7aa">Ogre::VulkanWindowSwapChainBased</a>
+</li>
 <li>createSwapchain()
-: <a class="el" href="class_ogre_1_1_vulkan_window_swap_chain_based.html#a881dd6b5984a497d0b554b0eb14793e4">Ogre::VulkanWindowSwapChainBased</a>
+: <a class="el" href="class_ogre_1_1_vulkan_window_swap_chain_based.html#a53450084ff3d2a80c7edcc4687835844">Ogre::VulkanWindowSwapChainBased</a>
 </li>
 <li>createTagPoint()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#adc6b6d8943fb3872db6d27c70a071c8c">Ogre::SceneManager</a>
@@ -2140,7 +2257,8 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_controller_manager.html#a1f82bf242c70d3d07e7bfc36e975e7f2">Ogre::ControllerManager</a>
 </li>
 <li>createTextures()
-: <a class="el" href="class_ogre_1_1_texture_definition_base.html#a3dd5a18207b6fca4f39c679c1c82ff77">Ogre::TextureDefinitionBase</a>
+: <a class="el" href="class_ogre_1_1_irradiance_field.html#a6274ce73638e5fd9800ee2111c355ffa">Ogre::IrradianceField</a>
+, <a class="el" href="class_ogre_1_1_texture_definition_base.html#a3dd5a18207b6fca4f39c679c1c82ff77">Ogre::TextureDefinitionBase</a>
 </li>
 <li>createTextureUnitState()
 : <a class="el" href="class_ogre_1_1_pass.html#ae44883ff7b27571bf300ebceb292c567">Ogre::Pass</a>
@@ -2212,11 +2330,18 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1v1_1_1_animation.html#a6bdc39225a334732fe46523f3bc2367b">Ogre::v1::Animation</a>
 </li>
 <li>createView()
-: <a class="el" href="class_ogre_1_1_vulkan_texture_gpu.html#af9632a253899ed155a62dbcc14a7f551">Ogre::VulkanTextureGpu</a>
+: <a class="el" href="class_ogre_1_1_vulkan_texture_gpu.html#a0b0ceb6e5461235a993f1b6982984133">Ogre::VulkanTextureGpu</a>
 , <a class="el" href="class_ogre_1_1_vulkan_texture_gpu_manager.html#a2004ed04a92b7bbe8001521a7d060a43">Ogre::VulkanTextureGpuManager</a>
+</li>
+<li>createVkResources()
+: <a class="el" href="class_ogre_1_1_vulkan_texture_gpu_manager.html#a5e24fd33dd1928bace4c18113d9ee5ee">Ogre::VulkanTextureGpuManager</a>
+, <a class="el" href="class_ogre_1_1_vulkan_vao_manager.html#a96bb866e33ee675aa532142c05b7c864">Ogre::VulkanVaoManager</a>
 </li>
 <li>createVulkanHandles()
 : <a class="el" href="class_ogre_1_1_vulkan_root_layout.html#afdece0a0a4fde3e1666003e10293d4e2">Ogre::VulkanRootLayout</a>
+</li>
+<li>createWarmUp()
+: <a class="el" href="class_ogre_1_1_vertex_format_warm_up_storage.html#a147f3f6af957e549f8bbd4be62de8727">Ogre::VertexFormatWarmUpStorage</a>
 </li>
 <li>createWindow()
 : <a class="el" href="class_ogre_1_1_e_g_l_g_l_support.html#a59c312321ff25c8630bd2e6190b7e2b6">Ogre::EGLGLSupport</a>
@@ -2226,18 +2351,19 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 , <a class="el" href="class_ogre_1_1_g_l_e_s2_support.html#a9c5601c65abd17d89194b78077041022">Ogre::GLES2Support</a>
 , <a class="el" href="class_ogre_1_1_gl_switchable_support.html#a0677b5aab097a5f5efcf26c08d524dba">Ogre::GlSwitchableSupport</a>
 , <a class="el" href="class_ogre_1_1_g_l_x_g_l_support.html#ae35953fcf508a2c17034155570e07639">Ogre::GLXGLSupport</a>
-, <a class="el" href="class_ogre_1_1_g_t_k_g_l_support.html#ac14c5f18e6a00a0a0a119fa316f062f6">Ogre::GTKGLSupport</a>
 , <a class="el" href="class_ogre_1_1_o_s_x_g_l3_plus_support.html#a38942a0754730b9ef022a4a6e86b8170">Ogre::OSXGL3PlusSupport</a>
-, <a class="el" href="class_ogre_1_1_s_d_l_g_l_support.html#a84a42776bee3256991e07717f7180a67">Ogre::SDLGLSupport</a>
 , <a class="el" href="class_ogre_1_1_win32_g_l_support.html#a45ed8cf327a7f4776dc6cdb4e0421e35">Ogre::Win32GLSupport</a>
 </li>
 <li>createWindowDepthBuffer()
 : <a class="el" href="class_ogre_1_1_d3_d11_texture_gpu_manager.html#a15c5fc666bdd5c840aac5f0781d437f7">Ogre::D3D11TextureGpuManager</a>
-, <a class="el" href="class_ogre_1_1_metal_texture_gpu_manager.html#ab72c209776920a8b56866cce0fd6ca7a">Ogre::MetalTextureGpuManager</a>
-, <a class="el" href="class_ogre_1_1_vulkan_texture_gpu_manager.html#a1a58429dab8c48e92e056d49a086c010">Ogre::VulkanTextureGpuManager</a>
+, <a class="el" href="class_ogre_1_1_metal_texture_gpu_manager.html#aaf4a0ea608165bf82b6e72427d1332fc">Ogre::MetalTextureGpuManager</a>
+, <a class="el" href="class_ogre_1_1_vulkan_texture_gpu_manager.html#a01c8e000e0d0a903849bafee2c4de603">Ogre::VulkanTextureGpuManager</a>
 </li>
 <li>createWireAabb()
 : <a class="el" href="class_ogre_1_1_scene_manager.html#aefb49b80d2f4ed39bf0ed39d2d2cc171">Ogre::SceneManager</a>
+</li>
+<li>createWorkspace()
+: <a class="el" href="class_ogre_1_1_irradiance_field_raster.html#abea550f7a9047395d5c3b9d75f52397e">Ogre::IrradianceFieldRaster</a>
 </li>
 <li>createWorld()
 : <a class="el" href="class_ogre_1_1_page_manager.html#a3c384460b7a254871ba52ab5707120f2">Ogre::PageManager</a>
@@ -2246,7 +2372,8 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 : <a class="el" href="class_ogre_1_1_page_manager.html#a06904810dcecfb8891e0712d79978369">Ogre::PageManager</a>
 </li>
 <li>crossProduct()
-: <a class="el" href="class_ogre_1_1_array_vector3.html#a34f2c866ac1fd2332b80d5049409f5f8">Ogre::ArrayVector3</a>
+: <a class="el" href="class_ogre_1_1_array_vector2.html#a529309849a1e8365f7c5c7427fbd08df">Ogre::ArrayVector2</a>
+, <a class="el" href="class_ogre_1_1_array_vector3.html#a34f2c866ac1fd2332b80d5049409f5f8">Ogre::ArrayVector3</a>
 , <a class="el" href="class_ogre_1_1_vector2.html#a8f52acf41b4766a235c3a91b42af3a00">Ogre::Vector2</a>
 , <a class="el" href="class_ogre_1_1_vector3.html#a2500548e775c294aab7bff6f7f8f312a">Ogre::Vector3</a>
 </li>
@@ -2301,11 +2428,23 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 <li>CUBE_UP
 : <a class="el" href="class_ogre_1_1_texture_unit_state.html#a2584766311cf6d0eaada7be28c287cc3ab085d126cff272045a1e616adbd2d726">Ogre::TextureUnitState</a>
 </li>
+<li>CubemapProbe()
+: <a class="el" href="class_ogre_1_1_cubemap_probe.html#a30f201eaad96f6500dfd2ba1a1dae181">Ogre::CubemapProbe</a>
+</li>
 <li>cubemapsAs2DArrays
 : <a class="el" href="struct_ogre_1_1_descriptor_set_texture2_1_1_texture_slot.html#aa83fc8e59009c2bcbb30eb20057032cf">Ogre::DescriptorSetTexture2::TextureSlot</a>
 </li>
+<li>CubemapsAsDiffuseGi
+: <a class="el" href="struct_ogre_1_1_pbs_property.html#a7afba0dd14e9ab0e3150ed8e6e00d9ef">Ogre::PbsProperty</a>
+</li>
+<li>CubemapsUseDpm
+: <a class="el" href="struct_ogre_1_1_pbs_property.html#a182e937376a07c5233f370f2b189eb49">Ogre::PbsProperty</a>
+</li>
 <li>cullFrustum()
-: <a class="el" href="class_ogre_1_1_movable_object.html#a7d491859c987cf03cd2b62121e9bfea0">Ogre::MovableObject</a>
+: <a class="el" href="class_ogre_1_1_movable_object.html#a0382f320c545056def9f71af0a3164ab">Ogre::MovableObject</a>
+</li>
+<li>cullFrustumPrepare()
+: <a class="el" href="class_ogre_1_1_movable_object.html#a838694c4986de6a09d43658d0f8a947a">Ogre::MovableObject</a>
 </li>
 <li>CullFrustumRequest()
 : <a class="el" href="struct_ogre_1_1_cull_frustum_request.html#a24d96b129c1cf2bf3d6adc81b2950132">Ogre::CullFrustumRequest</a>
@@ -2360,6 +2499,9 @@ $(document).ready(function(){initNavTree('functions_c.html',''); initResizable()
 </li>
 <li>CylinderEmitter()
 : <a class="el" href="class_ogre_1_1_cylinder_emitter.html#a136f5b1d971ce9d70ee4345bfa09c1ec">Ogre::CylinderEmitter</a>
+</li>
+<li>CylinderEmitter2()
+: <a class="el" href="class_ogre_1_1_cylinder_emitter2.html#a8431e5f2ecb036e96a77491af933f722">Ogre::CylinderEmitter2</a>
 </li>
 </ul>
 </div><!-- contents -->

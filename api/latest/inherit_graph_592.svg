@@ -11,9 +11,9 @@
 <!-- Node0 -->
 <g id="node1" class="node">
 <title>Node0</title>
-<g id="a_node1"><a xlink:href="class_ogre_1_1_waitable_event.html" target="_top" xlink:title="A WaitableEvent is useful in the scenario of a singler consumer, multiple producers The consumer will...">
+<g id="a_node1"><a xlink:href="class_ogre_1_1v1_1_1_time_index.html" target="_top" xlink:title="Time index object used to search keyframe at the given position.">
 <polygon fill="none" stroke="black" points="0,-0.5 0,-19.5 116,-19.5 116,-0.5 0,-0.5"/>
-<text text-anchor="middle" x="58" y="-7.5" font-family="Helvetica,sans-Serif" font-size="10.00">Ogre::WaitableEvent</text>
+<text text-anchor="middle" x="58" y="-7.5" font-family="Helvetica,sans-Serif" font-size="10.00">Ogre::v1::TimeIndex</text>
 </a>
 </g>
 </g>

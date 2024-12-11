@@ -29,7 +29,7 @@
   <td id="projectlogo"><img alt="Logo" src="ogre-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">OGRE-Next
-   &#160;<span id="projectnumber">3.0.0unstable</span>
+   &#160;<span id="projectnumber">4.0.0unstable</span>
    </div>
    <div id="projectbrief">Object-Oriented Graphics Rendering Engine</div>
   </td>
@@ -114,6 +114,7 @@ Public Types</h2></td></tr>
 <tr class="memitem:ad2b57c9b40e33d4b64f613a5a6147367"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367">Modes</a> { <a class="el" href="class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367ac84764f8648d1701fd809afba1358b32">V1_LEGACY</a>
 , <a class="el" href="class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367aae5865e2c1ce44806f2538863c9dda44">V1_FAST</a>
 , <a class="el" href="class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367afaf209c76453b55e28708a165b37386e">FAST</a>
+, <a class="el" href="class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367aaba007477484af6f9eeb1e2a1bb76754">PARTICLE_SYSTEM</a>
  }</td></tr>
 <tr class="separator:ad2b57c9b40e33d4b64f613a5a6147367"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acbc6e62a79b77d38cf3881c796e0078b"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#acbc6e62a79b77d38cf3881c796e0078b">RqSortMode</a> { <a class="el" href="class_ogre_1_1_render_queue.html#acbc6e62a79b77d38cf3881c796e0078ba00d99f921af963915cd1e94fa6f769b8">DisableSort</a>
@@ -128,6 +129,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:abb653f126d0d03d73e28468a89c3c24d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abeedbfecbb98d295978226f18f1ba5bd"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#abeedbfecbb98d295978226f18f1ba5bd">~RenderQueue</a> ()</td></tr>
 <tr class="separator:abeedbfecbb98d295978226f18f1ba5bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad6e291d9363608ae01f1aba7d90c8ee7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#ad6e291d9363608ae01f1aba7d90c8ee7">_compileShadersThread</a> (size_t threadIdx)</td></tr>
+<tr class="separator:ad6e291d9363608ae01f1aba7d90c8ee7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a458d605f6641f97dcf0373733cec4bb2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#a458d605f6641f97dcf0373733cec4bb2">_releaseManualHardwareResources</a> ()</td></tr>
+<tr class="separator:a458d605f6641f97dcf0373733cec4bb2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a989e7043b62af6ac712bfbf9968813"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#a3a989e7043b62af6ac712bfbf9968813">_warmUpShadersThread</a> (size_t threadIdx)</td></tr>
+<tr class="separator:a3a989e7043b62af6ac712bfbf9968813"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a504e8bf8d6496ea3b88ead7e6cef8aa0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#a504e8bf8d6496ea3b88ead7e6cef8aa0">addRenderableV1</a> (<a class="el" href="namespace_ogre.html#a9212e2b4c7d29d6fae3a004ac7ad137e">uint8</a> renderQueueId, bool casterPass, <a class="el" href="class_ogre_1_1_renderable.html">Renderable</a> *pRend, const <a class="el" href="class_ogre_1_1_movable_object.html">MovableObject</a> *pMovableObject)</td></tr>
 <tr class="memdesc:a504e8bf8d6496ea3b88ead7e6cef8aa0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Add a renderable (<a class="el" href="namespace_ogre.html" title="bswapNN may be defined as macros in &lt;sys/endian.h&gt; or &lt;sys/bswap.h&gt;">Ogre</a> v1.x) object to the queue.  <a href="class_ogre_1_1_render_queue.html#a504e8bf8d6496ea3b88ead7e6cef8aa0">More...</a><br /></td></tr>
 <tr class="separator:a504e8bf8d6496ea3b88ead7e6cef8aa0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -161,9 +168,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aeb41ed3f50a9e7e270d81d045e8a23e6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#aeb41ed3f50a9e7e270d81d045e8a23e6">setSortRenderQueue</a> (<a class="el" href="namespace_ogre.html#a9212e2b4c7d29d6fae3a004ac7ad137e">uint8</a> rqId, <a class="el" href="class_ogre_1_1_render_queue.html#acbc6e62a79b77d38cf3881c796e0078b">RqSortMode</a> sortMode)</td></tr>
 <tr class="memdesc:aeb41ed3f50a9e7e270d81d045e8a23e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets whether we should sort the render queue ID every frame.  <a href="class_ogre_1_1_render_queue.html#aeb41ed3f50a9e7e270d81d045e8a23e6">More...</a><br /></td></tr>
 <tr class="separator:aeb41ed3f50a9e7e270d81d045e8a23e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acfbbd9218d9c134357c12e12c32733f6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#acfbbd9218d9c134357c12e12c32733f6">warmUpShaders</a> (<a class="el" href="namespace_ogre.html#a9212e2b4c7d29d6fae3a004ac7ad137e">uint8</a> firstRq, <a class="el" href="namespace_ogre.html#a9212e2b4c7d29d6fae3a004ac7ad137e">uint8</a> lastRq, bool casterPass)</td></tr>
-<tr class="memdesc:acfbbd9218d9c134357c12e12c32733f6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Simulates what <a class="el" href="class_ogre_1_1_render_queue.html#a4556b635533a3b9cc3aee165442e2a4d">render()</a> would do.  <a href="class_ogre_1_1_render_queue.html#acfbbd9218d9c134357c12e12c32733f6">More...</a><br /></td></tr>
-<tr class="separator:acfbbd9218d9c134357c12e12c32733f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af8a1ce899163064e71e176bb7be8b87c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#af8a1ce899163064e71e176bb7be8b87c">warmUpShadersCollect</a> (<a class="el" href="namespace_ogre.html#a9212e2b4c7d29d6fae3a004ac7ad137e">uint8</a> firstRq, <a class="el" href="namespace_ogre.html#a9212e2b4c7d29d6fae3a004ac7ad137e">uint8</a> lastRq, bool casterPass)</td></tr>
+<tr class="memdesc:af8a1ce899163064e71e176bb7be8b87c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Simulates what <a class="el" href="class_ogre_1_1_render_queue.html#a4556b635533a3b9cc3aee165442e2a4d">render()</a> would do.  <a href="class_ogre_1_1_render_queue.html#af8a1ce899163064e71e176bb7be8b87c">More...</a><br /></td></tr>
+<tr class="separator:af8a1ce899163064e71e176bb7be8b87c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae2a7ef1b3b7b9f936ed6e97be9bab31a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_ogre_1_1_render_queue.html#ae2a7ef1b3b7b9f936ed6e97be9bab31a">warmUpShadersTrigger</a> (<a class="el" href="class_ogre_1_1_render_system.html">RenderSystem</a> *rs)</td></tr>
+<tr class="separator:ae2a7ef1b3b7b9f936ed6e97be9bab31a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Class to manage the scene object rendering queue. </p>
@@ -176,7 +185,8 @@ Public Member Functions</h2></td></tr>
  <a class="el" href="class_ogre_1_1_rectangle2_d.html">Rectangle2D</a>: 10 <br  />
  <a class="el" href="class_ogre_1_1v1_1_1_entity.html" title="Defines an instance of a discrete, movable object based on a Mesh.">v1::Entity</a>: 110 <br  />
  <a class="el" href="class_ogre_1_1v1_1_1_rectangle2_d.html" title="Allows the rendering of a simple 2D rectangle This class renders a simple 2D rectangle; this rectangl...">v1::Rectangle2D</a>: 110 <br  />
- <a class="el" href="class_ogre_1_1_particle_system.html" title="Class defining particle system based special effects.">ParticleSystem</a>: 110 <br  />
+ <a class="el" href="class_ogre_1_1_particle_system.html" title="Class defining particle system based special effects.">ParticleSystem</a> (<a class="el" href="namespace_ogre_1_1v1.html">v1</a>):110 <br  />
+ <a class="el" href="class_ogre_1_1_particle_system.html" title="Class defining particle system based special effects.">ParticleSystem</a> (v2):kParticleSystemDefaultRenderQueueId <br  />
  [.. more unlisted ..] </dd>
 <dd>
 By default, the render queues have the following mode set: <br  />
@@ -205,6 +215,9 @@ By default, the render queues have the following mode set: <br  />
 </td></tr>
 <tr><td class="fieldname"><a id="ad2b57c9b40e33d4b64f613a5a6147367afaf209c76453b55e28708a165b37386e"></a>FAST&#160;</td><td class="fielddoc"><p>Renders v2 items using HLMS materials with minimum driver overhead Recommended method for rendering extremely large amounts of objects of homogeneous and heterogenous meshes, with many different kinds of materials and textures. </p>
 <p>Only v2 Items can be put in this queue. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ad2b57c9b40e33d4b64f613a5a6147367aaba007477484af6f9eeb1e2a1bb76754"></a>PARTICLE_SYSTEM&#160;</td><td class="fielddoc"><p>Renders <a class="el" href="class_ogre_1_1_particle_system_def.html" title="A ParticleSystemDef does not form part of the scene.">ParticleSystemDef</a> (i.e. </p>
+<p>ParticleFX2 plugin). Don't put <a class="el" href="namespace_ogre_1_1v1.html">v1</a> <a class="el" href="class_ogre_1_1_particle.html" title="Class representing a single particle instance.">Particle</a> Systems here. </p>
 </td></tr>
 </table>
 
@@ -282,6 +295,59 @@ By default, the render queues have the following mode set: <br  />
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="ad6e291d9363608ae01f1aba7d90c8ee7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad6e291d9363608ae01f1aba7d90c8ee7">&#9670;&nbsp;</a></span>_compileShadersThread()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Ogre::RenderQueue::_compileShadersThread </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>threadIdx</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a458d605f6641f97dcf0373733cec4bb2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a458d605f6641f97dcf0373733cec4bb2">&#9670;&nbsp;</a></span>_releaseManualHardwareResources()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Ogre::RenderQueue::_releaseManualHardwareResources </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3a989e7043b62af6ac712bfbf9968813"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3a989e7043b62af6ac712bfbf9968813">&#9670;&nbsp;</a></span>_warmUpShadersThread()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Ogre::RenderQueue::_warmUpShadersThread </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>threadIdx</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a504e8bf8d6496ea3b88ead7e6cef8aa0"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a504e8bf8d6496ea3b88ead7e6cef8aa0">&#9670;&nbsp;</a></span>addRenderableV1()</h2>
 
@@ -696,14 +762,14 @@ By default, the render queues have the following mode set: <br  />
 
 </div>
 </div>
-<a id="acfbbd9218d9c134357c12e12c32733f6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acfbbd9218d9c134357c12e12c32733f6">&#9670;&nbsp;</a></span>warmUpShaders()</h2>
+<a id="af8a1ce899163064e71e176bb7be8b87c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af8a1ce899163064e71e176bb7be8b87c">&#9670;&nbsp;</a></span>warmUpShadersCollect()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void Ogre::RenderQueue::warmUpShaders </td>
+          <td class="memname">void Ogre::RenderQueue::warmUpShadersCollect </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="namespace_ogre.html#a9212e2b4c7d29d6fae3a004ac7ad137e">uint8</a>&#160;</td>
           <td class="paramname"><em>firstRq</em>, </td>
@@ -737,6 +803,24 @@ By default, the render queues have the following mode set: <br  />
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="ae2a7ef1b3b7b9f936ed6e97be9bab31a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae2a7ef1b3b7b9f936ed6e97be9bab31a">&#9670;&nbsp;</a></span>warmUpShadersTrigger()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Ogre::RenderQueue::warmUpShadersTrigger </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="class_ogre_1_1_render_system.html">RenderSystem</a> *&#160;</td>
+          <td class="paramname"><em>rs</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>

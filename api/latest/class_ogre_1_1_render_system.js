@@ -1,6 +1,7 @@
 var class_ogre_1_1_render_system =
 [
     [ "Listener", "class_ogre_1_1_render_system_1_1_listener.html", "class_ogre_1_1_render_system_1_1_listener" ],
+    [ "PipelineCachePrefixHeader", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header" ],
     [ "RenderSystemContext", "struct_ogre_1_1_render_system_1_1_render_system_context.html", null ],
     [ "RenderSystem", "class_ogre_1_1_render_system.html#a3391b683d588628272d8d9de633e472e", null ],
     [ "~RenderSystem", "class_ogre_1_1_render_system.html#a785f83ff8a4ee8fb21a11c9d6fe5c928", null ],
@@ -166,6 +167,7 @@ var class_ogre_1_1_render_system =
     [ "isReverseDepth", "class_ogre_1_1_render_system.html#a0f6d872e0df3b080da903d9e0f4af6ba", null ],
     [ "isSameLayout", "class_ogre_1_1_render_system.html#a387d5fa07b1c096496ce6a97c4f68505", null ],
     [ "isStaticBufferLockable", "class_ogre_1_1_render_system.html#a319564dc746b19bb9a1490a473227b20", null ],
+    [ "loadPipelineCache", "class_ogre_1_1_render_system.html#a8378cd3e1aa2ccd4a26214fefdb10ce0", null ],
     [ "loadRenderDocApi", "class_ogre_1_1_render_system.html#add71b4fa521a3d13c727c5afe9225bbb", null ],
     [ "markProfileEvent", "class_ogre_1_1_render_system.html#aaafa1dfb6fcf978786add8ee2b02dfb5", null ],
     [ "postExtraThreadsStarted", "class_ogre_1_1_render_system.html#a460fb2b67acdea8e3a72933e0348a82d", null ],
@@ -177,6 +179,7 @@ var class_ogre_1_1_render_system =
     [ "removeSharedListener", "class_ogre_1_1_render_system.html#a0c9650fccf5a5e54b8b933786bdbe4fb", null ],
     [ "resetClipPlanes", "class_ogre_1_1_render_system.html#a46a9b1385638112a80bf22fa1a5bf531", null ],
     [ "reverseCompareFunction", "class_ogre_1_1_render_system.html#a6a34f2ded473d4cbaeda6e954f76dbaf", null ],
+    [ "savePipelineCache", "class_ogre_1_1_render_system.html#a7fa3447da967174c882bbc445d715eab", null ],
     [ "setClipPlanes", "class_ogre_1_1_render_system.html#a23cc0a7d87b77ec3d0a34e92335bec1a", null ],
     [ "setConfigOption", "class_ogre_1_1_render_system.html#a606200a27a8adebfa62b3e388a49cf39", null ],
     [ "setCurrentPassIterationCount", "class_ogre_1_1_render_system.html#a207d38c53699525e2e49ee167f9c8eb5", null ],
@@ -193,10 +196,11 @@ var class_ogre_1_1_render_system =
     [ "setWBufferEnabled", "class_ogre_1_1_render_system.html#a01c339f6e89d82b526fb7725424a4263", null ],
     [ "shutdown", "class_ogre_1_1_render_system.html#a46a77118396fb950d34f0124b4e6e4a2", null ],
     [ "startGpuDebuggerFrameCapture", "class_ogre_1_1_render_system.html#afe7705e26f10dccebf2e6db0b3d6859e", null ],
+    [ "supportsMultithreadedShaderCompilation", "class_ogre_1_1_render_system.html#a0d8af43ee8a36aac5f48c82d914ed10f", null ],
     [ "unregisterThread", "class_ogre_1_1_render_system.html#a64138779fab3c6b157f2de40c3831e10", null ],
     [ "updateCompositorManager", "class_ogre_1_1_render_system.html#a41328026d8be0e7143402a914f707cf9", null ],
     [ "useCustomRenderSystemCapabilities", "class_ogre_1_1_render_system.html#a6219a2d1f92be5548983a03de9522365", null ],
     [ "validateConfigOptions", "class_ogre_1_1_render_system.html#a90ca5c0fdbb3b6c21f334a6e8cdb1373", null ],
     [ "validateDevice", "class_ogre_1_1_render_system.html#a913bd8f0e2e19cf356ccaa3bed31543e", null ],
-    [ "validateSampleDescription", "class_ogre_1_1_render_system.html#a1681d824b46321ab26f5566371c9fcb8", null ]
+    [ "validateSampleDescription", "class_ogre_1_1_render_system.html#ac4dab5e3913f88477b272ba842a07a4c", null ]
 ];

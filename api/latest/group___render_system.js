@@ -15,6 +15,7 @@ var group___render_system =
         [ "POOL_NO_DEPTH", "struct_ogre_1_1_depth_buffer.html#a9854c57374adef41216bae68544a5b7ea569228ed0fdd8d428a5117026b6d010e", null ],
         [ "OGRE_DEPRECATED_ENUM_VER", "struct_ogre_1_1_depth_buffer.html#a9854c57374adef41216bae68544a5b7ea35634a45046af55e08feb81bd5ecbb94", null ],
         [ "POOL_DEFAULT", "struct_ogre_1_1_depth_buffer.html#a9854c57374adef41216bae68544a5b7ea00a687046bfe7a9ebd7f34256d3fbcca", null ],
+        [ "POOL_MEMORYLESS", "struct_ogre_1_1_depth_buffer.html#a9854c57374adef41216bae68544a5b7eab0c001b40fd51ae17b99ecfbb168ac42", null ],
         [ "OGRE_DEPRECATED_ENUM_VER", "struct_ogre_1_1_depth_buffer.html#a9854c57374adef41216bae68544a5b7ea35634a45046af55e08feb81bd5ecbb94", null ],
         [ "NO_POOL_EXPLICIT_RTV", "struct_ogre_1_1_depth_buffer.html#a9854c57374adef41216bae68544a5b7ea5f03ed32b2322daad0f7799072e37cea", null ],
         [ "POOL_INVALID", "struct_ogre_1_1_depth_buffer.html#a9854c57374adef41216bae68544a5b7eaf4cd568faf89ee1f03710fefbf8386ca", null ]
@@ -42,6 +43,24 @@ var group___render_system =
       [ "isStillOutstanding", "class_ogre_1_1_hardware_occlusion_query.html#a8709ecea26514056be6d7ad0444bc4ed", null ],
       [ "pullOcclusionQuery", "class_ogre_1_1_hardware_occlusion_query.html#ae30ceda53d771c5db266fdcfd14e6c9c", null ]
     ] ],
+    [ "ParallelHlmsCompileQueue", "class_ogre_1_1_parallel_hlms_compile_queue.html", [
+      [ "Request", "struct_ogre_1_1_parallel_hlms_compile_queue_1_1_request.html", [
+        [ "finalHash", "struct_ogre_1_1_parallel_hlms_compile_queue_1_1_request.html#a9e94d94effb2702f255d8395b1120950", null ],
+        [ "passCache", "struct_ogre_1_1_parallel_hlms_compile_queue_1_1_request.html#aed4a6128776400f9f6fc385b22826e40", null ],
+        [ "queuedRenderable", "struct_ogre_1_1_parallel_hlms_compile_queue_1_1_request.html#a68594295b1af77d5638c5eada57528c5", null ],
+        [ "renderableHash", "struct_ogre_1_1_parallel_hlms_compile_queue_1_1_request.html#a8c95446916a3b4a33401d4a590a6e359", null ],
+        [ "reservedStubEntry", "struct_ogre_1_1_parallel_hlms_compile_queue_1_1_request.html#af0c1f1afd367cca41f1875a760aa4b78", null ]
+      ] ],
+      [ "ParallelHlmsCompileQueue", "class_ogre_1_1_parallel_hlms_compile_queue.html#ae38048ebb76edabb33f61e0745d796d0", null ],
+      [ "fireWarmUpParallel", "class_ogre_1_1_parallel_hlms_compile_queue.html#a392eb4d02e34df8841097ac7be82b852", null ],
+      [ "pushRequest", "class_ogre_1_1_parallel_hlms_compile_queue.html#aaf595df16ab16cb9459154049bdd86d1", null ],
+      [ "pushWarmUpRequest", "class_ogre_1_1_parallel_hlms_compile_queue.html#aac24523f28c40d659b84f80d2a43fd95", null ],
+      [ "start", "class_ogre_1_1_parallel_hlms_compile_queue.html#a6e2a94362f7bae8919e3074587b252b9", null ],
+      [ "stopAndWait", "class_ogre_1_1_parallel_hlms_compile_queue.html#ab6f85d23748cecb3d025f464a928bf2a", null ],
+      [ "updateThread", "class_ogre_1_1_parallel_hlms_compile_queue.html#a7a6de65b48a5b5fd42858fd2459b2680", null ],
+      [ "updateWarmUpThread", "class_ogre_1_1_parallel_hlms_compile_queue.html#a03a265cea3e505ec77e302b9fbae9bdb", null ],
+      [ "warmUpSerial", "class_ogre_1_1_parallel_hlms_compile_queue.html#ad304fe38d2b602e9840ab2d33dacc788", null ]
+    ] ],
     [ "QueuedRenderable", "struct_ogre_1_1_queued_renderable.html", [
       [ "QueuedRenderable", "struct_ogre_1_1_queued_renderable.html#a824405b401150a9fe60811fc7c9fe8c7", null ],
       [ "QueuedRenderable", "struct_ogre_1_1_queued_renderable.html#a1cfc9e5b48ec4ef2891e7e92237dac26", null ],
@@ -54,7 +73,8 @@ var group___render_system =
       [ "Modes", "class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367", [
         [ "V1_LEGACY", "class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367ac84764f8648d1701fd809afba1358b32", null ],
         [ "V1_FAST", "class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367aae5865e2c1ce44806f2538863c9dda44", null ],
-        [ "FAST", "class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367afaf209c76453b55e28708a165b37386e", null ]
+        [ "FAST", "class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367afaf209c76453b55e28708a165b37386e", null ],
+        [ "PARTICLE_SYSTEM", "class_ogre_1_1_render_queue.html#ad2b57c9b40e33d4b64f613a5a6147367aaba007477484af6f9eeb1e2a1bb76754", null ]
       ] ],
       [ "RqSortMode", "class_ogre_1_1_render_queue.html#acbc6e62a79b77d38cf3881c796e0078b", [
         [ "DisableSort", "class_ogre_1_1_render_queue.html#acbc6e62a79b77d38cf3881c796e0078ba00d99f921af963915cd1e94fa6f769b8", null ],
@@ -63,6 +83,9 @@ var group___render_system =
       ] ],
       [ "RenderQueue", "class_ogre_1_1_render_queue.html#abb653f126d0d03d73e28468a89c3c24d", null ],
       [ "~RenderQueue", "class_ogre_1_1_render_queue.html#abeedbfecbb98d295978226f18f1ba5bd", null ],
+      [ "_compileShadersThread", "class_ogre_1_1_render_queue.html#ad6e291d9363608ae01f1aba7d90c8ee7", null ],
+      [ "_releaseManualHardwareResources", "class_ogre_1_1_render_queue.html#a458d605f6641f97dcf0373733cec4bb2", null ],
+      [ "_warmUpShadersThread", "class_ogre_1_1_render_queue.html#a3a989e7043b62af6ac712bfbf9968813", null ],
       [ "addRenderableV1", "class_ogre_1_1_render_queue.html#a504e8bf8d6496ea3b88ead7e6cef8aa0", null ],
       [ "addRenderableV2", "class_ogre_1_1_render_queue.html#abf6d23ea6dfa5a14cbb3052d30a7332f", null ],
       [ "clear", "class_ogre_1_1_render_queue.html#a82cdde6cd9331f28acff91089e95ba68", null ],
@@ -75,7 +98,8 @@ var group___render_system =
       [ "renderSingleObject", "class_ogre_1_1_render_queue.html#a7cdd43e3bd6ce4350d4a4b66b58a934b", null ],
       [ "setRenderQueueMode", "class_ogre_1_1_render_queue.html#a70f6d85d6cde43a1b4badf25ed09fca5", null ],
       [ "setSortRenderQueue", "class_ogre_1_1_render_queue.html#aeb41ed3f50a9e7e270d81d045e8a23e6", null ],
-      [ "warmUpShaders", "class_ogre_1_1_render_queue.html#acfbbd9218d9c134357c12e12c32733f6", null ]
+      [ "warmUpShadersCollect", "class_ogre_1_1_render_queue.html#af8a1ce899163064e71e176bb7be8b87c", null ],
+      [ "warmUpShadersTrigger", "class_ogre_1_1_render_queue.html#ae2a7ef1b3b7b9f936ed6e97be9bab31a", null ]
     ] ],
     [ "RenderQueueListener", "class_ogre_1_1_render_queue_listener.html", [
       [ "~RenderQueueListener", "class_ogre_1_1_render_queue_listener.html#aca4ab8444c09caeeff186213a98beb89", null ],
@@ -87,6 +111,16 @@ var group___render_system =
         [ "Listener", "class_ogre_1_1_render_system_1_1_listener.html#a2ccefd2fe4eb8ca096e8ec7efbefc413", null ],
         [ "~Listener", "class_ogre_1_1_render_system_1_1_listener.html#a92f2b3702187d4893f0a28993510f759", null ],
         [ "eventOccurred", "class_ogre_1_1_render_system_1_1_listener.html#aafc262fea83eae3a360aeb16d1cc7ef9", null ]
+      ] ],
+      [ "PipelineCachePrefixHeader", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html", [
+        [ "dataHash", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html#a04f240ee651dab35dc4522258424e066", null ],
+        [ "dataSize", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html#ac77d07b0e6bc0473b1b1aff4e740deea", null ],
+        [ "deviceID", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html#ad310e23d8de3cbde5e53aa1300d39cae", null ],
+        [ "driverABI", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html#abbb4c2c927e325e07a7ac3b0df0d8d2e", null ],
+        [ "driverVersion", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html#af9d344027344cac649cbf88c8818a8ff", null ],
+        [ "magic", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html#a2256624b997afdd46d7f2a63cfd6da93", null ],
+        [ "uuid", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html#a965dc4178f058aa47f2731428d2c8fa3", null ],
+        [ "vendorID", "struct_ogre_1_1_render_system_1_1_pipeline_cache_prefix_header.html#a5035d632dcd0c2af378a0aa9eb9a6c4e", null ]
       ] ],
       [ "RenderSystemContext", "struct_ogre_1_1_render_system_1_1_render_system_context.html", null ],
       [ "RenderSystem", "class_ogre_1_1_render_system.html#a3391b683d588628272d8d9de633e472e", null ],
@@ -253,6 +287,7 @@ var group___render_system =
       [ "isReverseDepth", "class_ogre_1_1_render_system.html#a0f6d872e0df3b080da903d9e0f4af6ba", null ],
       [ "isSameLayout", "class_ogre_1_1_render_system.html#a387d5fa07b1c096496ce6a97c4f68505", null ],
       [ "isStaticBufferLockable", "class_ogre_1_1_render_system.html#a319564dc746b19bb9a1490a473227b20", null ],
+      [ "loadPipelineCache", "class_ogre_1_1_render_system.html#a8378cd3e1aa2ccd4a26214fefdb10ce0", null ],
       [ "loadRenderDocApi", "class_ogre_1_1_render_system.html#add71b4fa521a3d13c727c5afe9225bbb", null ],
       [ "markProfileEvent", "class_ogre_1_1_render_system.html#aaafa1dfb6fcf978786add8ee2b02dfb5", null ],
       [ "postExtraThreadsStarted", "class_ogre_1_1_render_system.html#a460fb2b67acdea8e3a72933e0348a82d", null ],
@@ -264,6 +299,7 @@ var group___render_system =
       [ "removeSharedListener", "class_ogre_1_1_render_system.html#a0c9650fccf5a5e54b8b933786bdbe4fb", null ],
       [ "resetClipPlanes", "class_ogre_1_1_render_system.html#a46a9b1385638112a80bf22fa1a5bf531", null ],
       [ "reverseCompareFunction", "class_ogre_1_1_render_system.html#a6a34f2ded473d4cbaeda6e954f76dbaf", null ],
+      [ "savePipelineCache", "class_ogre_1_1_render_system.html#a7fa3447da967174c882bbc445d715eab", null ],
       [ "setClipPlanes", "class_ogre_1_1_render_system.html#a23cc0a7d87b77ec3d0a34e92335bec1a", null ],
       [ "setConfigOption", "class_ogre_1_1_render_system.html#a606200a27a8adebfa62b3e388a49cf39", null ],
       [ "setCurrentPassIterationCount", "class_ogre_1_1_render_system.html#a207d38c53699525e2e49ee167f9c8eb5", null ],
@@ -280,12 +316,13 @@ var group___render_system =
       [ "setWBufferEnabled", "class_ogre_1_1_render_system.html#a01c339f6e89d82b526fb7725424a4263", null ],
       [ "shutdown", "class_ogre_1_1_render_system.html#a46a77118396fb950d34f0124b4e6e4a2", null ],
       [ "startGpuDebuggerFrameCapture", "class_ogre_1_1_render_system.html#afe7705e26f10dccebf2e6db0b3d6859e", null ],
+      [ "supportsMultithreadedShaderCompilation", "class_ogre_1_1_render_system.html#a0d8af43ee8a36aac5f48c82d914ed10f", null ],
       [ "unregisterThread", "class_ogre_1_1_render_system.html#a64138779fab3c6b157f2de40c3831e10", null ],
       [ "updateCompositorManager", "class_ogre_1_1_render_system.html#a41328026d8be0e7143402a914f707cf9", null ],
       [ "useCustomRenderSystemCapabilities", "class_ogre_1_1_render_system.html#a6219a2d1f92be5548983a03de9522365", null ],
       [ "validateConfigOptions", "class_ogre_1_1_render_system.html#a90ca5c0fdbb3b6c21f334a6e8cdb1373", null ],
       [ "validateDevice", "class_ogre_1_1_render_system.html#a913bd8f0e2e19cf356ccaa3bed31543e", null ],
-      [ "validateSampleDescription", "class_ogre_1_1_render_system.html#a1681d824b46321ab26f5566371c9fcb8", null ]
+      [ "validateSampleDescription", "class_ogre_1_1_render_system.html#ac4dab5e3913f88477b272ba842a07a4c", null ]
     ] ],
     [ "RenderSystemCapabilities", "class_ogre_1_1_render_system_capabilities.html", [
       [ "ShaderProfiles", "class_ogre_1_1_render_system_capabilities.html#a811e06a15b0ada4ab8926eebbd1dd63d", null ],

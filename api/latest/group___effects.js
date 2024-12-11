@@ -56,6 +56,7 @@ var group___effects =
       [ "getPassNumber", "class_ogre_1_1_compositor_node_def.html#a6fa98a167d723f5296d48926980aa4f6", null ],
       [ "getStartEnabled", "class_ogre_1_1_compositor_node_def.html#a91d33b30162b786937a56395fd63522c", null ],
       [ "getTargetPass", "class_ogre_1_1_compositor_node_def.html#a25399907b63825d292a0d6ac6eb47030", null ],
+      [ "getTargetPass", "class_ogre_1_1_compositor_node_def.html#a465f6ba7df7459b095cbd8811344b6d8", null ],
       [ "getTextureSource", "class_ogre_1_1_compositor_node_def.html#a0b832d936fde223d0e19076097e95054", null ],
       [ "getTextureSource", "class_ogre_1_1_compositor_node_def.html#afb36d1872d6b36cd67575740cc115087", null ],
       [ "mapOutputBufferChannel", "class_ogre_1_1_compositor_node_def.html#afc0e6772dfb0b5907acf048d128597fd", null ],
@@ -76,6 +77,7 @@ var group___effects =
       [ "analyzeBarriers", "class_ogre_1_1_compositor_pass.html#af0d628f807e0bcb2ef5c2782e6245ac3", null ],
       [ "execute", "class_ogre_1_1_compositor_pass.html#a2cc832fbb80b9685b4fedf874b46075c", null ],
       [ "getActualDimensions", "class_ogre_1_1_compositor_pass.html#ae40f4defcc8f4847f8b80c70992efc09", null ],
+      [ "getAnyTargetTexture", "class_ogre_1_1_compositor_pass.html#a8775025bcac9b4db48c7aec8ca0defed", null ],
       [ "getDefinition", "class_ogre_1_1_compositor_pass.html#a123ad972ffeab36c66f31c26a2b639e4", null ],
       [ "getParentNode", "class_ogre_1_1_compositor_pass.html#a1fcf0351919f3f8fa422dae558bbf64b", null ],
       [ "getRenderPassDesc", "class_ogre_1_1_compositor_pass.html#a792590a3c8a0fefc9c22fab8ec5bd66a", null ],
@@ -395,19 +397,29 @@ var group___effects =
       [ "mStartingSlot", "class_ogre_1_1_compositor_pass_uav_def.html#a4712fa57d68ae444860775563ae4eb0d", null ]
     ] ],
     [ "CompositorPassWarmUp", "class_ogre_1_1_compositor_pass_warm_up.html", [
-      [ "CompositorPassWarmUp", "class_ogre_1_1_compositor_pass_warm_up.html#ac9e9d7e8691265820c9a0d6d51a4c6ff", null ],
-      [ "~CompositorPassWarmUp", "class_ogre_1_1_compositor_pass_warm_up.html#a45407af4811ad0b454d21390a6367a59", null ],
-      [ "execute", "class_ogre_1_1_compositor_pass_warm_up.html#ab7961e4d92c46e58a11fe21daa8b344e", null ],
-      [ "getCamera", "class_ogre_1_1_compositor_pass_warm_up.html#a40ccc92bdb6b7c9fe88e84d3d4d8d580", null ]
+      [ "CompositorPassWarmUp", "group___effects.html#gac9e9d7e8691265820c9a0d6d51a4c6ff", null ],
+      [ "~CompositorPassWarmUp", "group___effects.html#ga45407af4811ad0b454d21390a6367a59", null ],
+      [ "_setUpdateShadowNode", "group___effects.html#ga797f7d45872cff80b5169fa54a51e089", null ],
+      [ "execute", "group___effects.html#gab7961e4d92c46e58a11fe21daa8b344e", null ],
+      [ "getCamera", "group___effects.html#ga40ccc92bdb6b7c9fe88e84d3d4d8d580", null ],
+      [ "getDefinition", "group___effects.html#gaff0b1d0da355a6d8ff8d6c09a5fe15f8", null ],
+      [ "getShadowNode", "group___effects.html#gae197091fd2032ad5e8339d828c5bd1de", null ]
     ] ],
     [ "CompositorPassWarmUpDef", "class_ogre_1_1_compositor_pass_warm_up_def.html", [
+      [ "Mode", "class_ogre_1_1_compositor_pass_warm_up_def.html#a1b7d900a5e4e78d26e6be93186549639", [
+        [ "CollectAndTrigger", "class_ogre_1_1_compositor_pass_warm_up_def.html#a1b7d900a5e4e78d26e6be93186549639a4ab983b4074d9e7a156c48832698df0b", null ],
+        [ "Collect", "class_ogre_1_1_compositor_pass_warm_up_def.html#a1b7d900a5e4e78d26e6be93186549639a58275ed3fcd58c8d922abea40edf6b28", null ],
+        [ "Trigger", "class_ogre_1_1_compositor_pass_warm_up_def.html#a1b7d900a5e4e78d26e6be93186549639ab40c3221321b5f22abf284d9c438da6b", null ]
+      ] ],
       [ "CompositorPassWarmUpDef", "class_ogre_1_1_compositor_pass_warm_up_def.html#a8570a1e632c350925a8a5ce5575002d5", null ],
       [ "setVisibilityMask", "class_ogre_1_1_compositor_pass_warm_up_def.html#a0efa317b4f4e0817e0dfd75df3f6fd40", null ],
       [ "mCameraName", "class_ogre_1_1_compositor_pass_warm_up_def.html#acba28e795d39b4f7083a8691662c90c4", null ],
       [ "mEnableForwardPlus", "class_ogre_1_1_compositor_pass_warm_up_def.html#a8169c1b850b8da5f610837edebcbf933", null ],
       [ "mFirstRQ", "class_ogre_1_1_compositor_pass_warm_up_def.html#a12fb4733ea0b84c9d9fe41dcfb979eee", null ],
       [ "mLastRQ", "class_ogre_1_1_compositor_pass_warm_up_def.html#a7b8682cfd0b51576459e014729918b44", null ],
+      [ "mMode", "class_ogre_1_1_compositor_pass_warm_up_def.html#afdb6b903f728775de31c16f894ca5bcb", null ],
       [ "mShadowNode", "class_ogre_1_1_compositor_pass_warm_up_def.html#af061366dc684c30dcf2820171ba78ef8", null ],
+      [ "mShadowNodeRecalculation", "class_ogre_1_1_compositor_pass_warm_up_def.html#a9349bde3bbce6811a7bfd3ea544ceb5d", null ],
       [ "mVisibilityMask", "class_ogre_1_1_compositor_pass_warm_up_def.html#aa4e26b4eea1ee1fec43d31ecddec3c78", null ]
     ] ],
     [ "CompositorShadowNode", "class_ogre_1_1_compositor_shadow_node.html", [
@@ -605,7 +617,7 @@ var group___effects =
     ] ],
     [ "ParticleAffectorFactory", "class_ogre_1_1_particle_affector_factory.html", [
       [ "ParticleAffectorFactory", "class_ogre_1_1_particle_affector_factory.html#adefcc5659fbddb67e72ece498003500c", null ],
-      [ "~ParticleAffectorFactory", "class_ogre_1_1_particle_affector_factory.html#ae030407c3bc3e4cdc997f58f000278ea", null ],
+      [ "~ParticleAffectorFactory", "class_ogre_1_1_particle_affector_factory.html#ad4efbcd179939ceb86a09489c1170f9c", null ],
       [ "createAffector", "class_ogre_1_1_particle_affector_factory.html#a7989506f2f5452593f0a377c06d2f61f", null ],
       [ "destroyAffector", "class_ogre_1_1_particle_affector_factory.html#a073f267f4efff156cac2d0a2ef40f7dd", null ],
       [ "getName", "class_ogre_1_1_particle_affector_factory.html#a6315b2c094791ee6c6cdddc9c435cdec", null ]
@@ -640,7 +652,7 @@ var group___effects =
       [ "getRepeatDelay", "class_ogre_1_1_particle_emitter.html#aea1a8b6daaed8e525510be22fcaa333f", null ],
       [ "getStartTime", "class_ogre_1_1_particle_emitter.html#ae57fb988a912fd8b81291d83259988de", null ],
       [ "getTimeToLive", "class_ogre_1_1_particle_emitter.html#aae556108f4dcdda4fa73bd4969549bad", null ],
-      [ "getType", "class_ogre_1_1_particle_emitter.html#a28f5bce7debd978cf6a675f1706d7445", null ],
+      [ "getType", "class_ogre_1_1_particle_emitter.html#a3d382cb40b0390d65a852a08bbf237e3", null ],
       [ "getUp", "class_ogre_1_1_particle_emitter.html#aa7b39cbcb1006b1ec78a613165ccf57b", null ],
       [ "isEmitted", "class_ogre_1_1_particle_emitter.html#af12947b9fbc92565fd63b733d106b88e", null ],
       [ "setAngle", "class_ogre_1_1_particle_emitter.html#aeb086f851624a470e1b5592b81418d39", null ],
@@ -677,7 +689,7 @@ var group___effects =
     ] ],
     [ "ParticleEmitterFactory", "class_ogre_1_1_particle_emitter_factory.html", [
       [ "ParticleEmitterFactory", "class_ogre_1_1_particle_emitter_factory.html#ae7d84a60ac62a0ee941b690cb6c13ea1", null ],
-      [ "~ParticleEmitterFactory", "class_ogre_1_1_particle_emitter_factory.html#ae60c102ff4c406309b4fd0b03af61f48", null ],
+      [ "~ParticleEmitterFactory", "class_ogre_1_1_particle_emitter_factory.html#a7a630190371c90cce260d5bc078d0db4", null ],
       [ "createEmitter", "class_ogre_1_1_particle_emitter_factory.html#ad724bb97fa00667c2bc6056631991f82", null ],
       [ "destroyEmitter", "class_ogre_1_1_particle_emitter_factory.html#adc0b5ab2657292efbdb4bc6e6e6a2462", null ],
       [ "getName", "class_ogre_1_1_particle_emitter_factory.html#a81999da1779cbe5e0ff478f97d021fe2", null ]
@@ -732,7 +744,7 @@ var group___effects =
         [ "doGet", "class_ogre_1_1_particle_system_1_1_cmd_width.html#a5a94c19d2b14503435794c794feb28f2", null ],
         [ "doSet", "class_ogre_1_1_particle_system_1_1_cmd_width.html#a1164c5a67d3e9fbbc11f1ded4615af13", null ]
       ] ],
-      [ "ParticleSystem", "class_ogre_1_1_particle_system.html#ad5f1a1ab4549fcf9784bed724e5b4eb8", null ],
+      [ "ParticleSystem", "class_ogre_1_1_particle_system.html#a524116911564518fd2adeb65a6d1355f", null ],
       [ "~ParticleSystem", "class_ogre_1_1_particle_system.html#a3fd2f05bcee71b0e5b67152786e85bd8", null ],
       [ "_getIterator", "class_ogre_1_1_particle_system.html#a90bc64bd726bfc096c8a3c4d867777e9", null ],
       [ "_notifyAttached", "class_ogre_1_1_particle_system.html#a4368133a10063f002ee73f7b74c4c831", null ],
@@ -795,7 +807,7 @@ var group___effects =
       [ "setMaterialName", "class_ogre_1_1_particle_system.html#a4495534dfee31210a3ab22336d8f881e", null ],
       [ "setNonVisibleUpdateTimeout", "class_ogre_1_1_particle_system.html#acbba685176e0d844d8aa82472406595c", null ],
       [ "setParticleEmitterRootNode", "class_ogre_1_1_particle_system.html#a750fd44ce67ba960a9dc9bfb4e3d3524", null ],
-      [ "setParticleQuota", "class_ogre_1_1_particle_system.html#aa0e2cb40912f330b101b373c84ae1f83", null ],
+      [ "setParticleQuota", "class_ogre_1_1_particle_system.html#afeaaebbee7503f418134e899d0ae227d", null ],
       [ "setRenderer", "class_ogre_1_1_particle_system.html#a3aa26ab67c0ef0c38512f22f3a9c089f", null ],
       [ "setRenderQueueGroup", "class_ogre_1_1_particle_system.html#a22cc682d26dc6a3502632829323464d8", null ],
       [ "setRenderQueueSubGroup", "class_ogre_1_1_particle_system.html#a59ee8a596d0ba5ca8d333aebc3a971a7", null ],
@@ -983,6 +995,7 @@ var group___effects =
         [ "widthFactor", "class_ogre_1_1_texture_definition_base_1_1_texture_definition.html#a68ff24f9119f102ec866b6a91ae43d22", null ]
       ] ],
       [ "BufferDefinitionVec", "class_ogre_1_1_texture_definition_base.html#a7c2e6e1337065e18f6bc0abe8cd6428a", null ],
+      [ "NameToChannelMap", "class_ogre_1_1_texture_definition_base.html#abfede534f6fd89bc49484338576ed45c", null ],
       [ "PixelFormatGpuVec", "class_ogre_1_1_texture_definition_base.html#ae3960c5889208ca2c38c96796d403a52", null ],
       [ "TextureDefinitionVec", "class_ogre_1_1_texture_definition_base.html#aef33c6f04104697fc6ffc789c1f0f2f5", null ],
       [ "TextureSource", "class_ogre_1_1_texture_definition_base.html#ae70fe8c6c0e24395c1f94647c04fb079", [
@@ -992,6 +1005,8 @@ var group___effects =
         [ "NUM_TEXTURES_SOURCES", "class_ogre_1_1_texture_definition_base.html#ae70fe8c6c0e24395c1f94647c04fb079a294f4db86ffc1938eb1fd64b4c90a15a", null ]
       ] ],
       [ "TextureDefinitionBase", "class_ogre_1_1_texture_definition_base.html#a62849c288ce310d458a72621f58dd739", null ],
+      [ "_addTextureDefinition", "class_ogre_1_1_texture_definition_base.html#abca1966c2378e0b15cc2f8fdd92650e0", null ],
+      [ "_addTextureSourceName", "class_ogre_1_1_texture_definition_base.html#a11a7653b792a2911f384a6747073f96e", null ],
       [ "addBufferDefinition", "class_ogre_1_1_texture_definition_base.html#a0ea411a6f2944383e0c023ce79847dc3", null ],
       [ "addBufferInput", "class_ogre_1_1_texture_definition_base.html#ac5068bdfeb8b358179d1039692b4bc80", null ],
       [ "addRenderTextureView", "class_ogre_1_1_texture_definition_base.html#a2f407df3a3024b3d37ca902f8b9c3eb6", null ],
@@ -1001,6 +1016,7 @@ var group___effects =
       [ "createBuffers", "class_ogre_1_1_texture_definition_base.html#ac9ed18fbde6ac2dbf557bc38afd2fff3", null ],
       [ "createTexture", "class_ogre_1_1_texture_definition_base.html#aaf3902b6622e554b6f618cf26b57e3b0", null ],
       [ "createTextures", "class_ogre_1_1_texture_definition_base.html#a3dd5a18207b6fca4f39c679c1c82ff77", null ],
+      [ "decodeTexSource", "class_ogre_1_1_texture_definition_base.html#a7a97c936e9d7566dd2ba9499f8c012fe", null ],
       [ "destroyBuffers", "class_ogre_1_1_texture_definition_base.html#a491f3ccf401762343436ee19f13632a3", null ],
       [ "destroyTextures", "class_ogre_1_1_texture_definition_base.html#ac1d4d17aeeacb92b400d2ff31c6cdea0", null ],
       [ "getLocalBufferDefinitions", "class_ogre_1_1_texture_definition_base.html#aff0d00ae27c2b95faf9248a3c5558d18", null ],
@@ -1305,6 +1321,9 @@ var group___effects =
       [ "getType", "class_ogre_1_1v1_1_1_ribbon_trail_factory.html#ac4be41ed1a6ee779165ab0dd4533a756", null ],
       [ "FACTORY_TYPE_NAME", "class_ogre_1_1v1_1_1_ribbon_trail_factory.html#a36d3e7861311bd49bc36f7e7c62eccd1", null ]
     ] ],
+    [ "WarmUpHelper", "class_ogre_1_1_warm_up_helper.html", [
+      [ "createFrom", "group___effects.html#ga58ef88b78a3f0af026fb54e93c9ac75e", null ]
+    ] ],
     [ "ChannelMappings", "group___effects.html#ga45abfb45f742c20d043c18135a50aeeb", null ],
     [ "CompositorChannel", "group___effects.html#gaa7e65ad2c6fa1f6c6cf60a581fd3cbf9", null ],
     [ "CompositorChannelVec", "group___effects.html#ga1b4b8ae78da8288aeb191b819c0d72d3", null ],
@@ -1367,5 +1386,13 @@ var group___effects =
       [ "SHADOW_NODE_FIRST_ONLY", "group___effects.html#gga11f3abbd0f35645ab06412852cc3ab92afc436210c9eb7a356688d01666a7b6c3", null ],
       [ "SHADOW_NODE_CASTER_PASS", "group___effects.html#gga11f3abbd0f35645ab06412852cc3ab92a05f415db9bb05cfdb02ca1f454437e80", null ]
     ] ],
+    [ "CompositorPassWarmUp", "group___effects.html#gac9e9d7e8691265820c9a0d6d51a4c6ff", null ],
+    [ "~CompositorPassWarmUp", "group___effects.html#ga45407af4811ad0b454d21390a6367a59", null ],
+    [ "_setUpdateShadowNode", "group___effects.html#ga797f7d45872cff80b5169fa54a51e089", null ],
+    [ "createFrom", "group___effects.html#ga58ef88b78a3f0af026fb54e93c9ac75e", null ],
+    [ "execute", "group___effects.html#gab7961e4d92c46e58a11fe21daa8b344e", null ],
+    [ "getCamera", "group___effects.html#ga40ccc92bdb6b7c9fe88e84d3d4d8d580", null ],
+    [ "getDefinition", "group___effects.html#gaff0b1d0da355a6d8ff8d6c09a5fe15f8", null ],
+    [ "getShadowNode", "group___effects.html#gae197091fd2032ad5e8339d828c5bd1de", null ],
     [ "CompositorPassTypeEnumNames", "group___effects.html#ga88c007cd7c351ae388b1a7dba5b652fe", null ]
 ];
