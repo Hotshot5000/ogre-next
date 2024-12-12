@@ -185,7 +185,7 @@ kernel void main_metal
     
         // The rays start at the camera position.
         float4 normalInWorldSpace = in->invViewMat * float4( fNormal.xyz, 1.0f );
-        shadowRay.origin = rayOrigin.xyz;//offset_ray( rayOrigin.xyz, normalInWorldSpace.xyz );//rayOrigin;//in->cameraPos.xyz;
+        shadowRay.origin = offset_ray( rayOrigin.xyz, normalInWorldSpace.xyz );//rayOrigin;//in->cameraPos.xyz;
 
         // Map normalized pixel coordinates into the camera's coordinate system.
 //        float4 invProjPos = ( in->invProjectionMat * float4( uv.x, uv.y, -1, 1 ) );
