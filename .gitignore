@@ -29,3 +29,5 @@ AndroidDependencies/
 Build/
 EmscriptenDependencies
 EmscriptenBuild
+/build_mac
+/build_mac_3_0
