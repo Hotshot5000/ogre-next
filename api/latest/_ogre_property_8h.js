@@ -1,7 +1,7 @@
 var _ogre_property_8h =
 [
-    [ "PropertyDefMap", "_ogre_property_8h.html#gaa2af9dd0402adef0e54243e3ee3dc86e", null ],
-    [ "PropertyValueMap", "_ogre_property_8h.html#gac473fdb476888c7a1a0a4a857948cc5c", null ],
+    [ "PropertyDefMap", "_ogre_property_8h.html#ga9593f2591ec9da54c1c19c65db39a068", null ],
+    [ "PropertyValueMap", "_ogre_property_8h.html#gab85fed93c3a16a944fd7750b9ad5da38", null ],
     [ "PropertyType", "_ogre_property_8h.html#ga0883a5af9197151407965df0bacc4f3a", [
       [ "PROP_SHORT", "_ogre_property_8h.html#gga0883a5af9197151407965df0bacc4f3aa19d90ad1680589279aafec448c4e75d3", null ],
       [ "PROP_UNSIGNED_SHORT", "_ogre_property_8h.html#gga0883a5af9197151407965df0bacc4f3aa8807d302197c648340522a66196f46f1", null ],
