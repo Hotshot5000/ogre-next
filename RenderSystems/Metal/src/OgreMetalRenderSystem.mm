@@ -3098,7 +3098,7 @@ namespace Ogre
             geometryDescriptor.vertexBuffer = vertexPositionBuffer;
             geometryDescriptor.vertexBufferOffset = 0;
             geometryDescriptor.vertexStride = 0;//sizeof(float) * 3;
-            geometryDescriptor.vertexFormat = MTLAttributeFormatFloat3;
+//            geometryDescriptor.vertexFormat = MTLAttributeFormatFloat3;
             geometryDescriptor.triangleCount = numTriangles;
             geometryDescriptor.indexType = indexBuffer->getIndexType() == IT_16BIT ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
             geometryDescriptor.indexBufferOffset = indexBufferOffset;

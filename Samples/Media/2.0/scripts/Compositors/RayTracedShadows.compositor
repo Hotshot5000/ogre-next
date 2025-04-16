@@ -91,7 +91,7 @@ compositor_node RayTracedShadowsRenderingNode
                 depth     dont_care
                 stencil   dont_care
             }
-            overlays    on
+            //overlays    on
             //shadows        RayTracedShadowNode
 
             profiling_id "Main Render"
@@ -109,6 +109,15 @@ compositor_node RayTracedShadowsRenderingNode
             material RayTracedShadows/Add
             input 0 shadowTexture
             input 1 renderedScene
+        }
+        pass render_scene
+        {
+            lod_update_list        false
+
+            //Render Overlays
+            overlays    on
+            rq_first    254
+            rq_last        255
         }
         
     }

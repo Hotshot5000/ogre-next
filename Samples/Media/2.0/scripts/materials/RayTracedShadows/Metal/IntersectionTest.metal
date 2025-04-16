@@ -249,10 +249,13 @@ kernel void main_metal
         
         // Shadow rays check only whether there is an object between the intersection point
         // and the light source. Tell Metal to return after finding any intersection.
-        i.accept_any_intersection( true );
+//        i.accept_any_intersection( true );
     
-        i.assume_geometry_type(geometry_type::triangle);
-        i.force_opacity(forced_opacity::opaque);
+//        i.assume_geometry_type(geometry_type::triangle);
+//        i.force_opacity(forced_opacity::opaque);
+//        i.set_triangle_front_facing_winding(winding::counterclockwise);
+//        i.set_triangle_cull_mode(triangle_cull_mode::back);
+//        i.set_geometry_cull_mode(geometry_cull_mode::triangle);
     
         typename intersector<triangle_data, instancing>::result_type intersection;
         
@@ -291,17 +294,18 @@ kernel void main_metal
                 ray.origin = worldSpaceIntersectionPoint;
 
                 // Map normalized pixel coordinates into the camera's coordinate system.
-                ray.direction = normalize( float3( 0.0f, 1.0f, 0.0f ) );
+                ray.direction = normalize( float3( lights[0].position.xyz ) );
                 ray.min_distance = 0.001;
                 ray.max_distance = INFINITY;
+                i.accept_any_intersection( true );
                 intersection = i.intersect( ray, accelerationStructure, RAY_MASK_SHADOW );
                 if( intersection.type == intersection_type::triangle )
                 {
-                    shadowTexture.write( float4( 1.0f, 1.0f, 1.0f, 1.0f ), gl_GlobalInvocationID.xy );
+                    shadowTexture.write( float4( 0.5f, 0.5f, 0.5f, 1.0f ), gl_GlobalInvocationID.xy );
                 }
                 else
                 {
-                    shadowTexture.write( float4( 0.0f, 1.0f, 0.0f, 1.0f ), gl_GlobalInvocationID.xy );
+                    shadowTexture.write( float4( 1.0f, 1.0f, 1.0f, 1.0f ), gl_GlobalInvocationID.xy );
                 }
                 /*float4 ndc = in->invViewMat * float4( worldSpaceIntersectionPoint, 1.0f );
                 ndc.xyz /= ndc.w;
@@ -322,7 +326,7 @@ kernel void main_metal
             }
             else
             {
-                shadowTexture.write( float4( 1.0f, 0.0f, 0.0f, 1.0f ), gl_GlobalInvocationID.xy );
+                shadowTexture.write( float4( 0.2f, 0.4f, 0.6f, 1.0f ), gl_GlobalInvocationID.xy );
             }
         //}
     //}

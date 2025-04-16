@@ -17,11 +17,12 @@ fragment float4 main_metal
 {
     float4 finalColor;
     float4 shadow = shadowTexture.sample( samplerState0, inPs.uv0 );
-    return shadow;
+//    return shadow;
 //    if( shadow.y < 1.0 )
-//        finalColor = renderedScene.sample( samplerState1, inPs.uv0 );
+        finalColor = renderedScene.sample( samplerState1, inPs.uv0 );
+    finalColor *= shadow;
 //    else
 //        finalColor = float4( 0, 0, 0, 1 );
-//
-//	return finalColor;
+
+	return finalColor;
 }

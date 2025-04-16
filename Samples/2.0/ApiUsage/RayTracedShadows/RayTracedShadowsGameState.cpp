@@ -280,7 +280,7 @@ namespace Demo
         lightNode->attachObject( light );
         light->setPowerScale( 1.0f );
         light->setType( Ogre::Light::LT_DIRECTIONAL );
-        light->setDirection( Ogre::Vector3( -0, -1, -0 ).normalisedCopy() );
+        light->setDirection( Ogre::Vector3( -1, -1, 1 ).normalisedCopy() );
 
         mLightNodes[0] = lightNode;
 
