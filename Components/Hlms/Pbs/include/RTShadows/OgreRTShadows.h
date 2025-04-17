@@ -73,7 +73,7 @@ namespace Ogre
         
     public:
         RTShadows( TextureGpu *renderWindow, RenderSystem *renderSystem, HlmsManager *hlmsManager, Camera *camera,
-                  CompositorWorkspace *workspace);
+                  CompositorWorkspace *workspace );
         virtual ~RTShadows();
         /** Adds all items in SceneManager that match visibilityFlags
         @param sceneManager

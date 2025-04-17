@@ -171,7 +171,7 @@ namespace Demo
             // Set the new samplerblock. The Hlms system will
             // automatically create the API block if necessary
             datablock->setSamplerblock( Ogre::PBSM_ROUGHNESS, samplerblock );
-            meshCache->addMeshToCache(planeMesh, sceneManager, renderSystem, hlmsManager, item);
+            meshCache->addMeshToCache(planeMesh, item);
         }
 
         for( int i = 0; i < 4; ++i )
@@ -208,7 +208,7 @@ namespace Demo
 
                 mSceneNode[idx]->attachObject( item );
                 
-                meshCache->addMeshToCache(item->getMesh(), sceneManager, renderSystem, hlmsManager, item);
+                meshCache->addMeshToCache(item->getMesh(), item);
             }
         }
         

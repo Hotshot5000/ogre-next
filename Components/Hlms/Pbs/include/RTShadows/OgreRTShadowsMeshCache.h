@@ -74,9 +74,7 @@ namespace Ogre
         @returns
             Entry to VoxelizedMesh in cache
         */
-        const ShadowsCachedMesh &addMeshToCache( const MeshPtr &mesh, SceneManager *sceneManager,
-                                             RenderSystem *renderSystem, HlmsManager *hlmsManager,
-                                             Item *refItem );
+        const ShadowsCachedMesh &addMeshToCache( const MeshPtr &mesh, Item *refItem );
         
         void updateAS();
     };

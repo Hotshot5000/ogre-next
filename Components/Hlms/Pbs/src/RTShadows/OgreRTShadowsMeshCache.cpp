@@ -52,8 +52,7 @@ namespace Ogre
     }
     //-------------------------------------------------------------------------
     const RTShadowsMeshCache::ShadowsCachedMesh &RTShadowsMeshCache::addMeshToCache(
-        const MeshPtr &mesh, SceneManager *sceneManager, RenderSystem *renderSystem,
-        HlmsManager *hlmsManager, Item *refItem )
+        const MeshPtr &mesh, Item *refItem )
     {
         const String &meshName = mesh->getName();
         MeshCacheMap::iterator itor = mMeshCaches.find( meshName );
@@ -88,9 +87,9 @@ namespace Ogre
                 
                 meshVaos.push_back( vao );
 
-                size_t numVertices = vao->getBaseVertexBuffer()->getNumElements();
+//                size_t numVertices = vao->getBaseVertexBuffer()->getNumElements();
 
-                IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
+//                IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
                 
                 
             }
