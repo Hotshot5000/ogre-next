@@ -115,6 +115,29 @@ THE SOFTWARE.
 #include <fstream>
 #include <sstream>
 
+#if ( defined( OGRE_STATIC_LIB ) )
+#    if ( OGRE_PLATFORM == OGRE_PLATFORM_ANDROID )
+#        include "RenderSystems/GLES3/include/OgreGLES3RenderSystem.h"
+#    elif ( OGRE_PLATFORM == OGRE_PLATFORM_WIN32 )
+// #include "RenderSystems/GL3Plus/include/OgreGL3PlusRenderSystem.h"
+// #        include "RenderSystems/Direct3D11/include/OgreD3D11RenderSystem.h"
+#        include "RenderSystems/Vulkan/include/OgreVulkanRenderSystem.h"
+
+#        ifdef USE_PCZ
+#            include "PlugIns/PCZSceneManager/include/OgrePCZPlugin.h"
+#        endif
+
+#    elif OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+// #include "../../../RenderSystems/Metal/include/OgreMetalRenderSystem.h"
+#        include "../../../RenderSystems/Metal/include/OgreMetalPlugin.h"
+#    endif
+#endif
+
+#if ( OGRE_PLATFORM == OGRE_PLATFORM_APPLE ) && !( OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS )
+// #include "../../../RenderSystems/Metal/include/OgreMetalRenderSystem.h"
+#    include "../../../RenderSystems/Metal/include/OgreMetalPlugin.h"
+#endif
+
 namespace Ogre
 {
     //-----------------------------------------------------------------------
@@ -309,9 +332,48 @@ namespace Ogre
         mWireAabbFactory = OGRE_NEW WireAabbFactory();
         addMovableObjectFactory( mWireAabbFactory );
 
+        #if ( defined( OGRE_STATIC_LIB ) )
+#    if ( OGRE_PLATFORM == OGRE_PLATFORM_ANDROID )
+        GLES3RenderSystem *renderSystem = OGRE_NEW GLES3RenderSystem();
+#    elif ( OGRE_PLATFORM == OGRE_PLATFORM_WIN32 )
+
+#        ifdef USE_PCZ
+        PCZPlugin *pcz = OGRE_NEW PCZPlugin();
+        installPlugin( pcz );
+#        endif
+
+        //		GL3PlusRenderSystem *renderSystem = OGRE_NEW GL3PlusRenderSystem();
+        NameValuePairList options;
+        VulkanRenderSystem *renderSystem = OGRE_NEW VulkanRenderSystem( &options );
+        Root::getSingleton().addRenderSystem( renderSystem );
+        Root::getSingleton().setRenderSystem( renderSystem );
+#    elif OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+        {
+            //            Ogre::RenderSystem *renderSystem = OGRE_NEW MetalRenderSystem();
+
+            //            Root::getSingleton().addRenderSystem(renderSystem);
+            //            Ogre::RenderSystem *renderSystem = getRenderSystemByName( "Metal Rendering
+            //            Subsystem" ); setRenderSystem( renderSystem );
+        }
+#    endif
+
+        //        Root::getSingleton().addRenderSystem( renderSystem );
+        //        Root::getSingleton().setRenderSystem( renderSystem );
+
+#else
         // Load plugins
         if( !pluginFileName.empty() )
             loadPlugins( pluginFileName );
+#endif
+        //        if (!pluginFileName.empty())
+        //            loadPlugins(pluginFileName);
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+        MetalPlugin *metalPlugin = OGRE_NEW MetalPlugin();
+        installPlugin( metalPlugin );
+        Ogre::RenderSystem *renderSystem = getRenderSystemByName( "Metal Rendering Subsystem" );
+        setRenderSystem( renderSystem );
+#endif
 
         LogManager::getSingleton().logMessage( "*-*-* OGRE Initialising" );
         msg = "*-*-* Version " + mVersion;
