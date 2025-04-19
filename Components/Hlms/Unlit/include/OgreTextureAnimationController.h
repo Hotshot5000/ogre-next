@@ -9,6 +9,15 @@
 
 namespace Ogre
 {
+    class TextureAnimationControllerValue;
+
+    class EndFrameListener
+    {
+    public:
+        virtual void animationReachedLastFrame( TextureAnimationControllerValue &controllerValue ) = 0;
+        virtual ~EndFrameListener() {}
+    };
+
     /** Predefined controller value for getting / setting a texture coordinate
         modifications (scales and translates).
     @remarks
@@ -37,6 +46,9 @@ namespace Ogre
         //---- Tiled Texture
         uint32 mNumFramesHorizontal, mNumFramesVertical;
         uint16 mLastFrame, mCurrentVerticalFrame;
+
+        EndFrameListener *mEndFrameListener;
+        bool              mEndFrameReached;
 
     public:
         /** Constructor.
@@ -80,6 +92,13 @@ namespace Ogre
             number of vertical tiles.
         */
         void tiledAnimation( Ogre::uint16 numFramesHorizontal, Ogre::uint16 numFramesVertical );
+
+        void addEndFrameListener( EndFrameListener *end_frame_listener )
+        {
+            mEndFrameListener = end_frame_listener;
+        }
+
+        uint16 getLastFrame() const { return mLastFrame; }
 
     private:
         void recalcTextureMatrix() const;

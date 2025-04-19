@@ -83,6 +83,9 @@ namespace Ogre
         void destroy() override;
 
         void getCustomAttribute( IdString name, void *pData );
+
+        HWND getWindowHandle() const { return mHwnd; }
+        HDC getHDC() const { return mHDC; }
     };
 
 }  // namespace Ogre

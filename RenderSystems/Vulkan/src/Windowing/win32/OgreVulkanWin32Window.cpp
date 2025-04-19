@@ -453,6 +453,8 @@ namespace Ogre
                                 static_cast<int>( mRequestedWidth ),
                                 static_cast<int>( mRequestedHeight ), parentHwnd, 0, hInstance, this );
 
+            mHDC = GetDC( mHwnd );
+
             WindowEventUtilities::_addRenderWindow( this );
 
             LogManager::getSingleton().stream()

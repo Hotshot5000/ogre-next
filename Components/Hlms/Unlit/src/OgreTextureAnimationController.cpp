@@ -29,7 +29,9 @@ namespace Ogre
         mNumFramesHorizontal( 0 ),
         mNumFramesVertical( 0 ),
         mLastFrame( 0 ),
-        mCurrentVerticalFrame( 0 )
+        mCurrentVerticalFrame( 0 ),
+        mEndFrameListener( 0 ),
+        mEndFrameReached( false )
     {
     }
     //-----------------------------------------------------------------------------------
@@ -57,14 +59,29 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void TextureAnimationControllerValue::setValue( Real value )
     {
+        if( mEndFrameReached )
+        {
+            return;
+        }
         if( mNumFramesHorizontal > 0 )  // tex tile animation
         {
-            if( value < 0.0f )
-                value = 1.0f + value;
+            int dt = (int)( value * mNumFramesHorizontal );
+            //            std::cout << "value: " << value << " dt: " << dt << std::endl;
+
+            // WARNING! With the current code we don't actually get to render the last frame of the
+            // animation. int cast truncates.
+            if( dt >= mNumFramesHorizontal - 1 )
+            {
+                if( mEndFrameListener )
+                {
+                    mEndFrameListener->animationReachedLastFrame( *this );
+                    mEndFrameReached = true;
+                }
+            }
 
             // The current animation frame.
-            uint32 currentFrame =
-                static_cast<uint32>( value * Real( mNumFramesHorizontal ) ) % mNumFramesHorizontal;
+            unsigned int currentFrame = ( dt % mNumFramesHorizontal );
+            //            std::cout << "currentFrame: " << currentFrame << std::endl;
 
             if( mLastFrame == 0 && currentFrame == ( mNumFramesHorizontal - 1u ) )
             {
@@ -77,10 +94,32 @@ namespace Ogre
             mUMod = ( 1 / (Real)mNumFramesHorizontal ) * (Real)currentFrame;
             mVMod = ( 1 / (Real)mNumFramesVertical ) * (Real)mCurrentVerticalFrame;
 
-            mLastFrame = static_cast<uint16>( currentFrame );
+            mLastFrame = currentFrame;
 
-            mUScale = (Real)mNumFramesHorizontal;
-            mVScale = (Real)mNumFramesVertical;
+            mUScale = mNumFramesHorizontal;
+            mVScale = mNumFramesVertical;
+            // if( value < 0.0f )
+            //     value = 1.0f + value;
+            //
+            // // The current animation frame.
+            // uint32 currentFrame =
+            //     static_cast<uint32>( value * Real( mNumFramesHorizontal ) ) % mNumFramesHorizontal;
+            //
+            // if( mLastFrame == 0 && currentFrame == ( mNumFramesHorizontal - 1u ) )
+            // {
+            //     if( mCurrentVerticalFrame == ( mNumFramesVertical - 1u ) )
+            //         mCurrentVerticalFrame = 0;
+            //     else
+            //         mCurrentVerticalFrame++;
+            // }
+            //
+            // mUMod = ( 1 / (Real)mNumFramesHorizontal ) * (Real)currentFrame;
+            // mVMod = ( 1 / (Real)mNumFramesVertical ) * (Real)mCurrentVerticalFrame;
+            //
+            // mLastFrame = static_cast<uint16>( currentFrame );
+            //
+            // mUScale = (Real)mNumFramesHorizontal;
+            // mVScale = (Real)mNumFramesVertical;
         }
         else
         {
