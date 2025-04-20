@@ -45,6 +45,10 @@ static XcbWindowMap gXcbWindowToOgre;
 #    include "OSX/macUtils.h"
 #endif
 
+#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
+#    include "JniCommon.h"
+#endif
+
 // using namespace Ogre;
 
 Ogre::WindowEventUtilities::WindowEventListeners Ogre::WindowEventUtilities::_msListeners;
@@ -209,6 +213,15 @@ namespace Ogre
         Window *win = (Window *)GetWindowLongPtr( hWnd, GWLP_USERDATA );
         if( !win )
             return DefWindowProc( hWnd, uMsg, wParam, lParam );
+
+        JNIEnv *env = getThreadEnv();
+        if( env != NULL && !env->ExceptionOccurred() && windowsDisplayClass && javaWindowProc )
+        {
+            return env->CallStaticLongMethod( windowsDisplayClass, javaWindowProc, (jlong)(intptr_t)hWnd,
+                                              (jint)uMsg, (jlong)wParam, (jlong)lParam,
+                                              (jlong)GetMessageTime() );
+        }
+		
 
         // LogManager* log = LogManager::getSingletonPtr();
         // Iterator of all listeners registered to this Window
