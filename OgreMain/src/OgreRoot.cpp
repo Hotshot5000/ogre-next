@@ -120,7 +120,7 @@ THE SOFTWARE.
 #        include "RenderSystems/GLES3/include/OgreGLES3RenderSystem.h"
 #    elif ( OGRE_PLATFORM == OGRE_PLATFORM_WIN32 )
 // #include "RenderSystems/GL3Plus/include/OgreGL3PlusRenderSystem.h"
-// #        include "RenderSystems/Direct3D11/include/OgreD3D11RenderSystem.h"
+#        include "RenderSystems/Direct3D11/include/OgreD3D11RenderSystem.h"
 #        include "RenderSystems/Vulkan/include/OgreVulkanRenderSystem.h"
 
 #        ifdef USE_PCZ
@@ -345,6 +345,7 @@ namespace Ogre
         //		GL3PlusRenderSystem *renderSystem = OGRE_NEW GL3PlusRenderSystem();
         NameValuePairList options;
         VulkanRenderSystem *renderSystem = OGRE_NEW VulkanRenderSystem( &options );
+        // D3D11RenderSystem *renderSystem = OGRE_NEW D3D11RenderSystem();
         Root::getSingleton().addRenderSystem( renderSystem );
         Root::getSingleton().setRenderSystem( renderSystem );
 #    elif OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
