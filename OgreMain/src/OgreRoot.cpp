@@ -371,7 +371,8 @@ namespace Ogre
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
         MetalPlugin *metalPlugin = OGRE_NEW MetalPlugin();
-        installPlugin( metalPlugin );
+        NameValuePairList options;
+        installPlugin( metalPlugin, &options );
         Ogre::RenderSystem *renderSystem = getRenderSystemByName( "Metal Rendering Subsystem" );
         setRenderSystem( renderSystem );
 #endif

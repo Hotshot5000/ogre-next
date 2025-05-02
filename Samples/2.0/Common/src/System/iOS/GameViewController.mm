@@ -39,7 +39,12 @@ THE SOFTWARE.
 
 #include "System/MainEntryPoints.h"
 
+#import "System/iOS/GameViewControllerIntf.h"
+#import "System/iOS/GameViewControllerCallbacks.h"
+
 using namespace Demo;
+
+UITextField* text = 0;
 
 @implementation GameViewController
 {
@@ -54,24 +59,94 @@ using namespace Demo;
     CFTimeInterval _startTime;
 }
 
+void* initializeViewController(void* uiWindowPtr)
+{
+    GameViewController* viewController = [[GameViewController alloc] init];
+    UIWindow *uiWindow = (__bridge UIWindow*) uiWindowPtr;
+    uiWindow.rootViewController = viewController;//making a view to root view
+    [uiWindow makeKeyAndVisible];
+    return (void*) CFBridgingRetain(viewController);
+}
+
+GameViewControllerCallbacks *gameViewControllerCallbacks = 0;
+
+void initializeGameViewControllerCallbacks(GameViewControllerCallbacks *callback)
+{
+    gameViewControllerCallbacks = callback;
+}
+
+void setView(void *renderWindow_, void *gameViewController_)
+{
+    //Connect the UIView created by Ogre to our UIViewController
+    Ogre::Window *renderWindow = (Ogre::Window *)renderWindow_;
+    GameViewController* viewController = (__bridge GameViewController *)gameViewController_;
+    void *uiViewPtr = 0;
+    renderWindow->getCustomAttribute( "UIView", &uiViewPtr );
+    UIView *uiView = CFBridgingRelease( uiViewPtr );
+    viewController.view = uiView;
+}
+
+void pause(void *gameViewController_)
+{
+    GameViewController* viewController = (__bridge GameViewController *)gameViewController_;
+    [viewController viewWillDisappear:NO];
+}
+
+void resume(void *gameViewController_)
+{
+    GameViewController* viewController = (__bridge GameViewController *)gameViewController_;
+    [viewController viewWillAppear:NO];
+}
+
+void setOnscreenKeyboardVisible(bool visible, void *gameViewController_,
+                                void *textDelegate_)
+{
+    if (text == 0)
+    {
+        CGRect someRect = CGRectMake(0.0, 0.0, 100.0, 30.0);
+        text = [[UITextField alloc] initWithFrame:someRect];
+        [text setKeyboardType:UIKeyboardTypeDefault];
+        [text setReturnKeyType:UIReturnKeyDone];
+        [text setAutocapitalizationType:UITextAutocapitalizationTypeNone];
+        [text setAutocorrectionType:UITextAutocorrectionTypeNo];
+        [text setSpellCheckingType:UITextSpellCheckingTypeNo];
+        [text setHidden:TRUE];
+        [text setText:@"x"];
+        GameViewController* viewController = (__bridge GameViewController *)gameViewController_;
+        [viewController.view addSubview:text];
+    }
+    if (visible)
+    {
+        [text becomeFirstResponder];
+//        UITextFieldDelegate(__bridge UITextFieldDelegate*)textDelegate_;
+//        [text setDelegate:];
+        text.delegate = (__bridge id)textDelegate_;
+    }
+    else
+    {
+        [text resignFirstResponder];
+    }
+}
+
 - (void)dealloc {
-    [self shutdownOgre];
+    gameViewControllerCallbacks->dealloc();
+//    [self shutdownOgre];
 }
 
 - (void)shutdownOgre {
-    if( _graphicsGameState )
-    {
-        _graphicsSystem->destroyScene();
-        if( _logicSystem )
-        {
-            _logicSystem->destroyScene();
-            _logicSystem->deinitialize();
-        }
-        _graphicsSystem->deinitialize();
-    }
-
-    MainEntryPoints::destroySystems( _graphicsGameState, _graphicsSystem, _logicGameState,
-                                     _logicSystem );
+//    if( _graphicsGameState )
+//    {
+//        _graphicsSystem->destroyScene();
+//        if( _logicSystem )
+//        {
+//            _logicSystem->destroyScene();
+//            _logicSystem->deinitialize();
+//        }
+//        _graphicsSystem->deinitialize();
+//    }
+//
+//    MainEntryPoints::destroySystems( _graphicsGameState, _graphicsSystem, _logicGameState,
+//                                     _logicSystem );
     _graphicsGameState = 0;
     _graphicsSystem = 0;
     _logicGameState = 0;
@@ -80,36 +155,42 @@ using namespace Demo;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    
+    gameViewControllerCallbacks->viewDidLoad();
 
-    if( !_graphicsSystem )
-    {
-        MainEntryPoints::createSystems( &_graphicsGameState, &_graphicsSystem, &_logicGameState,
-                                        &_logicSystem );
-        _graphicsSystem->initialize( MainEntryPoints::getWindowTitle() );
-        if( _logicSystem )
-            _logicSystem->initialize();
-
-        _graphicsSystem->createScene01();
-        if( _logicSystem )
-            _logicSystem->createScene01();
-
-        _graphicsSystem->createScene02();
-        if( _logicSystem )
-            _logicSystem->createScene02();
-
-        _accumulator = MainEntryPoints::Frametime;
-    }
-
-    // Connect the UIView created by Ogre to our UIViewController
-    Ogre::Window *renderWindow = _graphicsSystem->getRenderWindow();
-    void *uiViewPtr = 0;
-    renderWindow->getCustomAttribute( "UIView", &uiViewPtr );
-    UIView *uiView = CFBridgingRelease( uiViewPtr );
-    self.view = uiView;
+//    if( !_graphicsSystem )
+//    {
+//        MainEntryPoints::createSystems( &_graphicsGameState, &_graphicsSystem, &_logicGameState,
+//                                        &_logicSystem );
+//        _graphicsSystem->initialize( MainEntryPoints::getWindowTitle() );
+//        if( _logicSystem )
+//            _logicSystem->initialize();
+//
+//        _graphicsSystem->createScene01();
+//        if( _logicSystem )
+//            _logicSystem->createScene01();
+//
+//        _graphicsSystem->createScene02();
+//        if( _logicSystem )
+//            _logicSystem->createScene02();
+//
+//        _accumulator = MainEntryPoints::Frametime;
+//    }
+//
+//    // Connect the UIView created by Ogre to our UIViewController
+//    Ogre::Window *renderWindow = _graphicsSystem->getRenderWindow();
+//    void *uiViewPtr = 0;
+//    renderWindow->getCustomAttribute( "UIView", &uiViewPtr );
+//    UIView *uiView = CFBridgingRelease( uiViewPtr );
+//    self.view = uiView;
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    
+    [self setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
+    
+    gameViewControllerCallbacks->viewWillAppear(animated);
 
     // Create the timer required by Metal. iOS will call us at fixed intervals.
     if( _timer )
@@ -137,38 +218,44 @@ using namespace Demo;
 }
 
 - (void)mainLoop {
-    CFTimeInterval endTime = CACurrentMediaTime();
-    _timeSinceLast = endTime - _startTime;
-    _timeSinceLast = std::min( 1.0, _timeSinceLast );  // Prevent from going haywire.
-    _startTime = endTime;
+    gameViewControllerCallbacks->mainLoop();
+//    CFTimeInterval endTime = CACurrentMediaTime();
+//    _timeSinceLast = endTime - _startTime;
+//    _timeSinceLast = std::min( 1.0, _timeSinceLast );  // Prevent from going haywire.
+//    _startTime = endTime;
+//
+//    while( _accumulator >= MainEntryPoints::Frametime && _logicSystem )
+//    {
+//        _logicSystem->beginFrameParallel();
+//        _logicSystem->update( static_cast<float>( MainEntryPoints::Frametime ) );
+//        _logicSystem->finishFrameParallel();
+//
+//        _logicSystem->finishFrame();
+//        _graphicsSystem->finishFrame();
+//
+//        _accumulator -= MainEntryPoints::Frametime;
+//    }
+//
+//    _graphicsSystem->beginFrameParallel();
+//    _graphicsSystem->update( _timeSinceLast );
+//    _graphicsSystem->finishFrameParallel();
+//    if( !_logicSystem )
+//        _graphicsSystem->finishFrame();
+//
+//    _accumulator += _timeSinceLast;
+}
 
-    while( _accumulator >= MainEntryPoints::Frametime && _logicSystem )
-    {
-        _logicSystem->beginFrameParallel();
-        _logicSystem->update( static_cast<float>( MainEntryPoints::Frametime ) );
-        _logicSystem->finishFrameParallel();
-
-        _logicSystem->finishFrame();
-        _graphicsSystem->finishFrame();
-
-        _accumulator -= MainEntryPoints::Frametime;
-    }
-
-    _graphicsSystem->beginFrameParallel();
-    _graphicsSystem->update( _timeSinceLast );
-    _graphicsSystem->finishFrameParallel();
-    if( !_logicSystem )
-        _graphicsSystem->finishFrame();
-
-    _accumulator += _timeSinceLast;
+-(UIRectEdge)preferredScreenEdgesDeferringSystemGestures
+{
+    return UIRectEdgeBottom;
 }
 
 @end
 
-int main( int argc, char *argv[] )
-{
-    @autoreleasepool
-    {
-        return UIApplicationMain( argc, argv, nil, NSStringFromClass( [AppDelegate class] ) );
-    }
-}
+//int main( int argc, char *argv[] )
+//{
+//    @autoreleasepool
+//    {
+//        return UIApplicationMain( argc, argv, nil, NSStringFromClass( [AppDelegate class] ) );
+//    }
+//}
