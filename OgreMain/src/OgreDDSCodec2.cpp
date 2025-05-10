@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include "OgrePixelFormatGpuUtils.h"
 #include "OgreRenderSystem.h"
 #include "OgreRoot.h"
+#include "macUtils.h"
 
 #include <fstream>
 
@@ -837,6 +838,8 @@ namespace Ogre
                 case PFG_BC4_SNORM:
                 case PFG_BC5_UNORM:
                 case PFG_BC5_SNORM:
+                case PFG_BC7_UNORM:
+                case PFG_BC7_UNORM_SRGB:
                     // full alpha present, formats vary only in encoding
                     imgData->format = PixelFormatGpuUtils::isSRgb( sourceFormat ) ? PFG_RGBA8_UNORM_SRGB
                                                                                   : PFG_RGBA8_UNORM;
@@ -858,6 +861,12 @@ namespace Ogre
             // just derive any other kind of format
             imgData->format = sourceFormat;
         }
+        
+        Ogre::String configFileName = iOSDocumentsDirectory() + "/format_exception.txt";
+        std::ofstream of( configFileName.c_str() );
+        of << "sourceFormat " << sourceFormat << '\n';
+        of << "imgData->format " << imgData->format << '\n';
+        of.close();
 
         const uint32 rowAlignment = 4u;
         imgData->box.bytesPerPixel = PixelFormatGpuUtils::getBytesPerPixel( imgData->format );

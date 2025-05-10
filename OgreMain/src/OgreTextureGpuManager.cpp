@@ -55,6 +55,7 @@ THE SOFTWARE.
 #endif
 #include "Threading/OgreThreads.h"
 #include "Vao/OgreVaoManager.h"
+#include "macUtils.h"
 
 #include <fstream>
 
@@ -2883,6 +2884,10 @@ namespace Ogre
                 {
                     // Log the exception
                     LogManager::getSingleton().logMessage( e.getFullDescription() );
+                    Ogre::String configFileName = iOSDocumentsDirectory() + "/" + loadRequest.name + "_exception";
+                    std::ofstream of( configFileName.c_str() );
+                    of << e.getFullDescription() << '\n';
+                    of.close();
                     // Tell the main thread this happened
                     ObjCmdBuffer::ExceptionThrown *exceptionCmd =
                         commandBuffer->addCommand<ObjCmdBuffer::ExceptionThrown>();
@@ -2893,6 +2898,10 @@ namespace Ogre
 
                 if( !data )
                 {
+                    Ogre::String configFileName = iOSDocumentsDirectory() + "/" + loadRequest.name;
+                    std::ofstream of( configFileName.c_str() );
+                    of << loadRequest.name << '\n';
+                    of.close();
                     PixelFormatGpu fallbackFormat = PFG_RGBA8_UNORM_SRGB;
 
                     // Filters will complain if they need to run but Image2::getAutoDelete
