@@ -30,6 +30,9 @@ THE SOFTWARE.
 
 #import <SpriteKit/SpriteKit.h>
 
+#import "MetalViewCallbacksIntf.h"
+#import "MetalViewCallbacks.hpp"
+
 @implementation OgreMetalView
 {
 }
@@ -93,20 +96,31 @@ THE SOFTWARE.
     _layerSizeDidUpdate = YES;
 }
 
-//- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
-//{
-//}
+MetalViewCallbacks* metalViewCallbacks = 0;
 
-//- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
-//{
-//}
+void setMetalViewCallbacks(MetalViewCallbacks* metalViewCallbacks_)
+{
+    metalViewCallbacks = metalViewCallbacks_;
+}
 
-//- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
-//{
-//}
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    metalViewCallbacks->touchesBegan((__bridge void*)touches);
+}
 
-//- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
-//{
-//}
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    metalViewCallbacks->touchesMoved((__bridge void*)touches);
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    metalViewCallbacks->touchesEnded((__bridge void*)touches);
+}
+
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    metalViewCallbacks->touchesCancelled((__bridge void*)touches);
+}
 
 @end
