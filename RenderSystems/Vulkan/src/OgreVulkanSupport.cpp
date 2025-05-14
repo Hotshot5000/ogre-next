@@ -211,7 +211,7 @@ namespace Ogre
                 deviceIdx = uint32( itDevice - mDevices.begin() );
         }
 
-        return deviceIdx;
+        return 2;
     }
     //-------------------------------------------------------------------------
     ConfigOptionMap &VulkanSupport::getConfigOptions( VulkanRenderSystem *renderSystem )
