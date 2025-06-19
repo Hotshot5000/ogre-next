@@ -161,6 +161,7 @@ namespace Ogre
         mVulkanProgramFactory2( 0 ),
         mVulkanProgramFactory3( 0 ),
         mVkInstance( 0 ),
+        mFirstUnflushedAutoParamsBuffer( 0 ),
         mAutoParamsBufferIdx( 0 ),
         mCurrentAutoParamsBufferPtr( 0 ),
         mCurrentAutoParamsBufferSpaceLeft( 0 ),
@@ -287,6 +288,18 @@ namespace Ogre
     {
         if( !mDevice )
             return;
+
+        for( ConstBufferPacked *constBuffer : mAutoParamsBuffer )
+        {
+            if( constBuffer->getMappingState() != MS_UNMAPPED )
+                constBuffer->unmap( UO_UNMAP_ALL );
+            mVaoManager->destroyConstBuffer( constBuffer );
+        }
+        mAutoParamsBuffer.clear();
+        mFirstUnflushedAutoParamsBuffer = 0u;
+        mAutoParamsBufferIdx = 0u;
+        mCurrentAutoParamsBufferPtr = 0;
+        mCurrentAutoParamsBufferSpaceLeft = 0;
 
         mDevice->stall();
 
@@ -608,11 +621,6 @@ namespace Ogre
                 rsc->setCapability( RSC_TEXTURE_COMPRESSION_ETC2 );
             }
 
-            vkGetPhysicalDeviceFormatProperties( mDevice->mPhysicalDevice,
-                                                 VulkanMappings::get( PFG_PVRTC_RGB2 ), &props );
-            if( props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT )
-                rsc->setCapability( RSC_TEXTURE_COMPRESSION_PVRTC );
-
             vkGetPhysicalDeviceFormatProperties(
                 mDevice->mPhysicalDevice, VulkanMappings::get( PFG_ASTC_RGBA_UNORM_4X4_LDR ), &props );
             if( props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT )
@@ -620,8 +628,9 @@ namespace Ogre
         }
 
         const VkPhysicalDeviceLimits &deviceLimits = mDevice->mDeviceProperties.limits;
-        rsc->setMaximumResolutions( deviceLimits.maxImageDimension2D, deviceLimits.maxImageDimension3D,
-                                    deviceLimits.maxImageDimensionCube );
+        rsc->setMaximumResolutions( std::min( deviceLimits.maxImageDimension2D, 16384u ),
+                                    std::min( deviceLimits.maxImageDimension3D, 4096u ),
+                                    std::min( deviceLimits.maxImageDimensionCube, 16384u ) );
         rsc->setMaxThreadsPerThreadgroupAxis( deviceLimits.maxComputeWorkGroupSize );
         rsc->setMaxThreadsPerThreadgroup( deviceLimits.maxComputeWorkGroupInvocations );
 
@@ -678,7 +687,31 @@ namespace Ogre
         rsc->setCapability( RSC_EXPLICIT_API );
         rsc->setMaxPointSize( 256 );
 
-        rsc->setMaximumResolutions( 16384, 4096, 16384 );
+        // check memory properties to determine, if we can use UMA and/or TBDR optimizations
+        const VkPhysicalDeviceMemoryProperties &memoryProperties = mDevice->mDeviceMemoryProperties;
+        if( mDevice->mDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ||
+            mDevice->mDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU )
+        {
+            for( uint32_t typeIndex = 0; typeIndex < memoryProperties.memoryTypeCount; ++typeIndex )
+            {
+                const VkMemoryType &memoryType = memoryProperties.memoryTypes[typeIndex];
+                if( ( memoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ) != 0 &&
+                    ( memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT ) != 0 &&
+                    ( memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ) != 0 )
+                {
+                    rsc->setCapability( RSC_UMA );
+                }
+
+                // VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT is a prerequisite for TBDR, and is probably
+                // a good heuristic that TBDR mode of buffers clearing is supported efficiently,
+                // i.e. RSC_IS_TILER.
+                if( ( memoryType.propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT ) != 0 )
+                {
+                    rsc->setCapability( RSC_IS_TILER );
+                    rsc->setCapability( RSC_TILER_CAN_CLEAR_STENCIL_REGION );
+                }
+            }
+        }
 
         rsc->setVertexProgramConstantFloatCount( 256u );
         rsc->setVertexProgramConstantIntCount( 256u );
@@ -704,7 +737,9 @@ namespace Ogre
         rsc->addShaderProfile( "glslvk" );
         rsc->addShaderProfile( "glsl" );
 
-        if( rsc->getVendor() == GPU_QUALCOMM )
+        // Turnip is the Mesa driver.
+        // These workarounds are for the proprietary driver.
+        if( rsc->getVendor() == GPU_QUALCOMM && rsc->getDeviceName().find( "Turnip" ) == String::npos )
         {
 #ifdef OGRE_VK_WORKAROUND_BAD_3D_BLIT
             Workarounds::mBad3DBlit = true;
@@ -1021,11 +1056,10 @@ namespace Ogre
 
         if( !bAnySupported )
         {
-            LogManager::getSingleton().logMessage(
-                "Vulkan support found but instance is uncapable of "
-                "drawing to the screen! Cannot continue",
-                LML_CRITICAL );
-            return;
+            OGRE_EXCEPT( Exception::ERR_RENDERINGAPI_ERROR,
+                         "Vulkan layer loaded but instance is uncapable of drawing to the screen! "
+                         "Cannot continue.",
+                         "VulkanRenderSystem::initializeVkInstance" );
         }
 
         // Check supported layers we may want
@@ -1086,8 +1120,7 @@ namespace Ogre
         {
             // vkEnumerateInstanceVersion is available since Vulkan 1.1
             PFN_vkEnumerateInstanceVersion enumerateInstanceVersion =
-                (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr( mVkInstance,
-                                                                       "vkEnumerateInstanceVersion" );
+                (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr( 0, "vkEnumerateInstanceVersion" );
             if( enumerateInstanceVersion )
             {
                 uint32_t apiVersion;
@@ -1249,6 +1282,8 @@ namespace Ogre
                         deviceExtensions.push_back( VK_KHR_16BIT_STORAGE_EXTENSION_NAME );
                     else if( extensionName == VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME )
                         deviceExtensions.push_back( VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME );
+                    else if( extensionName == VK_AMD_SHADER_TRINARY_MINMAX_EXTENSION_NAME )
+                        deviceExtensions.push_back( VK_AMD_SHADER_TRINARY_MINMAX_EXTENSION_NAME );
                 }
             }
             else
@@ -1912,8 +1947,8 @@ namespace Ogre
         {
 #if OGRE_ARCH_TYPE == OGRE_ARCHITECTURE_64
             VkSampler textureSampler = static_cast<VkSampler>( samplerblock->mRsData );
-#else // VK handles are always 64bit, even on 32bit systems
-            VkSampler textureSampler = *static_cast<VkSampler*>( samplerblock->mRsData );
+#else  // VK handles are always 64bit, even on 32bit systems
+            VkSampler textureSampler = *static_cast<VkSampler *>( samplerblock->mRsData );
 #endif
             if( mGlobalTable.samplers[texUnit].sampler != textureSampler )
             {
@@ -2292,17 +2327,30 @@ namespace Ogre
         size_t bytesToWrite = shader->getBufferRequiredSize();
         if( shader && bytesToWrite > 0 )
         {
-            if( mCurrentAutoParamsBufferSpaceLeft < bytesToWrite )
+            OGRE_ASSERT_LOW(
+                mCurrentAutoParamsBufferSpaceLeft % mVaoManager->getConstBufferAlignment() == 0 );
+
+            size_t bytesToWriteAligned =
+                alignToNextMultiple<size_t>( bytesToWrite, mVaoManager->getConstBufferAlignment() );
+            if( mCurrentAutoParamsBufferSpaceLeft < bytesToWriteAligned )
             {
                 if( mAutoParamsBufferIdx >= mAutoParamsBuffer.size() )
                 {
-                    ConstBufferPacked *constBuffer =
-                        mVaoManager->createConstBuffer( std::max<size_t>( 512u * 1024u, bytesToWrite ),
-                                                        BT_DYNAMIC_PERSISTENT, 0, false );
+                    // Ask for a coherent buffer to avoid excessive flushing. Note: VaoManager may ignore
+                    // this request if the GPU can't provide coherent memory and we must flush anyway.
+                    ConstBufferPacked *constBuffer = mVaoManager->createConstBuffer(
+                        std::max<size_t>( 512u * 1024u, bytesToWriteAligned ),
+                        BT_DYNAMIC_PERSISTENT_COHERENT, 0, false );
                     mAutoParamsBuffer.push_back( constBuffer );
                 }
 
                 ConstBufferPacked *constBuffer = mAutoParamsBuffer[mAutoParamsBufferIdx];
+
+                // This should be near-impossible to trigger because most Const Buffers are <= 64kb
+                // and we reserver 512kb per const buffer. A Low Level Material using a Params buffer
+                // with > 64kb is an edge case we don't care handling.
+                OGRE_ASSERT_LOW( bytesToWriteAligned <= constBuffer->getTotalSizeBytes() );
+
                 mCurrentAutoParamsBufferPtr =
                     reinterpret_cast<uint8 *>( constBuffer->map( 0, constBuffer->getNumElements() ) );
                 mCurrentAutoParamsBufferSpaceLeft = constBuffer->getTotalSizeBytes();
@@ -2312,7 +2360,7 @@ namespace Ogre
 
             shader->updateBuffers( params, mCurrentAutoParamsBufferPtr );
 
-            assert( dynamic_cast<VulkanConstBufferPacked *>(
+            OGRE_ASSERT_HIGH( dynamic_cast<VulkanConstBufferPacked *>(
                 mAutoParamsBuffer[mAutoParamsBufferIdx - 1u] ) );
 
             VulkanConstBufferPacked *constBuffer =
@@ -2322,19 +2370,73 @@ namespace Ogre
 
             constBuffer->bindAsParamBuffer( gptype, bindOffset, bytesToWrite );
 
-            mCurrentAutoParamsBufferPtr += bytesToWrite;
-
-            const uint8 *oldBufferPos = mCurrentAutoParamsBufferPtr;
-            mCurrentAutoParamsBufferPtr = reinterpret_cast<uint8 *>(
-                alignToNextMultiple<size_t>( reinterpret_cast<uintptr_t>( mCurrentAutoParamsBufferPtr ),
-                                             mVaoManager->getConstBufferAlignment() ) );
-            bytesToWrite += (size_t)( mCurrentAutoParamsBufferPtr - oldBufferPos );
-
-            // We know that bytesToWrite <= mCurrentAutoParamsBufferSpaceLeft, but that was
-            // before padding. After padding this may no longer hold true.
-            mCurrentAutoParamsBufferSpaceLeft -=
-                std::min( mCurrentAutoParamsBufferSpaceLeft, bytesToWrite );
+            mCurrentAutoParamsBufferPtr += bytesToWriteAligned;
+            mCurrentAutoParamsBufferSpaceLeft -= bytesToWriteAligned;
         }
+    }
+    //-------------------------------------------------------------------------
+    void VulkanRenderSystem::flushBoundGpuProgramParameters(
+        const SubmissionType::SubmissionType submissionType )
+    {
+        bool bWillReuseLastBuffer = false;
+
+        const size_t maxBufferToFlush = mAutoParamsBufferIdx;
+        for( size_t i = mFirstUnflushedAutoParamsBuffer; i < maxBufferToFlush; ++i )
+        {
+            ConstBufferPacked *constBuffer = mAutoParamsBuffer[i];
+            if( i + 1u != maxBufferToFlush )
+            {
+                // Flush whole buffer.
+                constBuffer->unmap( UO_KEEP_PERSISTENT );
+            }
+            else
+            {
+                // Last buffer. Partial flush.
+                const size_t bytesToFlush =
+                    constBuffer->getTotalSizeBytes() - mCurrentAutoParamsBufferSpaceLeft;
+
+                constBuffer->unmap( UO_KEEP_PERSISTENT, 0u, bytesToFlush );
+                if( submissionType <= SubmissionType::FlushOnly &&
+                    mCurrentAutoParamsBufferSpaceLeft >= 4u )
+                {
+                    // Map again so we can continue from where we left off.
+
+                    // If the assert triggers then getNumElements is not in bytes and our math is wrong.
+                    OGRE_ASSERT_LOW( constBuffer->getBytesPerElement() == 1u );
+                    constBuffer->regressFrame();
+                    mCurrentAutoParamsBufferPtr = reinterpret_cast<uint8 *>(
+                        constBuffer->map( bytesToFlush, constBuffer->getNumElements() - bytesToFlush ) );
+                    mCurrentAutoParamsBufferSpaceLeft = constBuffer->getNumElements() - bytesToFlush;
+                    bWillReuseLastBuffer = true;
+                }
+                else
+                {
+                    mCurrentAutoParamsBufferSpaceLeft = 0u;
+                    mCurrentAutoParamsBufferPtr = 0;
+                }
+            }
+        }
+
+        if( submissionType >= SubmissionType::NewFrameIdx )
+        {
+            mAutoParamsBufferIdx = 0u;
+            mFirstUnflushedAutoParamsBuffer = 0u;
+        }
+        else
+        {
+            // If maxBufferToFlush == 0 then bindGpuProgramParameters() was never called this round
+            // and bWillReuseLastBuffer can't be true.
+            if( bWillReuseLastBuffer )
+                mFirstUnflushedAutoParamsBuffer = maxBufferToFlush - 1u;
+            else
+                mFirstUnflushedAutoParamsBuffer = maxBufferToFlush;
+        }
+    }
+    //-------------------------------------------------------------------------
+    void VulkanRenderSystem::flushPendingNonCoherentFlushes(
+        const SubmissionType::SubmissionType submissionType )
+    {
+        flushBoundGpuProgramParameters( submissionType );
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::bindGpuProgramPassIterationParameters( GpuProgramType gptype ) {}
@@ -2416,6 +2518,43 @@ namespace Ogre
         if( mRenderDocApi && !bDiscard )
             mActiveDevice->commitAndNextCommandBuffer( SubmissionType::FlushOnly );
         RenderSystem::endGpuDebuggerFrameCapture( window, bDiscard );
+    }
+    //-------------------------------------------------------------------------
+    void VulkanRenderSystem::getCustomAttribute( const String &name, void *pData )
+    {
+        if( name == "VkInstance" )
+        {
+            *(VkInstance *)pData = mDevice->mInstance;
+            return;
+        }
+        else if( name == "VkPhysicalDevice" )
+        {
+            *(VkPhysicalDevice *)pData = mDevice->mPhysicalDevice;
+            return;
+        }
+        else if( name == "VulkanDevice" )
+        {
+            *(VulkanDevice **)pData = mDevice;
+            return;
+        }
+        else if( name == "VkDevice" )
+        {
+            *(VkDevice *)pData = mDevice->mDevice;
+            return;
+        }
+        else if( name == "mPresentQueue" )
+        {
+            *(VkQueue *)pData = mDevice->mPresentQueue;
+            return;
+        }
+        else if( name == "VulkanQueue" )
+        {
+            *(VulkanQueue **)pData = &mDevice->mGraphicsQueue;
+            return;
+        }
+
+        OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS, "Attribute not found: " + name,
+                     "VulkanRenderSystem::getCustomAttribute" );
     }
     //-------------------------------------------------------------------------
     void VulkanRenderSystem::setClipPlanesImpl( const PlaneList &clipPlanes ) {}
@@ -2942,20 +3081,28 @@ namespace Ogre
                 if( texture->isMultisample() && !texture->hasMsaaExplicitResolves() )
                 {
                     // Rare case where we render to an implicit resolve without resolving
-                    // (otherwise newLayout = ResolveDest)
-                    //
-                    // Or more common case if we need to copy to/from an MSAA texture
+                    // (otherwise newLayout = ResolveDest), or more common case if we need
+                    // to copy to/from an MSAA texture. We can also try to sample from texture.
+                    // In all these cases keep MSAA texture in predictable layout.
                     //
                     // This cannot catch all use cases, but if you fall into something this
                     // doesn't catch, then you should probably be using explicit resolves
-                    if( itor->newLayout == ResourceLayout::RenderTarget ||
-                        itor->newLayout == ResourceLayout::ResolveDest ||
-                        itor->newLayout == ResourceLayout::CopySrc ||
-                        itor->newLayout == ResourceLayout::CopyDst )
-                    {
-                        imageBarrier.image = texture->getMsaaFramebufferName();
-                        mImageBarriers.push_back( imageBarrier );
-                    }
+                    bool useNewLayoutForMsaa =
+                            itor->newLayout == ResourceLayout::RenderTarget ||
+                            itor->newLayout == ResourceLayout::ResolveDest ||
+                            itor->newLayout == ResourceLayout::CopySrc ||
+                            itor->newLayout == ResourceLayout::CopyDst;
+                    bool useOldLayoutForMsaa =
+                            itor->oldLayout == ResourceLayout::RenderTarget ||
+                            itor->oldLayout == ResourceLayout::ResolveDest ||
+                            itor->oldLayout == ResourceLayout::CopySrc ||
+                            itor->oldLayout == ResourceLayout::CopyDst;
+                    if( !useNewLayoutForMsaa )
+                        imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    if( !useOldLayoutForMsaa )
+                        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    imageBarrier.image = texture->getMsaaFramebufferName();
+                    mImageBarriers.push_back( imageBarrier );
                 }
             }
             else
@@ -3396,8 +3543,8 @@ namespace Ogre
 
 #if OGRE_ARCH_TYPE == OGRE_ARCHITECTURE_64
         newBlock->mRsData = textureSampler;
-#else // VK handles are always 64bit, even on 32bit systems
-        newBlock->mRsData = new uint64(textureSampler);
+#else  // VK handles are always 64bit, even on 32bit systems
+        newBlock->mRsData = new uint64( textureSampler );
 #endif
     }
     //-------------------------------------------------------------------------
@@ -3406,9 +3553,9 @@ namespace Ogre
         assert( block->mRsData );
 #if OGRE_ARCH_TYPE == OGRE_ARCHITECTURE_64
         VkSampler textureSampler = static_cast<VkSampler>( block->mRsData );
-#else // VK handles are always 64bit, even on 32bit systems
-        VkSampler textureSampler = *static_cast<VkSampler*>( block->mRsData );
-        delete (uint64*)block->mRsData;
+#else  // VK handles are always 64bit, even on 32bit systems
+        VkSampler textureSampler = *static_cast<VkSampler *>( block->mRsData );
+        delete(uint64 *)block->mRsData;
 #endif
         delayed_vkDestroySampler( mVaoManager, mActiveDevice->mDevice, textureSampler, 0 );
     }

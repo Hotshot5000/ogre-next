@@ -369,7 +369,7 @@ namespace Ogre
 #    ifdef OGRE_STATIC_LIB
             hInstance = GetModuleHandle( NULL );
 #    else
-#        if OGRE_DEBUG_MODE == 1
+#        if OGRE_DEBUG_MODE
             hInstance = GetModuleHandle( "RenderSystem_Vulkan_d.dll" );
 #        else
             hInstance = GetModuleHandle( "RenderSystem_Vulkan.dll" );
@@ -452,6 +452,8 @@ namespace Ogre
                                 getWindowStyle( mRequestedFullscreenMode ), mLeft, mTop,
                                 static_cast<int>( mRequestedWidth ),
                                 static_cast<int>( mRequestedHeight ), parentHwnd, 0, hInstance, this );
+
+            mHDC = GetDC( mHwnd );
 
             WindowEventUtilities::_addRenderWindow( this );
 
@@ -570,8 +572,6 @@ namespace Ogre
         mSampleDescription = mRequestedSampleDescription;
 
         createSwapchain();
-
-        mTexture->_transitionTo( GpuResidency::Resident, (uint8 *)0 );
 
         setHidden( mHidden );
     }

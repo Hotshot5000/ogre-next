@@ -4,7 +4,7 @@
 out gl_PerVertex
 {
 	vec4 gl_Position;
-@property( hlms_pso_clip_distances )
+@property( hlms_pso_clip_distances && !hlms_emulate_clip_distances )
 	float gl_ClipDistance[@value(hlms_pso_clip_distances)];
 @end
 };
@@ -27,7 +27,7 @@ vulkan_layout( OGRE_POSITION ) in vec4 vertex;
 
 @insertpiece( custom_vs_attributes )
 
-@property( !hlms_shadowcaster || !hlms_shadow_uses_depth_texture || exponential_shadow_maps )
+@property( !hlms_shadowcaster || !hlms_shadow_uses_depth_texture || alpha_test || exponential_shadow_maps )
 	vulkan_layout( location = 0 ) out block
 	{
 		@insertpiece( VStoPS_block )

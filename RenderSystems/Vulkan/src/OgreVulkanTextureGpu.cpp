@@ -86,6 +86,12 @@ namespace Ogre
 
         const PixelFormatGpu finalPixelFormat = getWorkaroundedPixelFormat( mPixelFormat );
 
+        // Unfortunately this is necessary, which means the abstraction may leak to the user.
+        // The pixel format is used in PSO generation, which creates a lot of issues I'm not willing
+        // to fix just because one old driver is broken. Setting mPixelFormat here fixes all issues so
+        // far encountered with old Adreno drivers.
+        mPixelFormat = finalPixelFormat;
+
         VkImageCreateInfo imageInfo;
         makeVkStruct( imageInfo, VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO );
         imageInfo.imageType = getVulkanTextureType();
@@ -102,6 +108,8 @@ namespace Ogre
             imageInfo.format = VulkanMappings::get( PixelFormatGpuUtils::getFamily( finalPixelFormat ) );
             imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
         }
+        OGRE_ASSERT_LOW( imageInfo.format != VK_FORMAT_UNDEFINED &&
+                         "Invalid PixelFormatGpu requested. Did you request a CPU-only format?" );
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -802,7 +810,7 @@ namespace Ogre
 
 #if OGRE_DEBUG_MODE >= OGRE_DEBUG_HIGH
         const String textureName = getNameStr() + "(View)";
-        setObjectName( device->mDevice, (uint64_t)imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
+        setObjectName( device->mDevice, (uint64_t)imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT,
                        textureName.c_str() );
 #endif
 
@@ -1014,7 +1022,8 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void VulkanTextureGpuRenderTarget::setOrientationMode( OrientationMode orientationMode )
     {
-        OGRE_ASSERT_LOW( mResidencyStatus == GpuResidency::OnStorage || isRenderWindowSpecific() );
+        OGRE_ASSERT_LOW( mResidencyStatus == GpuResidency::OnStorage || isRenderWindowSpecific() ||
+                         ( isRenderToTexture() && mWidth == mHeight ) );
 #if OGRE_NO_VIEWPORT_ORIENTATIONMODE == 0
         mOrientationMode = orientationMode;
 #endif

@@ -5,9 +5,9 @@
 # Requirements {#RequirementsAndroid}
  - [CMake 3.x](https://cmake.org/download/)
  - Git
- - Android Studio 4.0
+ - Android Studio 4.0 or higher.
  - Android SDK & NDK
- - Python 3.x (to build the samples)
+ - Python 3.x is needed to build shaderc dependency for Vulkan.
  - Vulkan-capable Android phone.
  - Android 8.0 or newer strongly recommended. Android 7.0 and 7.1 are supported,
  but most phones are bundled with very old and buggy drivers.
@@ -22,7 +22,7 @@ All that's needed is git, the ability to create folders, CMake, and Android SDK 
 
 We're going to assume:
   - Android SDK is stored at /home/username/Android/Sdk/
-  - Android NDK is stored at /home/username/Android/Sdk/ndk/21.0.6113669
+  - Android NDK is stored at /home/username/Android/Sdk/ndk/24.X.XXXXXXX
   - Your working dir is /home/username/workingdir
   - Target ABI is arm64-v8a
 
@@ -40,7 +40,7 @@ cd ogre-next-deps
 mkdir -p build/Android/Release
 cd build/Android/Release
 cmake \
-    -DCMAKE_TOOLCHAIN_FILE=/home/username/Android/Sdk/ndk/21.0.6113669/build/cmake/android.toolchain.cmake \
+    -DCMAKE_TOOLCHAIN_FILE=/home/username/Android/Sdk/ndk/24.X.XXXXXXX/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI=arm64-v8a \
     -DANDROID_NATIVE_API_LEVEL=24 \
     -DCMAKE_BUILD_TYPE=Release \
@@ -60,7 +60,7 @@ ln -s ../ogre-next-deps/build/Android/Release/ogredeps DependenciesAndroid
 mkdir -p build/Android/Debug
 cd build/Android/Debug
 cmake \
-    -DCMAKE_TOOLCHAIN_FILE=/home/username/Android/Sdk/ndk/21.0.6113669/build/cmake/android.toolchain.cmake \
+    -DCMAKE_TOOLCHAIN_FILE=/home/username/Android/Sdk/ndk/24.X.XXXXXXX/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI=arm64-v8a \
     -DANDROID_NATIVE_API_LEVEL=24 \
     -DOGRE_BUILD_PLATFORM_ANDROID=1 \
@@ -78,7 +78,7 @@ cd ../../../
 mkdir -p build/Android/Release
 cd build/Android/Release
 cmake \
-    -DCMAKE_TOOLCHAIN_FILE=/home/username/Android/Sdk/ndk/21.0.6113669/build/cmake/android.toolchain.cmake \
+    -DCMAKE_TOOLCHAIN_FILE=/home/username/Android/Sdk/ndk/24.X.XXXXXXX/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI=arm64-v8a \
     -DANDROID_NATIVE_API_LEVEL=24 \
     -DOGRE_BUILD_PLATFORM_ANDROID=1 \
@@ -142,7 +142,7 @@ Open these projects in Android Studio and deploy the APK.
 > (but ocassionally does manifest even in portrait).
 >
 > If you suspect this is the cause of your bugs, edit the CMakeLists.txt file so that
-> OGRE_CONFIG_ENABLE_VIEWPORT_ORIENTATIONMODE is no longer force-enabled.
+> OGRE_CONFIG_ENABLE_VIEWPORT_ORIENTATIONMODE is no longer force-enabled, or pass miscParams["preTransform"] = "false" to the window.
 >
 > You can debug viewport orientation bugs on Desktop by enabling OGRE_CONFIG_ENABLE_VIEWPORT_ORIENTATIONMODE
 > in your Desktop build, and manually editing OgreVulkanWindow.cpp and set:

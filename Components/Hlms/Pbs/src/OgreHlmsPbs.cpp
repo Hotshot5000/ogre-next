@@ -181,6 +181,7 @@ namespace Ogre
     const IdString PbsProperty::LtcTextureAvailable = IdString( "ltc_texture_available" );
     const IdString PbsProperty::AmbientFixed = IdString( "ambient_fixed" );
     const IdString PbsProperty::AmbientHemisphere = IdString( "ambient_hemisphere" );
+    const IdString PbsProperty::AmbientHemisphereInverted = IdString( "ambient_hemisphere_inverted" );
     const IdString PbsProperty::AmbientSh = IdString( "ambient_sh" );
     const IdString PbsProperty::AmbientShMonochrome = IdString( "ambient_sh_monochrome" );
     const IdString PbsProperty::TargetEnvprobeMap = IdString( "target_envprobe_map" );
@@ -295,6 +296,7 @@ namespace Ogre
         mPlanarReflectionsSamplerblock( 0 ),
         mHasPlanarReflections( false ),
         mLastBoundPlanarReflection( 0u ),
+        mPlanarReflectionSlotIdx( 0u ),
 #endif
         mAreaLightMasks( 0 ),
         mAreaLightMasksSamplerblock( 0 ),
@@ -331,7 +333,7 @@ namespace Ogre
         mDefaultBrdfWithDiffuseFresnel( false ),
         mShadowFilter( PCF_3x3 ),
         mEsmK( 600u ),
-        mAmbientLightMode( AmbientAuto )
+        mAmbientLightMode( AmbientAutoNormal )
     {
         memset( mDecalsTextures, 0, sizeof( mDecalsTextures ) );
 
@@ -1034,7 +1036,8 @@ namespace Ogre
             setProperty( PbsProperty::MaterialsPerBuffer, static_cast<int>( mSlotsPerPool ) );
     }
     //-----------------------------------------------------------------------------------
-    void HlmsPbs::calculateHashForPreCaster( Renderable *renderable, PiecesMap *inOutPieces )
+    void HlmsPbs::calculateHashForPreCaster( Renderable *renderable, PiecesMap *inOutPieces,
+                                             const PiecesMap * )
     {
         HlmsPbsDatablock *datablock = static_cast<HlmsPbsDatablock *>( renderable->getDatablock() );
         const bool hasAlphaTest = datablock->getAlphaTest() != CMPF_ALWAYS_PASS;
@@ -1581,7 +1584,7 @@ namespace Ogre
             if( mLtcMatrixTexture )
                 setProperty( PbsProperty::LtcTextureAvailable, 1 );
 
-            if( mAmbientLightMode == AmbientAuto )
+            if( mAmbientLightMode == AmbientAutoNormal || mAmbientLightMode == AmbientAutoInverted )
             {
                 if( upperHemisphere == lowerHemisphere )
                 {
@@ -1592,14 +1595,21 @@ namespace Ogre
                 }
                 else
                 {
-                    ambientMode = AmbientHemisphere;
+                    if( mAmbientLightMode == AmbientAutoInverted )
+                        ambientMode = AmbientHemisphereNormal;
+                    else
+                        ambientMode = AmbientHemisphereInverted;
                 }
             }
 
             if( ambientMode == AmbientFixed )
                 setProperty( PbsProperty::AmbientFixed, 1 );
-            if( ambientMode == AmbientHemisphere )
+            if( ambientMode == AmbientHemisphereNormal || ambientMode == AmbientHemisphereInverted )
+            {
                 setProperty( PbsProperty::AmbientHemisphere, 1 );
+                if( ambientMode == AmbientHemisphereInverted )
+                    setProperty( PbsProperty::AmbientHemisphereInverted, 1 );
+            }
             if( ambientMode == AmbientSh || ambientMode == AmbientShMonochrome )
             {
                 setProperty( PbsProperty::AmbientSh, 1 );
@@ -1845,14 +1855,15 @@ namespace Ogre
                 mapSize += 4u * 4u;
 
             // vec3 ambientUpperHemi + float envMapScale
-            if( ambientMode == AmbientFixed || ambientMode == AmbientHemisphere || envMapScale != 1.0f ||
-                vctNeedsAmbientHemi )
+            if( ( ambientMode >= AmbientFixed && ambientMode <= AmbientHemisphereInverted ) ||
+                envMapScale != 1.0f || vctNeedsAmbientHemi )
             {
                 mapSize += 4 * 4;
             }
 
             // vec3 ambientLowerHemi + padding + vec3 ambientHemisphereDir + padding
-            if( ambientMode == AmbientHemisphere || vctNeedsAmbientHemi )
+            if( ambientMode == AmbientHemisphereNormal || ambientMode == AmbientHemisphereInverted ||
+                vctNeedsAmbientHemi )
             {
                 mapSize += 8 * 4;
             }
@@ -2243,8 +2254,8 @@ namespace Ogre
             }
 
             // vec3 ambientUpperHemi + padding
-            if( ambientMode == AmbientFixed || ambientMode == AmbientHemisphere || envMapScale != 1.0f ||
-                vctNeedsAmbientHemi )
+            if( ( ambientMode >= AmbientFixed && ambientMode <= AmbientHemisphereInverted ) ||
+                envMapScale != 1.0f || vctNeedsAmbientHemi )
             {
                 *passBufferPtr++ = static_cast<float>( upperHemisphere.r );
                 *passBufferPtr++ = static_cast<float>( upperHemisphere.g );
@@ -2253,7 +2264,8 @@ namespace Ogre
             }
 
             // vec3 ambientLowerHemi + padding + vec3 ambientHemisphereDir + padding
-            if( ambientMode == AmbientHemisphere || vctNeedsAmbientHemi )
+            if( ambientMode == AmbientHemisphereNormal || ambientMode == AmbientHemisphereInverted ||
+                vctNeedsAmbientHemi )
             {
                 *passBufferPtr++ = static_cast<float>( lowerHemisphere.r );
                 *passBufferPtr++ = static_cast<float>( lowerHemisphere.g );
@@ -2618,7 +2630,7 @@ namespace Ogre
 
                 // vec4 areaApproxLights[numLights].tangent;
                 Quaternion qRot = light->getParentNode()->_getDerivedOrientation();
-                Vector3 xAxis = viewMatrix3 * qRot.xAxis();
+                Vector3 xAxis = viewMatrix3 * -qRot.xAxis();
                 *light1BufferPtr++ = xAxis.x;
                 *light1BufferPtr++ = xAxis.y;
                 *light1BufferPtr++ = xAxis.z;
@@ -2788,7 +2800,7 @@ namespace Ogre
             if( mHasPlanarReflections )
             {
                 mPlanarReflections->fillConstBufferData( renderTarget, cameras.renderingCamera,
-                                                         projectionMatrix, passBufferPtr );
+                                                         passBufferPtr );
                 passBufferPtr += mPlanarReflections->getConstBufferSize() >> 2u;
             }
 #endif
@@ -2932,7 +2944,13 @@ namespace Ogre
 
 #ifdef OGRE_BUILD_COMPONENT_PLANAR_REFLECTIONS
             if( mHasPlanarReflections )
+            {
                 mTexUnitSlotStart += 1;
+
+                mPlanarReflectionSlotIdx = static_cast<uint8>(
+                    mTexUnitSlotStart - 1u -
+                    mListener->getNumExtraPassTextures( mSetProperties, casterPass ) );
+            }
 #endif
         }
 
@@ -3174,6 +3192,8 @@ namespace Ogre
 
 #ifdef OGRE_BUILD_COMPONENT_PLANAR_REFLECTIONS
             mLastBoundPlanarReflection = 0u;
+            if( mHasPlanarReflections )
+                ++texUnit;  // We do not bind this texture now, but its slot is reserved.
 #endif
             mListener->hlmsTypeChanged( casterPass, commandBuffer, datablock, texUnit );
         }
@@ -3531,7 +3551,7 @@ namespace Ogre
                 const uint8 activeActorIdx = queuedRenderable.renderable->mCustomParameter & 0x7F;
                 TextureGpu *planarReflTex = mPlanarReflections->getTexture( activeActorIdx );
                 *commandBuffer->addCommand<CbTexture>() = CbTexture(
-                    uint16( mTexUnitSlotStart - 1u ), planarReflTex, mPlanarReflectionsSamplerblock );
+                    uint16( mPlanarReflectionSlotIdx ), planarReflTex, mPlanarReflectionsSamplerblock );
                 mLastBoundPlanarReflection = queuedRenderable.renderable->mCustomParameter;
             }
 #endif
@@ -3853,6 +3873,11 @@ namespace Ogre
     void HlmsPbs::setDefaultBrdfWithDiffuseFresnel( bool bDefaultToDiffuseFresnel )
     {
         mDefaultBrdfWithDiffuseFresnel = bDefaultToDiffuseFresnel;
+    }
+    //-----------------------------------------------------------------------------------
+    void HlmsPbs::setIndustryCompatible( bool bIndustryCompatible )
+    {
+        mIndustryCompatible = bIndustryCompatible;
     }
 #if !OGRE_NO_JSON
     //-----------------------------------------------------------------------------------

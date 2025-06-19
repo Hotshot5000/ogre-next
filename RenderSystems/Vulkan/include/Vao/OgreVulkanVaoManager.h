@@ -266,10 +266,20 @@ namespace Ogre
         typedef FastArray<VulkanDelayedFuncBase *> VulkanDelayedFuncBaseArray;
         FastArray<VulkanDelayedFuncBaseArray> mDelayedFuncs;
 
-        bool mFenceFlushed;
-        bool mSupportsCoherentMemory;
-        bool mSupportsNonCoherentMemory;
-        bool mReadMemoryIsCoherent;
+        uint8 mFenceFlushedWarningCount;
+
+        enum FenceFlushState : uint8
+        {
+            FenceUnflushed,
+            FenceFlushed,
+            GpuStalled,
+        };
+
+        FenceFlushState mFenceFlushed;
+        bool mSupportsCoherentMemory : 1;
+        bool mSupportsNonCoherentMemory : 1;
+        bool mPreferCoherentMemory : 1;
+        bool mReadMemoryIsCoherent : 1;
 
         static const uint32 VERTEX_ATTRIBUTE_INDEX[VES_COUNT];
 
@@ -528,15 +538,15 @@ namespace Ogre
 
         /// Insert into the end of semaphoreArray 'numSemaphores'
         /// number of semaphores that are safe for use.
-        void getAvailableSempaphores( VkSemaphoreArray &semaphoreArray, size_t numSemaphores );
-        VkSemaphore getAvailableSempaphore();
+        void getAvailableSemaphores( VkSemaphoreArray &semaphoreArray, size_t numSemaphores );
+        VkSemaphore getAvailableSemaphore();
 
         /// Call this function after you've submitted to the GPU a VkSemaphore that will be waited on.
         /// i.e. 'semaphore' is part of VkSubmitInfo::pWaitSemaphores or part of
         /// VkPresentInfoKHR::pWaitSemaphores
         ///
         /// After enough frames have passed, this semaphore goes
-        /// back to a pool for getAvailableSempaphores to use
+        /// back to a pool for getAvailableSemaphores to use
         void notifyWaitSemaphoreSubmitted( VkSemaphore semaphore );
         void notifyWaitSemaphoresSubmitted( const VkSemaphoreArray &semaphores );
         void notifySemaphoreUnused( VkSemaphore semaphore );

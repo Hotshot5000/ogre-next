@@ -43,7 +43,7 @@
 @piece( LoadMaterial )
 	@property( !lower_gpu_overhead )
 		@property( syntax != metal )
-			ushort materialId	= worldMaterialIdx[inPs.drawId].x & 0x1FFu;
+			ushort materialId	= worldMaterialIdx[inPs.drawId].x;
 			#define material materialArray[materialId]
 		@else
 			#define material materialArray[inPs.materialId]
@@ -54,6 +54,13 @@
 @end
 
 @piece( DefaultBodyPS )
+	@property( hlms_emulate_clip_distances && hlms_global_clip_planes && hlms_pso_clip_distances && syntax == glslvk)
+		@foreach( hlms_pso_clip_distances, n )
+			if( inPs.clipDistance@n < 0.0 )
+				discard;
+		@end
+	@end
+
 	midf4 diffuseCol = midf4_c( 1.0f, 1.0f, 1.0f, 1.0f );
 
 	@property( diffuse_map || alpha_test || diffuse )

@@ -152,6 +152,8 @@ namespace Ogre
         /// @copydoc Node::_callMemoryChangeListeners
         void _callMemoryChangeListeners() override;
 
+        const ObjectVec &getAttachments() { return mAttachments; }
+
         /** Retrieves an iterator which can be used to efficiently step through the objects
             attached to this node.
         @remarks
@@ -317,7 +319,7 @@ namespace Ogre
 
         NodeMemoryManager *getDefaultNodeMemoryManager( SceneMemoryMgrTypes sceneType ) override;
 
-#if OGRE_DEBUG_MODE
+#if OGRE_DEBUG_MODE >= OGRE_DEBUG_MEDIUM
         void _setCachedTransformOutOfDate() override;
 #endif
     };

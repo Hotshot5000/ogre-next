@@ -50,6 +50,9 @@
 			@else
 				#define geomNormal normal
 			@end
+			@property( detail_triplanar )
+				midf3 worldSpaceNormal;
+			@end
 			midf4	diffuse;
 			midf3	specular;
 
@@ -262,7 +265,7 @@
 		@property( detail_map@n )
 			midf4 detailCol@n = SampleDetailCol@n@property( detail_triplanar_diffuse )Triplanar@end ( textureMaps@value(detail_map@n_idx),
 													samplerState@value(detail_map@n_sampler),
-                                                    UV_DETAIL@n( @property( detail_triplanar )GetTriplanarUVTp( inPs.worldPos, pixelData.normal )@else inPs.uv@value(uv_detail@n).xy@end @insertpiece( offsetDetail@n ) ),
+													UV_DETAIL@n( @property( detail_triplanar )GetTriplanarUVTp( inPs.worldPos, pixelData.worldSpaceNormal )@else inPs.uv@value(uv_detail@n).xy@end @insertpiece( offsetDetail@n ) ),
                                                     texIndex_detailMapIdx@n );
 			detailWeights.@insertpiece(detail_swizzle@n) *= detailCol@n.w;
 			detailCol@n.w = detailWeights.@insertpiece(detail_swizzle@n);
@@ -368,11 +371,12 @@
 		@piece( two_sided_flip_normal )* (gl_FrontFacing ? 1.0 : -1.0)@end
 	@end
 @end
+@piece( LoadGeomNormalData )
+	// Geometric normal
+	pixelData.geomNormal = normalize( inPs.normal ) @insertpiece( two_sided_flip_normal );
+@end
 @piece( LoadNormalData )
-	@property( !normal_map )
-		// Geometric normal
-		pixelData.normal = normalize( inPs.normal ) @insertpiece( two_sided_flip_normal );
-	@else
+	@property( normal_map )
 		//Normal mapping.
 		pixelData.geomNormal = normalize( inPs.normal ) @insertpiece( two_sided_flip_normal );
 		midf3 vTangent		= normalize( inPs.tangent );
@@ -422,7 +426,7 @@
 	@foreach( detail_maps_normal, n )
 		@piece( SampleDetailMapNm@n )getTSNormal( textureMaps@value(detail_map_nm@n_idx),
 												  samplerState@value(detail_map_nm@n_sampler),
-												  UV_DETAIL_NM@n( @property( detail_triplanar )GetTriplanarUVTp( inPs.worldPos, pixelData.normal )@else inPs.uv@value(uv_detail_nm@n).xy@end @insertpiece( offsetDetail@n ) ),
+												  UV_DETAIL_NM@n( @property( detail_triplanar )GetTriplanarUVTp( inPs.worldPos, pixelData.worldSpaceNormal )@else inPs.uv@value(uv_detail_nm@n).xy@end @insertpiece( offsetDetail@n ) ),
 												  texIndex_detailNormMapIdx@n ) * detailWeights.@insertpiece(detail_swizzle@n) @insertpiece( detail@n_nm_weight_mul )@end
 	@end
 
@@ -745,6 +749,13 @@
 
 @property( !hlms_shadowcaster )
 @piece( DefaultBodyPS )
+	@property( hlms_emulate_clip_distances && hlms_global_clip_planes && hlms_pso_clip_distances && syntax == glslvk )
+		@foreach( hlms_pso_clip_distances, n )
+			if( inPs.clipDistance@n < 0.0 )
+				discard;
+		@end
+	@end
+
 	@property( hlms_screen_pos_uv )
 		float2 screenPosUv = gl_FragCoord.xy * passBuf.invWindowRes.xy;
 	@end
@@ -780,6 +791,10 @@
 		pixelData.diffuse.xyz	= float3( 1.0f, 1.0f, 1.0f );
 		pixelData.specular.xyz	= float3( 0.0f, 0.0f, 0.0f );
 @end
+
+		@property( !hlms_use_prepass )
+			@insertpiece( LoadGeomNormalData )
+		@end
 
 		@insertpiece( forwardPlusDoDecals )
 

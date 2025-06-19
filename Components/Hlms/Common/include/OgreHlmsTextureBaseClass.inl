@@ -99,6 +99,12 @@ namespace Ogre
         datablockImpl->scheduleConstBufferUpdate( hasDirtyTextures, hasDirtySamplers );
     }
     //-----------------------------------------------------------------------------------
+    void OGRE_HLMS_TEXTURE_BASE_CLASS::setAlphaTestThreshold( float threshold )
+    {
+        HlmsDatablock::setAlphaTestThreshold( threshold );
+        scheduleConstBufferUpdate();
+    }
+    //-----------------------------------------------------------------------------------
     void OGRE_HLMS_TEXTURE_BASE_CLASS::preload() { loadAllTextures(); }
     //-----------------------------------------------------------------------------------
     void OGRE_HLMS_TEXTURE_BASE_CLASS::saveTextures( const String &folderPath,
@@ -285,9 +291,15 @@ namespace Ogre
         else if( !mSamplersDescSet || *mSamplersDescSet != baseSampler )
         {
             if( mSamplersDescSet )
+            {
                 hlmsManager->destroyDescriptorSetSampler( mSamplersDescSet );
-            mSamplersDescSet = hlmsManager->getDescriptorSetSampler( baseSampler );
-            needsRecalculateHash = true;
+                mSamplersDescSet = 0;
+            }
+            if( !baseSampler.mSamplers.empty() )
+            {
+                mSamplersDescSet = hlmsManager->getDescriptorSetSampler( baseSampler );
+                needsRecalculateHash = true;
+            }
         }
 
         return needsRecalculateHash;

@@ -86,8 +86,8 @@ namespace Ogre
         if( hlms->_getProperty( HlmsBaseProp::ShadowCaster ) == 0 &&
             hlms->_getProperty( PbsTerraProperty::TerraEnabled ) != 0 )
         {
-            int32 texUnit = hlms->_getProperty( PbsProperty::Set0TextureSlotEnd );
-            hlms->_setTextureReg( VertexShader, "terrainShadows", texUnit - 1 );
+            int32 texUnit = hlms->_getProperty( PbsProperty::Set0TextureSlotEnd ) - 1;
+            hlms->_setTextureReg( VertexShader, "terrainShadows", texUnit );
         }
     }
     //-----------------------------------------------------------------------------------

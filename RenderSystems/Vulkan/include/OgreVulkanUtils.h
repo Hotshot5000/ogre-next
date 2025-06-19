@@ -61,9 +61,18 @@ namespace Ogre
     uint32_t findMemoryType( VkPhysicalDeviceMemoryProperties &memProperties, uint32_t typeFilter,
                              VkMemoryPropertyFlags properties );
 
-    inline VkDeviceSize alignMemory( size_t offset, const VkDeviceSize &alignment )
+    inline VkDeviceSize alignMemory( size_t offset, const VkDeviceSize alignment )
     {
         return ( ( offset + alignment - 1 ) / alignment ) * alignment;
+    }
+
+    inline void setAlignMemoryCoherentAtom( VkMappedMemoryRange &outMemRange, const size_t offset,
+                                            const size_t sizeBytes, const VkDeviceSize alignment,
+                                            const size_t vboSize )
+    {
+        const VkDeviceSize endOffset = std::min( alignMemory( offset + sizeBytes, alignment ), vboSize );
+        outMemRange.offset = ( offset / alignment ) * alignment;
+        outMemRange.size = endOffset - outMemRange.offset;
     }
 
     String getSpirvReflectError( SpvReflectResult spirvReflectResult );

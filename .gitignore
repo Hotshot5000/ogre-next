@@ -31,3 +31,4 @@ AndroidDependencies/
 Build/
 EmscriptenDependencies
 EmscriptenBuild
+build*/

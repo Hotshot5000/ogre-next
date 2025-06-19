@@ -694,8 +694,11 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::notifySwapchainCreated( VulkanWindow *window )
     {
-        if( mNumColourEntries > 0 && mColour[0].texture->isRenderWindowSpecific() &&
-            mColour[0].texture == window->getTexture() )
+        if( mNumColourEntries > 0 &&
+            ( ( mColour[0].texture && mColour[0].texture->isRenderWindowSpecific() &&
+                mColour[0].texture == window->getTexture() ) ||
+              ( mColour[0].resolveTexture && mColour[0].resolveTexture->isRenderWindowSpecific() &&
+                mColour[0].resolveTexture == window->getTexture() ) ) )
         {
             entriesModified( RenderPassDescriptor::All );
         }
@@ -703,8 +706,11 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     void VulkanRenderPassDescriptor::notifySwapchainDestroyed( VulkanWindow *window )
     {
-        if( mNumColourEntries > 0 && mColour[0].texture->isRenderWindowSpecific() &&
-            mColour[0].texture == window->getTexture() )
+        if( mNumColourEntries > 0 &&
+            ( ( mColour[0].texture && mColour[0].texture->isRenderWindowSpecific() &&
+                mColour[0].texture == window->getTexture() ) ||
+              ( mColour[0].resolveTexture && mColour[0].resolveTexture->isRenderWindowSpecific() &&
+                mColour[0].resolveTexture == window->getTexture() ) ) )
         {
             releaseFbo();
         }
@@ -976,6 +982,31 @@ namespace Ogre
             }
 #endif
             return;
+        }
+
+        if( mReadyWindowForPresent )
+        {
+            const size_t numColourEntries = mNumColourEntries;
+            for( size_t i = 0u; i < numColourEntries; ++i )
+            {
+                VulkanTextureGpu *texture;
+
+                if( mColour[i].resolveTexture && mColour[i].resolveTexture->isRenderWindowSpecific() )
+                {
+                    OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpu *>( mColour[i].resolveTexture ) );
+                    texture = static_cast<VulkanTextureGpu *>( mColour[i].resolveTexture );
+                    texture->mCurrLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    texture->mNextLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                }
+
+                if( mColour[i].texture && mColour[i].texture->isRenderWindowSpecific() )
+                {
+                    OGRE_ASSERT_HIGH( dynamic_cast<VulkanTextureGpu *>( mColour[i].texture ) );
+                    texture = static_cast<VulkanTextureGpu *>( mColour[i].texture );
+                    texture->mCurrLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    texture->mNextLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                }
+            }
         }
 
         // End (if exists) the render command encoder tied to this RenderPassDesc.

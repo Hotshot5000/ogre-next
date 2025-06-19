@@ -22,11 +22,8 @@ if(CMAKE_VS_PLATFORM_NAME STREQUAL "Tegra-Android")
 	set(CMAKE_LINK_LIBRARY_FLAG "")
 endif()
 
-# CMake 2.8.2 has a bug that creates unusable Xcode projects when using ARCHS_STANDARD_32_BIT
-# to specify both armv6 and armv7.
-if(OGRE_BUILD_PLATFORM_APPLE_IOS AND (CMAKE_VERSION VERSION_EQUAL 2.8.2) AND (CMAKE_GENERATOR STREQUAL "Xcode"))
-	message(FATAL_ERROR "CMake 2.8.2 cannot create compatible Xcode projects for iOS, please download the latest version or an older release from http://www.cmake.org/files/")
-endif()
+#fix Policy CMP0072 is not set
+set(OpenGL_GL_PREFERENCE LEGACY)
 
 # Use relative paths
 # This is mostly to reduce path size for command-line limits on windows
@@ -37,11 +34,6 @@ if(WIN32)
 endif()
 
 if (APPLE AND NOT ANDROID)
-  if(CMAKE_VERSION VERSION_LESS 3.0.0)
-    include(CMakeForceCompiler)
-    CMAKE_FORCE_C_COMPILER(clang GNU)
-    CMAKE_FORCE_CXX_COMPILER(clang++ GNU)
-  endif()
   SET(CMAKE_SIZEOF_VOID_P 4)
   set(CMAKE_XCODE_ATTRIBUTE_GCC_VERSION "com.apple.compilers.llvm.clang.1_0")
   set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++11")
@@ -190,7 +182,7 @@ if (MSVC)
 	# set variable to state that we are using jom makefiles
 	set(JOM TRUE)
   endif ()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast /Zc:__cplusplus")
   if (NOT OGRE_PLATFORM_X64)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:SSE2")
   endif()
@@ -311,6 +303,10 @@ set(OGRE_Paging_LIBRARIES ${OGRE_NEXT}Paging)
 set(OGRE_Terrain_LIBRARIES ${OGRE_NEXT}Terrain)
 set(OGRE_Volume_LIBRARIES ${OGRE_NEXT}Volume)
 
+if( OGRE_STATIC AND UNIX AND NOT APPLE AND NOT OGRE_CONFIG_UNIX_NO_X11 )
+	set( OGRE_LIBRARIES ${OGRE_LIBRARIES} xcb xcb-randr )
+endif()
+
 # Specify build paths
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OGRE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OGRE_BINARY_DIR}/lib")
@@ -367,7 +363,6 @@ elseif (ANDROID)
    set(OGRE_BUILD_COMPONENT_PAGING FALSE CACHE BOOL "Disable paging component on Android ES1" FORCE)
   endif()
 
-  set(OGRE_BUILD_TESTS FALSE CACHE BOOL "Disable tests on Android" FORCE)
   set(OGRE_BUILD_TOOLS FALSE CACHE BOOL "Disable tools on Android" FORCE)
   set(OGRE_STATIC TRUE CACHE BOOL "Forcing static build for Android" FORCE)
   set(OGRE_SIMD FALSE CACHE BOOL "Disable SIMD on Android" FORCE)
@@ -744,5 +739,5 @@ include(Packaging)
 
 
 # Show feature summary
-include(FeatureSummary)
+include(OgreFeatureSummary)
 

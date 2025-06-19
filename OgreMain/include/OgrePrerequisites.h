@@ -73,8 +73,8 @@ namespace Ogre
 #define OGRE_VERSION_MAJOR 3
 #define OGRE_VERSION_MINOR 0
 #define OGRE_VERSION_PATCH 0
-#define OGRE_VERSION_SUFFIX "unstable"
-#define OGRE_VERSION_NAME "E"
+#define OGRE_VERSION_SUFFIX ""
+#define OGRE_VERSION_NAME "Eris"
 
 #define OGRE_MAKE_VERSION( maj, min, patch ) ( ( maj << 16 ) | ( min << 8 ) | patch )
 #define OGRE_VERSION ( ( OGRE_VERSION_MAJOR << 16 ) | ( OGRE_VERSION_MINOR << 8 ) | OGRE_VERSION_PATCH )
@@ -82,7 +82,7 @@ namespace Ogre
 
 #define OGRE_UNUSED_VAR( x ) ( (void)x )
 
-#if __cplusplus >= 201703L
+#if __cplusplus >= 201703L || defined( _MSVC_LANG ) && _MSVC_LANG >= 201703L
 #    define OGRE_FALLTHROUGH [[fallthrough]]
 #else
 #    if OGRE_COMPILER == OGRE_COMPILER_CLANG

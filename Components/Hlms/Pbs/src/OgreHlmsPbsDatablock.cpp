@@ -352,6 +352,11 @@ namespace Ogre
     //-----------------------------------------------------------------------------------
     HlmsPbsDatablock::~HlmsPbsDatablock()
     {
+        if( mCubemapProbe )
+        {
+            mCubemapProbe->_removeReference();
+            mCubemapProbe = 0;
+        }
         if( mAssignedPool )
             static_cast<HlmsPbs *>( mCreator )->releaseSlot( this );
     }
@@ -839,7 +844,7 @@ namespace Ogre
             }
 
             if( newBlendblock != *mBlendblock[0] )
-                setBlendblock( newBlendblock );
+                setBlendblock( newBlendblock, false, false );
 
             if( mTransparencyMode == Refractive && mMacroblock[0]->mDepthWrite )
             {
@@ -947,6 +952,7 @@ namespace Ogre
         mUserValue[userValueIdx][1] = value.y;
         mUserValue[userValueIdx][2] = value.z;
         mUserValue[userValueIdx][3] = value.w;
+        scheduleConstBufferUpdate();
     }
     //-----------------------------------------------------------------------------------
     Vector4 HlmsPbsDatablock::getUserValue( uint8 userValueIdx ) const

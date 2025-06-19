@@ -503,7 +503,7 @@ namespace Ogre
 #    ifdef OGRE_STATIC_LIB
         hinst = GetModuleHandle( NULL );
 #    else
-#        if OGRE_DEBUG_MODE == 1
+#        if OGRE_DEBUG_MODE
         hinst = GetModuleHandle( "RenderSystem_GL3Plus_d.dll" );
 #        else
         hinst = GetModuleHandle( "RenderSystem_GL3Plus.dll" );
@@ -722,8 +722,10 @@ namespace Ogre
 
 #if OGRE_NO_QUAD_BUFFER_STEREO == 0
             if( SMT_FRAME_SEQUENTIAL == mStereoMode )
+            {
                 attribList.push_back( WGL_STEREO_ARB );
-            attribList.push_back( GL_TRUE );
+                attribList.push_back( GL_TRUE );
+            }
 #endif
 
             if( useHwGamma && mHasHardwareGamma )

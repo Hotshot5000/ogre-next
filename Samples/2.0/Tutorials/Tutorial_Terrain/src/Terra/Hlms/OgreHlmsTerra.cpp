@@ -405,7 +405,8 @@ namespace Ogre
 #endif
     }
     //-----------------------------------------------------------------------------------
-    void HlmsTerra::calculateHashForPreCaster( Renderable *renderable, PiecesMap *inOutPieces )
+    void HlmsTerra::calculateHashForPreCaster( Renderable *renderable, PiecesMap *inOutPieces,
+                                               const PiecesMap * )
     {
         // Override, since shadow casting is very basic
         mSetProperties.clear();
@@ -648,6 +649,8 @@ namespace Ogre
 
 #ifdef OGRE_BUILD_COMPONENT_PLANAR_REFLECTIONS
             mLastBoundPlanarReflection = 0u;
+            if( mHasPlanarReflections )
+                ++texUnit;  // We do not bind this texture now, but its slot is reserved.
 #endif
             mListener->hlmsTypeChanged( casterPass, commandBuffer, datablock, 0u );
         }
@@ -783,6 +786,7 @@ namespace Ogre
         outLibraryFoldersPaths.push_back( "Hlms/Pbs/Any/Atmosphere" );
 #endif
         outLibraryFoldersPaths.push_back( "Hlms/Pbs/Any/Main" );
+        outLibraryFoldersPaths.push_back( "Hlms/Pbs/" + shaderSyntax );
         outLibraryFoldersPaths.push_back( "Hlms/Terra/Any" );
 
         // Fill the data folder path

@@ -88,8 +88,9 @@ namespace Ogre
             VkMappedMemoryRange memRange;
             makeVkStruct( memRange, VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE );
             memRange.memory = mDeviceMemory;
-            memRange.offset = start;
-            memRange.size = alignMemory( count, mDevice->mDeviceProperties.limits.nonCoherentAtomSize );
+            setAlignMemoryCoherentAtom( memRange, start, count,
+                                        mDevice->mDeviceProperties.limits.nonCoherentAtomSize,
+                                        mVboSize );
             VkResult result = vkInvalidateMappedMemoryRanges( mDevice->mDevice, 1u, &memRange );
             checkVkResult( result, "vkInvalidateMappedMemoryRanges" );
         }
@@ -107,9 +108,9 @@ namespace Ogre
             mappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
             mappedRange.pNext = 0;
             mappedRange.memory = mDeviceMemory;
-            mappedRange.offset = mMappedRanges[ticket].start + start;
-            mappedRange.size =
-                alignMemory( count, mDevice->mDeviceProperties.limits.nonCoherentAtomSize );
+            setAlignMemoryCoherentAtom( mappedRange, mMappedRanges[ticket].start + start, count,
+                                        mDevice->mDeviceProperties.limits.nonCoherentAtomSize,
+                                        mVboSize );
             VkResult result = vkFlushMappedMemoryRanges( mDevice->mDevice, 1u, &mappedRange );
             checkVkResult( result, "vkFlushMappedMemoryRanges" );
         }
