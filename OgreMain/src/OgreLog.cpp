@@ -33,7 +33,7 @@ THE SOFTWARE.
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#if( OGRE_PLATFORM == OGRE_PLATFORM_APPLE ) || ( OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS )
+#if( OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS )
 #include "macUtils.h"
 #endif
 
@@ -55,12 +55,11 @@ namespace Ogre
         if( !mSuppressFile )
         {
             mLog = new std::ofstream;
-#if( OGRE_PLATFORM == OGRE_PLATFORM_APPLE ) || ( OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS )
+#if( OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS )
             String path = iOSDocumentsDirectory() + "/" + name;
             mLog->open( path.c_str() );
-#else
-            mLog->open( name.c_str() );
 #endif
+            mLog->open( name.c_str() );
         }
     }
     //-----------------------------------------------------------------------
