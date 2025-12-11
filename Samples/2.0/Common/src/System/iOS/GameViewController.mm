@@ -213,6 +213,8 @@ void setOnscreenKeyboardVisible(bool visible, void *gameViewController_,
         [_timer invalidate];
         _timer = nullptr;
     }
+    
+    gameViewControllerCallbacks->viewWillDisappear(animated);
 
     [super viewWillDisappear:animated];
 }
