@@ -30,6 +30,8 @@ THE SOFTWARE.
 
 #import <SpriteKit/SpriteKit.h>
 
+#import "OgreLogManager.h"
+
 #import "MetalViewCallbacksIntf.h"
 #import "MetalViewCallbacks.hpp"
 
@@ -50,6 +52,9 @@ THE SOFTWARE.
     self.nativeScaleFactor = 1.0;
     self.layer.contentsScale = [[UIScreen mainScreen] scale];
     self.presentationTime = -1.0;
+    self.multipleTouchEnabled = true;
+//    self.exclusiveTouch = true;
+    Ogre::LogManager::getSingleton().logMessage( "OgreMetalView: initCommon" );
 }
 
 - (void)didMoveToWindow
