@@ -16,6 +16,10 @@ void setView(void *renderWindow_, void *gameViewController_);
 
 void pause(void *gameViewController_);
 void resume(void *gameViewController_);
+double getLeftInset(void *gameViewController_);
+double getTopInset(void *gameViewController_);
+double getRightInset(void *gameViewController_);
+double getBottomInset(void *gameViewController_);
 
 void setOnscreenKeyboardVisible(bool visible, void *gameViewController_, void *textDelegate_);
 

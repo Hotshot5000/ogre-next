@@ -98,6 +98,30 @@ void resume(void *gameViewController_)
     [viewController viewWillAppear:NO];
 }
 
+double getLeftInset(void *gameViewController_)
+{
+    GameViewController* viewController = (__bridge GameViewController *)gameViewController_;
+    return viewController.view.safeAreaInsets.left;
+}
+
+double getTopInset(void *gameViewController_)
+{
+    GameViewController* viewController = (__bridge GameViewController *)gameViewController_;
+    return viewController.view.safeAreaInsets.top;
+}
+
+double getRightInset(void *gameViewController_)
+{
+    GameViewController* viewController = (__bridge GameViewController *)gameViewController_;
+    return viewController.view.safeAreaInsets.right;
+}
+
+double getBottomInset(void *gameViewController_)
+{
+    GameViewController* viewController = (__bridge GameViewController *)gameViewController_;
+    return viewController.view.safeAreaInsets.bottom;
+}
+
 void setOnscreenKeyboardVisible(bool visible, void *gameViewController_,
                                 void *textDelegate_)
 {
