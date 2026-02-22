@@ -11,6 +11,7 @@
 class MetalViewCallbacks
 {
 public:
+    virtual ~MetalViewCallbacks() {};
     virtual void touchesBegan(void *touches) = 0;
     virtual void touchesMoved(void *touches) = 0;
     virtual void touchesEnded(void *touches) = 0;
