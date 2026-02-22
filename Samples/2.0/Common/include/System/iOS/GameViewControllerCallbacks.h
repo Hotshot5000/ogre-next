@@ -11,6 +11,7 @@
 class GameViewControllerCallbacks
 {
 public:
+    virtual ~GameViewControllerCallbacks() {}
     virtual void dealloc() = 0;
     virtual void viewDidLoad() = 0;
     virtual void viewWillAppear(bool animated) = 0;
