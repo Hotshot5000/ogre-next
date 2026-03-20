@@ -214,12 +214,17 @@ namespace Ogre
         if( !win )
             return DefWindowProc( hWnd, uMsg, wParam, lParam );
 
-        JNIEnv *env = getThreadEnv();
+        bool didAttach = false;
+        JNIEnv *env = getOrAttachThreadEnv( &didAttach );
         if( env != NULL && !env->ExceptionOccurred() && windowsDisplayClass && javaWindowProc )
         {
             return env->CallStaticLongMethod( windowsDisplayClass, javaWindowProc, (jlong)(intptr_t)hWnd,
                                               (jint)uMsg, (jlong)wParam, (jlong)lParam,
                                               (jlong)GetMessageTime() );
+        }
+        if( didAttach )
+        {
+            detachCurrentThread();
         }
 		
 
