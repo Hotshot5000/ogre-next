@@ -170,7 +170,7 @@ namespace Ogre
                 reinterpret_cast<ArrayInt * RESTRICT_ALIAS>( objData.mQueryFlags );
 
             // hitMask = hitMask && ( (*queryFlags & ourQueryMask) != 0 ) && isVisble;
-            ArrayMaskI hitMask = CastRealToInt( aabb.intersects( *objData.mWorldAabb ) );
+            ArrayMaskI hitMask = CastMaskRToMaskI( aabb.intersects( *objData.mWorldAabb ) );
             hitMask = Mathlib::And( hitMask, Mathlib::TestFlags4( *queryFlags, ourQueryMask ) );
             hitMask = Mathlib::And(
                 hitMask, Mathlib::TestFlags4( *visibilityFlags,
@@ -310,7 +310,7 @@ namespace Ogre
             }
 
             // hitMask = hitMask && ( (*queryFlags & ourQueryMask) != 0 ) && isVisble;
-            ArrayMaskI hitMask = CastRealToInt( hitMaskR );
+            ArrayMaskI hitMask = CastMaskRToMaskI( hitMaskR );
             hitMask = Mathlib::And( hitMask, Mathlib::TestFlags4( *queryFlags, ourQueryMask ) );
             hitMask = Mathlib::And(
                 hitMask, Mathlib::TestFlags4( *visibilityFlags,
@@ -403,7 +403,7 @@ namespace Ogre
             ArraySphere testSphere( *worldRadius, objData.mWorldAabb->mCenter );
 
             // hitMask = hitMask && ( (*queryFlags & ourQueryMask) != 0 ) && isVisble;
-            ArrayMaskI hitMask = CastRealToInt( ourSphere.intersects( testSphere ) );
+            ArrayMaskI hitMask = CastMaskRToMaskI( ourSphere.intersects( testSphere ) );
             hitMask = Mathlib::And( hitMask, Mathlib::TestFlags4( *queryFlags, ourQueryMask ) );
             hitMask = Mathlib::And(
                 hitMask, Mathlib::TestFlags4( *visibilityFlags,
@@ -520,7 +520,7 @@ namespace Ogre
             {
                 // For each volume test all planes and AND the dot product.
                 // If one is false, then we dont intersect with this volume
-                ArrayMaskR singleVolumeMask = CastIntToReal( Mathlib::SetAll( 0xffffffff ) );
+                ArrayMaskR singleVolumeMask = CastIntToMaskR( Mathlib::SetAll( 0xffffffff ) );
                 ArrayReal dotResult;
                 ArrayVector3 centerPlusFlippedHS;
 
@@ -548,7 +548,7 @@ namespace Ogre
                 allVolumesMask = Mathlib::Or( allVolumesMask, singleVolumeMask );
             }
 
-            ArrayMaskI hitMask = CastRealToInt( allVolumesMask );
+            ArrayMaskI hitMask = CastMaskRToMaskI( allVolumesMask );
             hitMask = Mathlib::And( hitMask, Mathlib::TestFlags4( *queryFlags, ourQueryMask ) );
             hitMask = Mathlib::And(
                 hitMask, Mathlib::TestFlags4( *visibilityFlags,

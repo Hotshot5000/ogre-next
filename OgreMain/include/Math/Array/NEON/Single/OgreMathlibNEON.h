@@ -46,7 +46,7 @@ namespace Ogre
     static inline uint32 vmovemaskq_u32( uint32x4_t conditions )
     {
         static const uint32x4_ct qMask = { 1, 2, 4, 8 };
-        const uint32x4_t         qAnded = vandq_u32( conditions, qMask );
+        const uint32x4_t         qAnded = vandq_u32( conditions, (uint32x4_t)qMask );
 
         // These two are no-ops, they only tell compiler to treat Q register as two D regs
         const uint32x2_t dHigh = vget_high_u32( qAnded );
@@ -60,21 +60,17 @@ namespace Ogre
         return vget_lane_u32( dMask, 0 );
     }
 
-    static inline ArrayInt vnand_s32( ArrayInt a, ArrayInt b ) { return vandq_s32( vmvnq_s32( a ), b ); }
-
-    static inline ArrayReal vnand_f32( ArrayReal a, ArrayReal b )
-    {
-        return vreinterpretq_f32_u32(
-            vandq_u32( vmvnq_u32( vreinterpretq_u32_f32( a ) ), vreinterpretq_u32_f32( b ) ) );
-    }
-
+        static inline ArrayReal vnand_f32( ArrayReal a, ArrayReal b )
+        {
+            return vreinterpretq_f32_u32(
+                vandq_u32( vmvnq_u32( vreinterpretq_u32_f32( a ) ), vreinterpretq_u32_f32( b ) ) );
+        }
 #    define vnand_u32( a, b ) vandq_u32( vmvnq_u32( a ), b )
-
-    static inline ArrayReal vorrq_f32( ArrayReal a, ArrayReal b )
-    {
-        return (ArrayReal)vorrq_s32( (ArrayInt)a, (ArrayInt)b );
-    }
-
+        static inline ArrayReal vorrq_f32( ArrayReal a, ArrayReal b )
+        {
+            return vreinterpretq_f32_u32( vorrq_u32( vreinterpretq_u32_f32( a ),
+                                                     vreinterpretq_u32_f32( b ) ) );
+        }
 #    if OGRE_ARCH_TYPE != OGRE_ARCHITECTURE_64  // ARM64 has native vdivq_f32
     static inline ArrayReal vdivq_f32( ArrayReal num, ArrayReal den )
     {
@@ -91,6 +87,8 @@ namespace Ogre
 #    define veorq_f32( a, b ) \
         vreinterpretq_f32_u32( veorq_u32( vreinterpretq_u32_f32( a ), vreinterpretq_u32_f32( b ) ) )
 #    define vandq_f32u32( a, b ) vreinterpretq_f32_u32( vandq_u32( vreinterpretq_u32_f32( a ), b ) )
+#    define veorq_f32u32( a, b ) vreinterpretq_f32_u32( veorq_u32( vreinterpretq_u32_f32( a ), b ) )
+#    define vorrq_f32u32( a, b ) vreinterpretq_f32_u32( vorrq_u32( vreinterpretq_u32_f32( a ), b ) )
 
 #    define _MM_SHUFFLE( fp3, fp2, fp1, fp0 ) \
         ( ( ( fp3 ) << 6 ) | ( ( fp2 ) << 4 ) | ( ( fp1 ) << 2 ) | ( ( fp0 ) ) )
@@ -261,13 +259,14 @@ namespace Ogre
         {
             return vreinterpretq_f32_u32(
                 vorrq_u32( vandq_u32( vreinterpretq_u32_f32( arg1 ), mask ),
-                           vnand_u32( mask, vreinterpretq_u32_f32( arg2 ) ) ) );
+                           vandq_u32( vmvnq_u32( mask ), vreinterpretq_u32_f32( arg2 ) ) ) );
         }
 #    ifndef _MSC_VER  // everything is __n128 on MSVC, so extra overloads are not allowed
         static inline ArrayInt CmovRobust( ArrayInt arg1, ArrayInt arg2, ArrayMaskI mask )
         {
-            return vorrq_s32( vandq_s32( arg1, vreinterpretq_s32_u32( mask ) ),
-                              vnand_s32( vreinterpretq_s32_u32( mask ), arg2 ) );
+            return vreinterpretq_s32_u32(
+                vorrq_u32( vandq_u32( vreinterpretq_u32_s32( arg1 ), mask ),
+                           vandq_u32( vmvnq_u32( mask ), vreinterpretq_u32_s32( arg2 ) ) ) );
         }
 #    endif
 
@@ -280,11 +279,11 @@ namespace Ogre
         static inline ArrayInt And( ArrayInt a, ArrayInt b ) { return vandq_s32( a, b ); }
         static inline ArrayInt And( ArrayInt a, ArrayMaskI b )
         {
-            return vandq_s32( a, vreinterpretq_s32_u32( b ) );
+            return vreinterpretq_s32_u32( vandq_u32( vreinterpretq_u32_s32( a ), b ) );
         }
         static inline ArrayMaskI And( ArrayMaskI a, ArrayInt b )
         {
-            return vreinterpretq_u32_s32( vandq_s32( vreinterpretq_s32_u32( a ), b ) );
+            return vandq_u32( a, vreinterpretq_u32_s32( b ) );
         }
         static inline ArrayMaskI And( ArrayMaskI a, ArrayMaskI b ) { return vandq_u32( a, b ); }
 #    endif
@@ -293,7 +292,11 @@ namespace Ogre
         @return
             r[i] = a[i] & b;
         */
-        static inline ArrayInt And( ArrayInt a, uint32 b ) { return vandq_s32( a, vdupq_n_u32( b ) ); }
+        static inline ArrayInt And( ArrayInt a, uint32 b )
+        {
+            return vreinterpretq_s32_u32(
+                vandq_u32( vreinterpretq_u32_s32( a ), vdupq_n_u32( b ) ) );
+        }
 
         /** Test if "a AND b" will result in non-zero, returning 0xffffffff on those cases
         @remarks
@@ -315,14 +318,15 @@ namespace Ogre
         static inline ArrayMaskI TestFlags4( ArrayInt a, ArrayMaskI b )
         {
             // !( (a & b) == 0 ) --> ( (a & b) == 0 ) ^ -1
-            return veorq_u32(
-                vceqq_u32( vandq_u32( vreinterpretq_u32_s32( a ), b ), vdupq_n_u32( 0 ) ),
-                vdupq_n_u32( 0xFFFFFFFF ) );
+            return veorq_u32( vceqq_u32( vandq_u32( vreinterpretq_u32_s32( a ), b ),
+                                         vdupq_n_u32( 0 ) ),
+                              vdupq_n_u32( 0xFFFFFFFF ) );
         }
         static inline ArrayMaskI TestFlags4( ArrayMaskI a, ArrayInt b )
         {
             // !( (a & b) == 0 ) --> ( (a & b) == 0 ) ^ -1
-            return veorq_u32( vceqq_u32( vandq_u32( a, vreinterpretq_u32_s32( b ) ), vdupq_n_u32( 0 ) ),
+            return veorq_u32( vceqq_u32( vandq_u32( a, vreinterpretq_u32_s32( b ) ),
+                                         vdupq_n_u32( 0 ) ),
                               vdupq_n_u32( 0xFFFFFFFF ) );
         }
 #    endif
@@ -331,11 +335,23 @@ namespace Ogre
         @return
             r[i] = a[i] & ~b[i];
         */
-        /*static inline ArrayInt AndNot( ArrayInt a, ArrayInt b )
+        static inline ArrayInt AndNot( ArrayInt a, ArrayInt b )
         {
-            return vnand_s32( b, a );
-        }*/
-        static inline ArrayMaskI AndNot( ArrayMaskI a, ArrayMaskI b ) { return vnand_u32( b, a ); }
+            return vandq_s32( a, vmvnq_s32( b ) );
+        }
+        static inline ArrayMaskI AndNot( ArrayMaskI a, ArrayInt b )
+        {
+            return vandq_u32( a, vmvnq_u32( vreinterpretq_u32_s32( b ) ) );
+        }
+        static inline ArrayMaskI AndNot( ArrayInt a, ArrayMaskI b )
+        {
+            return vreinterpretq_u32_s32(
+                vandq_s32( a, vreinterpretq_s32_u32( vmvnq_u32( b ) ) ) );
+        }
+        static inline ArrayMaskI AndNot( ArrayMaskI a, ArrayMaskI b )
+        {
+            return vandq_u32( a, vmvnq_u32( b ) );
+        }
 
         /** Returns the result of "a | b"
         @return
@@ -345,6 +361,14 @@ namespace Ogre
 #    ifndef _MSC_VER  // everything is __n128 on MSVC, so extra overloads are not allowed
         static inline ArrayInt   Or( ArrayInt a, ArrayInt b ) { return vorrq_s32( a, b ); }
         static inline ArrayMaskI Or( ArrayMaskI a, ArrayMaskI b ) { return vorrq_u32( a, b ); }
+        static inline ArrayMaskI Or( ArrayMaskI a, ArrayInt b )
+        {
+            return vorrq_u32( a, vreinterpretq_u32_s32( b ) );
+        }
+        static inline ArrayMaskI Or( ArrayInt a, ArrayMaskI b )
+        {
+            return vreinterpretq_u32_s32( vorrq_s32( a, vreinterpretq_s32_u32( b ) ) );
+        }
 #    endif
 
         /** Returns the result of "a < b"
@@ -379,7 +403,10 @@ namespace Ogre
 
         static inline ArrayReal SetAll( Real val ) { return vdupq_n_f32( val ); }
 
-        static inline ArrayInt SetAll( uint32 val ) { return vdupq_n_u32( val ); }
+        static inline ArrayInt SetAll( uint32 val )
+        {
+            return vreinterpretq_s32_u32( vdupq_n_u32( val ) );
+        }
 
         static inline void Set( ArrayReal &_dst, Real val, size_t index )
         {
@@ -564,8 +591,9 @@ namespace Ogre
             // Netwon-Raphson, 2 iterations.
             ArrayReal fStep0 = vrsqrteq_f32( f );
             // Nuke NaN when f == 0
-            fStep0 =
-                vreinterpretq_f32_u32( vandq_u32( vtstq_u32( f, f ), vreinterpretq_u32_f32( fStep0 ) ) );
+            fStep0 = vreinterpretq_f32_u32(
+                vandq_u32( vtstq_u32( vreinterpretq_u32_f32( f ), vreinterpretq_u32_f32( f ) ),
+                           vreinterpretq_u32_f32( fStep0 ) ) );
             // step fStep0 = 1 / sqrt(x)
             const ArrayReal fStepParm0 = vmulq_f32( f, fStep0 );
             const ArrayReal fStepResult0 = vrsqrtsq_f32( fStepParm0, fStep0 );
@@ -604,25 +632,8 @@ namespace Ogre
                 sin( x ) (packed as 4 floats)
         */
         static ArrayReal Sin4( ArrayReal x );
-
-        /** Returns the cosine of x
-            @param x
-                4 floating point values
-            @return
-                cos( x ) (packed as 4 floats)
-        */
         static ArrayReal Cos4( ArrayReal x );
-
-        /** Calculates the cosine & sine of x. Use this function if you need to calculate
-            both, as it is faster than calling Cos4 & Sin4 together.
-            @param x
-                4 floating point values
-            @param outSin
-                Output value, sin( x ) (packed as 4 floats)
-            @param outCos
-                Output value, cos( x ) (packed as 4 floats)
-        */
-        static void SinCos4( ArrayReal x, ArrayReal &outSin, ArrayReal &outCos );
+        static void     SinCos4( ArrayReal x, ArrayReal &outSin, ArrayReal &outCos );
     };
 
 #    if OGRE_COMPILER != OGRE_COMPILER_CLANG && OGRE_COMPILER != OGRE_COMPILER_GNUC

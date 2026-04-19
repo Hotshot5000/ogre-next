@@ -63,6 +63,16 @@ namespace Ogre
 #            define ARRAY_INT_ZERO _mm_setzero_si128()
 #            define ARRAY_MASK_ZERO _mm_setzero_ps()
 
+#            define CastMaskRToReal( x ) ( x )
+#            define CastRealToMaskR( x ) ( x )
+#            define CastMaskIToInt( x ) ( x )
+#            define CastIntToMaskI( x ) ( x )
+#            define CastMaskRToMaskI( x ) _mm_castps_si128( x )
+#            define CastMaskIToMaskR( x ) _mm_castsi128_ps( x )
+#            define CastIntToMaskR( x ) _mm_castsi128_ps( x )
+#            define CastMaskRToInt( x ) _mm_castps_si128( x )
+#            define CastMaskRToReal_float( x ) ( x )
+
     class ArrayRadian;
 }  // namespace Ogre
 
@@ -198,8 +208,17 @@ namespace Ogre
 /// Does not convert, just cast ArrayReal to ArrayInt
 //#define CastRealToInt( x )          vreinterpretq_s32_f32( x )
 //#define CastIntToReal( x )          vreinterpretq_f32_s32( x )
-#        define CastRealToInt( x ) ( x )
-#        define CastIntToReal( x ) ( x )
+#        define CastRealToInt( x ) vreinterpretq_s32_f32( (ArrayReal)( x ) )
+#        define CastIntToReal( x ) vreinterpretq_f32_s32( (ArrayInt)( x ) )
+#        define CastMaskRToReal( x ) vreinterpretq_f32_u32( (ArrayMaskR)( x ) )
+#        define CastRealToMaskR( x ) vreinterpretq_u32_f32( (ArrayReal)( x ) )
+#        define CastMaskIToInt( x ) vreinterpretq_s32_u32( (ArrayMaskI)( x ) )
+#        define CastIntToMaskI( x ) vreinterpretq_u32_s32( (ArrayInt)( x ) )
+#        define CastMaskRToMaskI( x ) ( (ArrayMaskI)( x ) )
+#        define CastMaskIToMaskR( x ) ( (ArrayMaskR)( x ) )
+#        define CastIntToMaskR( x ) vreinterpretq_u32_s32( (ArrayInt)( x ) )
+#        define CastMaskRToInt( x ) vreinterpretq_s32_u32( (ArrayMaskR)( x ) )
+#        define CastMaskRToReal_float( x ) vreinterpretq_f32_u32( (ArrayMaskR)( x ) )
 /// Input must be 16-byte aligned
 #        define CastArrayToReal( outFloatPtr, arraySimd ) vst1q_f32( outFloatPtr, arraySimd )
 
@@ -224,6 +243,15 @@ namespace Ogre
 // These are not conversions. They're reinterpretations!
 #    define CastIntToReal( x ) ( x )
 #    define CastRealToInt( x ) ( x )
+#    define CastMaskRToReal( x ) ( x )
+#    define CastRealToMaskR( x ) ( x )
+#    define CastMaskIToInt( x ) ( x )
+#    define CastIntToMaskI( x ) ( x )
+#    define CastMaskRToMaskI( x ) ( x )
+#    define CastMaskIToMaskR( x ) ( x )
+#    define CastIntToMaskR( x ) ( x )
+#    define CastMaskRToInt( x ) ( x )
+#    define CastMaskRToReal_float( x ) ( x )
 
 #    define ogre_madd( a, b, c ) ( ( c ) + ( ( a ) * ( b ) ) )
 

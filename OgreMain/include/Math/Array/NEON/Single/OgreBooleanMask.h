@@ -33,6 +33,9 @@ THE SOFTWARE.
 #    error "Don't include this file directly. include Math/Array/OgreBooleanMask.h"
 #endif
 
+#include "Math/Array/OgreMathlib.h"
+#include "OgrePrerequisites.h"
+
 namespace Ogre
 {
     class _OgreExport BooleanMask4

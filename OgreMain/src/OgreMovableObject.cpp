@@ -503,7 +503,7 @@ namespace Ogre
         }
 
         const ArrayMaskR ignoreRenderingDistance =
-            CastIntToReal( Mathlib::SetAll( lodCamera->getUseRenderingDistance() ? 0 : 0xffffffff ) );
+            CastIntToMaskR( Mathlib::SetAll( lodCamera->getUseRenderingDistance() ? 0 : 0xffffffff ) );
 
         // TODO: Profile whether we should use XOR to flip the sign or simple multiplication.
         // In theory xor is faster, but some archs have a penalty for switching between integer
@@ -892,7 +892,7 @@ namespace Ogre
                 Mathlib::TestFlags4( Mathlib::And( sceneFlags, *visibilityFlags ),
                                      Mathlib::AndNot( isVisible, CastRealToInt( infMask ) ) );
             finalMask = Mathlib::And( finalMask, isCaster );
-            ArrayMaskR casterMask = CastIntToReal( finalMask );
+            ArrayMaskR casterMask = CastIntToMaskR( finalMask );
 
             // Merge with bounds only if they're visible. We first merge,
             // then CMov its older value if the object isn't visible.
