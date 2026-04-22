@@ -35,6 +35,11 @@ THE SOFTWARE.
 #if OGRE_PLATFORM == OGRE_PLATFORM_LINUX || OGRE_PLATFORM == OGRE_PLATFORM_FREEBSD
 #    include <X11/Xlib.h>
 #    include <xcb/xcb.h>
+
+#if ( defined( OGRE_STATIC_LIB ) )
+#    include "JniCommon.h"
+#endif
+
 static void GLXProc( Ogre::Window *win, const XEvent &event );
 static void XcbProc( xcb_connection_t *xcbConnection, xcb_generic_event_t *event );
 
@@ -444,6 +449,21 @@ void XcbProc( xcb_connection_t *xcbConnection, xcb_generic_event_t *e )
 {
     XcbWindowMap::const_iterator itWindow;
     Ogre::WindowEventUtilities::WindowEventListeners::iterator index, start, end;
+
+#if ( defined( OGRE_STATIC_LIB ) )
+    bool didAttach = false;
+    JNIEnv *env = getOrAttachThreadEnv( &didAttach );
+    if( env != NULL && !env->ExceptionOccurred() && windowsDisplayClass && javaWindowProc )
+    {
+        return env->CallStaticLongMethod( windowsDisplayClass, javaWindowProc, (jlong)(intptr_t)hWnd,
+                                          (jint)uMsg, (jlong)wParam, (jlong)lParam,
+                                          (jlong)GetMessageTime() );
+    }
+    if( didAttach )
+    {
+        detachCurrentThread();
+    }
+#endif
 
     const Ogre::uint8 responseType = e->response_type & ~0x80;
     switch( responseType )

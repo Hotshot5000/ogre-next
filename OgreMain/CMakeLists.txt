@@ -117,6 +117,13 @@ endif ()
 
 
 # Add platform specific files
+include_directories(
+  /home/parallels/Downloads/BlackholeDarksunOnline6/android/src/main/jni
+  /snap/openjdk/current/jdk/include
+  /snap/openjdk/current/jdk/include/linux
+  /home/parallels/Downloads/build_ogre_scripts-v3-0/Ogre/ogre-next/RenderSystems/GL3Plus/include/
+  /home/parallels/Downloads/build_ogre_scripts-v3-0/Ogre/ogre-next/RenderSystems/GL3Plus/include/GLSL
+)
 if (EMSCRIPTEN)
   include_directories(include/Emscripten)
 

@@ -198,6 +198,8 @@ namespace Ogre
         enum TransparencyModes
         {
             /// No alpha blending. Default.
+// Conflicts with X11 None.
+#undef None
             None,
 
             /// Realistic transparency that preserves lighting reflections

@@ -107,6 +107,8 @@ namespace Ogre
         virtual void getCustomAttribute( IdString name, void *pData ) override;
 
         bool requiresTextureFlipping() const { return false; }
+
+        ::Window getWindow() { return mWindow; }
     };
 }  // namespace Ogre
 

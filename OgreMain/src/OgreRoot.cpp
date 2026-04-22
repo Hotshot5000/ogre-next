@@ -127,6 +127,9 @@ THE SOFTWARE.
 #            include "PlugIns/PCZSceneManager/include/OgrePCZPlugin.h"
 #        endif
 
+#    elif ( OGRE_PLATFORM == OGRE_PLATFORM_LINUX )
+#include "RenderSystems/GL3Plus/include/OgreGL3PlusRenderSystem.h"
+
 #    elif OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
 // #include "../../../RenderSystems/Metal/include/OgreMetalRenderSystem.h"
 #        include "../../../RenderSystems/Metal/include/OgreMetalPlugin.h"
@@ -345,6 +348,12 @@ namespace Ogre
         //		GL3PlusRenderSystem *renderSystem = OGRE_NEW GL3PlusRenderSystem();
         NameValuePairList options;
         VulkanRenderSystem *renderSystem = OGRE_NEW VulkanRenderSystem( &options );
+        // D3D11RenderSystem *renderSystem = OGRE_NEW D3D11RenderSystem();
+        Root::getSingleton().addRenderSystem( renderSystem );
+        Root::getSingleton().setRenderSystem( renderSystem );
+#   elif ( OGRE_PLATFORM == OGRE_PLATFORM_LINUX )
+        NameValuePairList options;
+        GL3PlusRenderSystem *renderSystem = OGRE_NEW GL3PlusRenderSystem( &options );
         // D3D11RenderSystem *renderSystem = OGRE_NEW D3D11RenderSystem();
         Root::getSingleton().addRenderSystem( renderSystem );
         Root::getSingleton().setRenderSystem( renderSystem );
