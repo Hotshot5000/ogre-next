@@ -36,9 +36,9 @@ THE SOFTWARE.
 #    include <X11/Xlib.h>
 #    include <xcb/xcb.h>
 
-#if ( defined( OGRE_STATIC_LIB ) )
-#    include "JniCommon.h"
-#endif
+// #if ( defined( OGRE_STATIC_LIB ) )
+// #    include "JniCommon.h"
+// #endif
 
 static void GLXProc( Ogre::Window *win, const XEvent &event );
 static void XcbProc( xcb_connection_t *xcbConnection, xcb_generic_event_t *event );

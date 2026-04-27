@@ -128,7 +128,7 @@ THE SOFTWARE.
 #        endif
 
 #    elif ( OGRE_PLATFORM == OGRE_PLATFORM_LINUX )
-#include "RenderSystems/GL3Plus/include/OgreGL3PlusRenderSystem.h"
+#include "RenderSystems/Vulkan/include/OgreVulkanRenderSystem.h"
 
 #    elif OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
 // #include "../../../RenderSystems/Metal/include/OgreMetalRenderSystem.h"
@@ -353,7 +353,8 @@ namespace Ogre
         Root::getSingleton().setRenderSystem( renderSystem );
 #   elif ( OGRE_PLATFORM == OGRE_PLATFORM_LINUX )
         NameValuePairList options;
-        GL3PlusRenderSystem *renderSystem = OGRE_NEW GL3PlusRenderSystem( &options );
+        VulkanRenderSystem *renderSystem = OGRE_NEW VulkanRenderSystem( &options );
+        // GL3PlusRenderSystem *renderSystem = OGRE_NEW GL3PlusRenderSystem( &options );
         // D3D11RenderSystem *renderSystem = OGRE_NEW D3D11RenderSystem();
         Root::getSingleton().addRenderSystem( renderSystem );
         Root::getSingleton().setRenderSystem( renderSystem );
