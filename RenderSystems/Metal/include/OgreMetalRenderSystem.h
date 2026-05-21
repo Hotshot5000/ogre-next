@@ -124,6 +124,7 @@ namespace Ogre
         
         id<MTLAccelerationStructure> mInstanceAccelerationStructure;
         NSMutableArray *mPrimitiveAccelerationStructures;
+        NSMutableArray *mAccelerationStructureVertexBuffers;
         
         id<MTLBuffer> mAccelerationStructureInstanceBuffer;
         
@@ -337,6 +338,7 @@ namespace Ogre
         void _notifyDeviceStalled();
         
         virtual void refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform );
+        virtual void rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform ) override;
         
         id<MTLAccelerationStructure> createAccelerationStructureWithDescriptor( MTLAccelerationStructureDescriptor *descriptor, bool refitAccelerationStructure = false );
         

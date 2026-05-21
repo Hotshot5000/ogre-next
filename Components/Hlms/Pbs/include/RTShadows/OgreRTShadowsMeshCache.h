@@ -45,7 +45,8 @@ namespace Ogre
             uint64      hash[2];
             String      meshName;
             Mesh        *mesh;
-            uint32      meshIndex;
+            uint32      blasStart;
+            uint32      numBlas;
         };
     private:
         typedef map<IdString, ShadowsCachedMesh>::type MeshCacheMap;
@@ -56,7 +57,8 @@ namespace Ogre
         MeshCacheMap mMeshCaches;
         MeshPtrArray mMeshes;
         ItemArray mItems;
-        bool mRebuildAS;
+        bool mRebuildBlas;
+        bool mRebuildTlas;
         
     public:
         RTShadowsMeshCache();

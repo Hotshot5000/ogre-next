@@ -41,7 +41,8 @@ THE SOFTWARE.
 namespace Ogre
 {
     RTShadowsMeshCache::RTShadowsMeshCache() :
-    mRebuildAS( true )
+        mRebuildBlas( true ),
+        mRebuildTlas( true )
     {
         
     }
@@ -61,11 +62,14 @@ namespace Ogre
             ShadowsCachedMesh shadowCachedMesh;
             shadowCachedMesh.meshName = meshName;
             shadowCachedMesh.mesh = mesh.get();
-            shadowCachedMesh.meshIndex = mMeshes.size();
+            shadowCachedMesh.blasStart = 0u;
+            shadowCachedMesh.numBlas = 0u;
             itor = mMeshCaches.insert( std::pair<IdString, ShadowsCachedMesh>( meshName, shadowCachedMesh ) ).first;
             mMeshes.push_back( mesh );
+            mRebuildBlas = true;
         }
         mItems.push_back( refItem );
+        mRebuildTlas = true;
         return itor->second;
     }
     //-------------------------------------------------------------------------
@@ -76,41 +80,45 @@ namespace Ogre
             OGRE_EXCEPT( Exception::ERR_ITEM_NOT_FOUND, "", "RTShadowsMeshCache::removeMeshFromCache" );
 
         mItems.erase( itor );
-        mRebuildAS = true;
+        mRebuildTlas = true;
     }
     //-------------------------------------------------------------------------
     void RTShadowsMeshCache::removeAllItems()
     {
         mItems.clear();
-        mRebuildAS = true;
+        mRebuildTlas = true;
     }
     //-------------------------------------------------------------------------
     void RTShadowsMeshCache::updateAS()
     {
         std::vector<VertexArrayObject *> meshVaos;
-        MeshPtrArray::iterator itor = mMeshes.begin();
-        MeshPtrArray::iterator end = mMeshes.end();
-
-        while( itor != end )
+        if( mRebuildBlas )
         {
-            const Mesh *mesh = itor->get();
-            const unsigned numSubmeshes = mesh->getNumSubMeshes();
+            uint32 blasIdx = 0u;
+            MeshPtrArray::iterator itor = mMeshes.begin();
+            MeshPtrArray::iterator end = mMeshes.end();
 
-            for( unsigned subMeshIdx = 0; subMeshIdx < numSubmeshes; ++subMeshIdx )
+            while( itor != end )
             {
-                SubMesh *subMesh = mesh->getSubMesh( subMeshIdx );
-                VertexArrayObject *vao = subMesh->mVao[VpNormal].front();
-                
-                meshVaos.push_back( vao );
+                const Mesh *mesh = itor->get();
+                const unsigned numSubmeshes = mesh->getNumSubMeshes();
+                MeshCacheMap::iterator meshCacheIt = mMeshCaches.find( mesh->getName() );
+                if( meshCacheIt != mMeshCaches.end() )
+                {
+                    meshCacheIt->second.blasStart = blasIdx;
+                    meshCacheIt->second.numBlas = numSubmeshes;
+                }
 
-//                size_t numVertices = vao->getBaseVertexBuffer()->getNumElements();
+                for( unsigned subMeshIdx = 0; subMeshIdx < numSubmeshes; ++subMeshIdx )
+                {
+                    SubMesh *subMesh = mesh->getSubMesh( subMeshIdx );
+                    VertexArrayObject *vao = subMesh->mVao[VpNormal].front();
+                    meshVaos.push_back( vao );
+                    ++blasIdx;
+                }
 
-//                IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
-                
-                
+                ++itor;
             }
-            
-            ++itor;
         }
         
         ItemArray::iterator itemItor = mItems.begin();
@@ -127,15 +135,13 @@ namespace Ogre
             if( meshCacheIt != mMeshCaches.end() )
             {
                 const ShadowsCachedMesh &cachedMesh = meshCacheIt->second;
-                instanceMeshIndex.push_back( cachedMesh.meshIndex );
                 const Ogre::Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
-                instanceTransform.push_back( transform );
+                for( uint32 blasOffset = 0u; blasOffset < cachedMesh.numBlas; ++blasOffset )
+                {
+                    instanceMeshIndex.push_back( cachedMesh.blasStart + blasOffset );
+                    instanceTransform.push_back( transform );
+                }
             }
-            else
-            {
-                
-            }
-            
             
             ++itemItor;
         }
@@ -144,31 +150,24 @@ namespace Ogre
         if( instanceMeshIndex.empty() )
         {
             renderSystem->clearAccelerationStructure();
-            mRebuildAS = true;
+            mRebuildTlas = true;
             return;
         }
 
-        if( mRebuildAS )
+        if( mRebuildBlas )
         {
             renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform );
-            mRebuildAS = false;
+            mRebuildBlas = false;
+            mRebuildTlas = false;
+        }
+        else if( mRebuildTlas )
+        {
+            renderSystem->rebuildAccelerationStructure( instanceMeshIndex, instanceTransform );
+            mRebuildTlas = false;
         }
         else
         {
             renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform );
         }
-        
-        
-//        MeshCacheMap::iterator itor = mMeshCaches.begin();
-//        MeshCacheMap::iterator end = mMeshCaches.end();
-//
-//        while( itor != end )
-//        {
-//
-//
-//
-//            ++itor;
-//        }
-        
     }
 }

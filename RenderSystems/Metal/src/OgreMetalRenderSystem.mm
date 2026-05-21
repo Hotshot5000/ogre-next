@@ -87,6 +87,7 @@ namespace Ogre
         mActiveRenderEncoder( 0 ),
         mInstanceAccelerationStructure( 0 ),
         mPrimitiveAccelerationStructures( 0 ),
+        mAccelerationStructureVertexBuffers( 0 ),
         mAccelerationStructureInstanceBuffer( 0 ),
         mIntersectionFunctionTable( 0 ),
         mDevice( this ),
@@ -2851,44 +2852,41 @@ namespace Ogre
         updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, true);
     }
     //-------------------------------------------------------------------------
+    void MetalRenderSystem::rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform )
+    {
+        MTLResourceOptions options = getManagedBufferStorageMode();
+
+        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, false);
+    }
+    //-------------------------------------------------------------------------
     void MetalRenderSystem::clearAccelerationStructure()
     {
         mInstanceAccelerationStructure = 0;
         mPrimitiveAccelerationStructures = 0;
+        mAccelerationStructureVertexBuffers = 0;
         mAccelerationStructureInstanceBuffer = 0;
         mIntersectionFunctionTable = 0;
     }
     
-    // Create and compact an acceleration structure, given an acceleration structure descriptor.
+    // Create or refit an acceleration structure, given an acceleration structure descriptor.
     id<MTLAccelerationStructure> MetalRenderSystem::createAccelerationStructureWithDescriptor( MTLAccelerationStructureDescriptor *descriptor, bool refitAccelerationStructure )
     {
         id<MTLDevice> device = mActiveDevice->mDevice;
-        // Query for the sizes needed to store and build the acceleration structure.
         MTLAccelerationStructureSizes accelSizes = [device accelerationStructureSizesWithDescriptor:descriptor];
 
-        // Allocate an acceleration structure large enough for this descriptor. This doesn't actually
-        // build the acceleration structure, just allocates memory.
-        id <MTLAccelerationStructure> accelerationStructure = refitAccelerationStructure ? mInstanceAccelerationStructure : [device newAccelerationStructureWithSize:accelSizes.accelerationStructureSize];
+        id <MTLAccelerationStructure> accelerationStructure = refitAccelerationStructure ?
+            mInstanceAccelerationStructure : [device newAccelerationStructureWithSize:accelSizes.accelerationStructureSize];
 
-        const NSUInteger scratchBufferSize = refitAccelerationStructure ? accelSizes.refitScratchBufferSize : accelSizes.buildScratchBufferSize;
+        const NSUInteger scratchBufferSize = refitAccelerationStructure ?
+            accelSizes.refitScratchBufferSize : accelSizes.buildScratchBufferSize;
         const NSUInteger scratchBufferAllocSize = std::max<NSUInteger>( scratchBufferSize, 1u );
-
-        // Allocate scratch space used by Metal to build or refit the acceleration structure.
-        // Some descriptors report zero scratch size, but Metal cannot create a zero-length buffer.
-        id <MTLBuffer> scratchBuffer = [device newBufferWithLength:scratchBufferAllocSize options:MTLResourceStorageModePrivate];
+        id <MTLBuffer> scratchBuffer = [device newBufferWithLength:scratchBufferAllocSize
+                                                           options:MTLResourceStorageModePrivate];
         
-        id<MTLCommandQueue> queue = mActiveDevice->mMainCommandQueue;
+        id <MTLCommandBuffer> commandBuffer = [mActiveDevice->mMainCommandQueue commandBuffer];
+        id <MTLAccelerationStructureCommandEncoder> commandEncoder =
+            [commandBuffer accelerationStructureCommandEncoder];
 
-        // Create a command buffer which will perform the acceleration structure build
-        id <MTLCommandBuffer> commandBuffer = [queue commandBuffer];
-
-        // Create an acceleration structure command encoder.
-        id <MTLAccelerationStructureCommandEncoder> commandEncoder = [commandBuffer accelerationStructureCommandEncoder];
-
-        // Allocate a buffer for Metal to write the compacted accelerated structure's size into.
-        id <MTLBuffer> compactedSizeBuffer = [device newBufferWithLength:sizeof(uint32_t) options:MTLResourceStorageModeShared];
-
-        // Schedule the actual acceleration structure build
         if( refitAccelerationStructure )
         {
             [commandEncoder refitAccelerationStructure:accelerationStructure
@@ -2905,64 +2903,10 @@ namespace Ogre
                                    scratchBufferOffset:0];
         }
 
-        const bool allowCompaction = !refitAccelerationStructure &&
-                                     !( descriptor.usage & MTLAccelerationStructureUsageRefit );
-        if( allowCompaction )
-        {
-            // Compute and write the compacted acceleration structure size into the buffer. You
-            // must already have a built accelerated structure because Metal determines the compacted
-            // size based on the final size of the acceleration structure. Compacting an acceleration
-            // structure can potentially reclaim significant amounts of memory since Metal must
-            // create the initial structure using a conservative approach.
-            [commandEncoder writeCompactedAccelerationStructureSize:accelerationStructure
-                                                           toBuffer:compactedSizeBuffer
-                                                             offset:0];
-        }
-
-        // End encoding and commit the command buffer so the GPU can start building the
-        // acceleration structure.
-        [commandEncoder endEncoding];
-
-        [commandBuffer commit];
-
-        if( !allowCompaction )
-            return accelerationStructure;
-
-        // The sample waits for Metal to finish executing the command buffer so that it can
-        // read back the compacted size.
-
-        // Note: Don't wait for Metal to finish executing the command buffer if you aren't compacting
-        // the acceleration structure, as doing so requires CPU/GPU synchronization. You don't have
-        // to compact acceleration structures, but you should when creating large static acceleration
-        // structures, such as static scene geometry. Avoid compacting acceleration structures that
-        // you rebuild every frame, as the synchronization cost may be significant.
-
-        [commandBuffer waitUntilCompleted];
-
-        uint32_t compactedSize = *(uint32_t *)compactedSizeBuffer.contents;
-
-        // Allocate a smaller acceleration structure based on the returned size.
-        id <MTLAccelerationStructure> compactedAccelerationStructure = [device newAccelerationStructureWithSize:compactedSize];
-
-        // Create another command buffer and encoder.
-        commandBuffer = [queue commandBuffer];
-
-        commandEncoder = [commandBuffer accelerationStructureCommandEncoder];
-
-        // Encode the command to copy and compact the acceleration structure into the
-        // smaller acceleration structure.
-        [commandEncoder copyAndCompactAccelerationStructure:accelerationStructure
-                                    toAccelerationStructure:compactedAccelerationStructure];
-
-        // End encoding and commit the command buffer. You don't need to wait for Metal to finish
-        // executing this command buffer as long as you synchronize any ray-intersection work
-        // to run after this command buffer completes. The sample relies on Metal's default
-        // dependency tracking on resources to automatically synchronize access to the new
-        // compacted acceleration structure.
         [commandEncoder endEncoding];
         [commandBuffer commit];
 
-        return compactedAccelerationStructure;
+        return accelerationStructure;
     }
     
     void MetalRenderSystem::updateInstanceAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure )
@@ -3030,6 +2974,7 @@ namespace Ogre
         size_t intersectionTableOffset = 0;
         
         mPrimitiveAccelerationStructures = [[NSMutableArray alloc] init];
+        mAccelerationStructureVertexBuffers = [[NSMutableArray alloc] init];
         
         while( vaoIt != vaoEnd )
         {
@@ -3084,7 +3029,7 @@ namespace Ogre
             uint8 const *srcData[1];
             downloadHelper.map( srcData );
 
-            id<MTLBuffer> vertexPositionBuffer = [mActiveDevice->mDevice newBufferWithLength:numVertices * 3 options:options];
+            id<MTLBuffer> vertexPositionBuffer = [mActiveDevice->mDevice newBufferWithLength:numVertices * sizeof(float) * 3u options:options];
             float *vertexBufferContents = reinterpret_cast<float *>(vertexPositionBuffer.contents);
 
             for( size_t vertexIdx = 0; vertexIdx < numVertices; ++vertexIdx )
@@ -3122,6 +3067,10 @@ namespace Ogre
     //            srcData[2] += downloadData[2].srcBytesPerVertex;
             }
 
+#if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
+            [vertexPositionBuffer didModifyRange:NSMakeRange(0, vertexPositionBuffer.length)];
+#endif
+
             // Create a primitive acceleration structure for each piece of geometry in the scene.
             uint32 primitiveCount = vao->getPrimitiveCount();
 //            for (NSUInteger i = 0; i < primitiveCount; i++) {
@@ -3130,8 +3079,8 @@ namespace Ogre
 
             geometryDescriptor.vertexBuffer = vertexPositionBuffer;
             geometryDescriptor.vertexBufferOffset = 0;
-            geometryDescriptor.vertexStride = 0;//sizeof(float) * 3;
-//            geometryDescriptor.vertexFormat = MTLAttributeFormatFloat3;
+            geometryDescriptor.vertexStride = sizeof(float) * 3u;
+            geometryDescriptor.vertexFormat = MTLAttributeFormatFloat3;
             geometryDescriptor.triangleCount = numTriangles;
             geometryDescriptor.indexType = indexBuffer->getIndexType() == IT_16BIT ? MTLIndexTypeUInt16 : MTLIndexTypeUInt32;
             geometryDescriptor.indexBufferOffset = indexBufferOffset;
@@ -3148,6 +3097,9 @@ namespace Ogre
 
             // Build the acceleration structure.
             id <MTLAccelerationStructure> accelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
+
+            // Keep the uploaded position buffer alive for any queued AS build work.
+            [mAccelerationStructureVertexBuffers addObject:vertexPositionBuffer];
 
             // Add the acceleration structure to the array of primitive acceleration structures.
             [mPrimitiveAccelerationStructures addObject:accelerationStructure];

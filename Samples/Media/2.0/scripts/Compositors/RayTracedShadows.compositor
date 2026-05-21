@@ -80,11 +80,11 @@ compositor_node RayTracedShadowsRenderingNode
         }
         pass render_scene
         {
-            /*load
+            load
             {
                 all                clear
                 clear_colour    0.2 0.4 0.6 1
-            }*/
+            }
             store
             {
                 colour    store_or_resolve
