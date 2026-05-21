@@ -343,6 +343,7 @@ namespace Ogre
         void updateInstanceAccelerationStructure(std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure = false );
         
         virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform ) override;
+        virtual void clearAccelerationStructure() override;
     };
 }  // namespace Ogre
 

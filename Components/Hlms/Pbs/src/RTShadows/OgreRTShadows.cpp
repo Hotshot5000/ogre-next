@@ -225,6 +225,8 @@ namespace Ogre
     void RTShadows::removeAllItems()
     {
         mItems.clear();
+        if( mMeshCache )
+            mMeshCache->removeAllItems();
     }
     //-------------------------------------------------------------------------
     void RTShadows::addItem(Item *item)
@@ -240,6 +242,8 @@ namespace Ogre
 
         
         mItems.erase( itor );
+        if( mMeshCache )
+            mMeshCache->removeMeshFromCache( item );
     }
     //-------------------------------------------------------------------------
     void RTShadows::init()

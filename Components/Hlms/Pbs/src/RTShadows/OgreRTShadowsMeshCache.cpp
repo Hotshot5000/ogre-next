@@ -69,6 +69,22 @@ namespace Ogre
         return itor->second;
     }
     //-------------------------------------------------------------------------
+    void RTShadowsMeshCache::removeMeshFromCache( Item *item )
+    {
+        ItemArray::iterator itor = std::find( mItems.begin(), mItems.end(), item );
+        if( itor == mItems.end() )
+            OGRE_EXCEPT( Exception::ERR_ITEM_NOT_FOUND, "", "RTShadowsMeshCache::removeMeshFromCache" );
+
+        mItems.erase( itor );
+        mRebuildAS = true;
+    }
+    //-------------------------------------------------------------------------
+    void RTShadowsMeshCache::removeAllItems()
+    {
+        mItems.clear();
+        mRebuildAS = true;
+    }
+    //-------------------------------------------------------------------------
     void RTShadowsMeshCache::updateAS()
     {
         std::vector<VertexArrayObject *> meshVaos;
@@ -125,6 +141,13 @@ namespace Ogre
         }
         
         RenderSystem *renderSystem = Root::getSingleton().getRenderSystem();
+        if( instanceMeshIndex.empty() )
+        {
+            renderSystem->clearAccelerationStructure();
+            mRebuildAS = true;
+            return;
+        }
+
         if( mRebuildAS )
         {
             renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform );

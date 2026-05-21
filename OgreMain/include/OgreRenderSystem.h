@@ -1169,6 +1169,7 @@ namespace Ogre
         virtual void refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform ) {}
         
         virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform ) {}
+        virtual void clearAccelerationStructure() {}
 
         VaoManager *getVaoManager() const { return mVaoManager; }
 

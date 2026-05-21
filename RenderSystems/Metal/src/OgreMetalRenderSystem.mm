@@ -2850,6 +2850,14 @@ namespace Ogre
         
         updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, true);
     }
+    //-------------------------------------------------------------------------
+    void MetalRenderSystem::clearAccelerationStructure()
+    {
+        mInstanceAccelerationStructure = 0;
+        mPrimitiveAccelerationStructures = 0;
+        mAccelerationStructureInstanceBuffer = 0;
+        mIntersectionFunctionTable = 0;
+    }
     
     // Create and compact an acceleration structure, given an acceleration structure descriptor.
     id<MTLAccelerationStructure> MetalRenderSystem::createAccelerationStructureWithDescriptor( MTLAccelerationStructureDescriptor *descriptor, bool refitAccelerationStructure )
