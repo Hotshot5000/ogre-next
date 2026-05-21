@@ -15,14 +15,8 @@ fragment float4 main_metal
 	sampler				samplerState1	[[sampler(1)]]
 )
 {
-    float4 finalColor;
-    float4 shadow = shadowTexture.sample( samplerState0, inPs.uv0 );
-//    return shadow;
-//    if( shadow.y < 1.0 )
-        finalColor = renderedScene.sample( samplerState1, inPs.uv0 );
-    finalColor *= shadow;
-//    else
-//        finalColor = float4( 0, 0, 0, 1 );
-
+    float shadowFactor = shadowTexture.sample( samplerState0, inPs.uv0 ).x;
+    float4 finalColor = renderedScene.sample( samplerState1, inPs.uv0 );
+    finalColor.xyz *= shadowFactor;
 	return finalColor;
 }

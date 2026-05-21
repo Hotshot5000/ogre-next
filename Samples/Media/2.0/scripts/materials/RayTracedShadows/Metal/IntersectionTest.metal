@@ -139,15 +139,7 @@ kernel void main_metal
     
     intersection = i.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
     
-    float4 col;
-            
-    if( intersection.type == intersection_type::triangle )
-    {
-        col = float4( 0.5f, 0.5f, 0.5f, 1.0f );
-    }
-    else
-    {
-        col = float4( 1.0f, 1.0f, 1.0f, 1.0f );
-    }
-    shadowTexture.write( col, gl_GlobalInvocationID.xy );
+    float shadowFactor = intersection.type == intersection_type::triangle ? 0.5f : 1.0f;
+    // shadowTexture is PFG_R16_FLOAT; only the red channel is stored.
+    shadowTexture.write( float4( shadowFactor, 0.0f, 0.0f, 1.0f ), gl_GlobalInvocationID.xy );
 }
