@@ -70,11 +70,10 @@ namespace Ogre
     
     struct RTLight
     {
-        float position[4];    //.w contains the objLightMask
-        float diffuse[4];        //.w contains numNonCasterDirectionalLights
-        float specular[3];
-
-        float attenuation[3];
+        float position[4];       //.w contains the light type marker from getAs4DVector
+        float diffuse[4];        //.w contains numCollectedLights in lights[0]
+        float specular[4];
+        float attenuation[4];    //.x contains range
         //Spotlights:
         //  spotDirection.xyz is direction
         //  spotParams.xyz contains falloff params
@@ -380,6 +379,7 @@ namespace Ogre
         
         RTLight *RESTRICT_ALIAS rtLight = reinterpret_cast<RTLight *>(
             mLightsConstBuffer->map( 0, mLightsConstBuffer->getNumElements() ) );
+        RTLight *RESTRICT_ALIAS firstLight = rtLight;
         uint32 numCollectedLights = 0;
         const uint32 maxNumLights =
             static_cast<uint32>( mLightsConstBuffer->getNumElements() / sizeof( RTLight ) );
@@ -410,9 +410,7 @@ namespace Ogre
                         Light *light = static_cast<Light *>( objData.mOwner[k] );
                         if( light->getType() == Light::LT_DIRECTIONAL ||
                             light->getType() == Light::LT_POINT ||
-                            light->getType() == Light::LT_SPOTLIGHT ||
-                            light->getType() == Light::LT_AREA_APPROX ||
-                            light->getType() == Light::LT_AREA_LTC )
+                            light->getType() == Light::LT_SPOTLIGHT )
                         {
                             addLight( rtLight, light );
 //                            autoMultiplierValue = std::max( autoMultiplierValue, maxVal );
@@ -426,6 +424,9 @@ namespace Ogre
                 objData.advancePack();
             }
         }
+
+        if( numCollectedLights > 0u )
+            firstLight->diffuse[3] = static_cast<float>( numCollectedLights );
 
         mLightsConstBuffer->unmap( UO_KEEP_PERSISTENT );
         
@@ -534,13 +535,26 @@ namespace Ogre
 //                                   ? ( lightDistThreshold->x * lightDistThreshold->x )
 //                                   : ( mDefaultLightDistThreshold * mDefaultLightDistThreshold );
         
-        Light::LightTypes lightType = light->getType();
-        if( lightType == Light::LT_AREA_APPROX )
-            lightType = Light::LT_AREA_LTC;
+        const Light::LightTypes lightType = light->getType();
 
         Vector4 light4dVec = light->getAs4DVector();
 
         for( size_t i = 0; i < 4u; ++i )
             vctLight->position[i] = static_cast<float>( light4dVec[i] );
+
+        vctLight->attenuation[0] = static_cast<float>( light->getAttenuationRange() );
+        vctLight->attenuation[1] = static_cast<float>( light->getAttenuationLinear() );
+        vctLight->attenuation[2] = static_cast<float>( light->getAttenuationQuadric() );
+
+        const Vector3 spotDirection = light->getDerivedDirectionUpdated();
+        vctLight->spotDirection[0] = static_cast<float>( spotDirection.x );
+        vctLight->spotDirection[1] = static_cast<float>( spotDirection.y );
+        vctLight->spotDirection[2] = static_cast<float>( spotDirection.z );
+        vctLight->spotDirection[3] = static_cast<float>( light->getLightProfileIdx() );
+
+        vctLight->spotParams[0] = static_cast<float>( Math::Cos( light->getSpotlightInnerAngle() ) );
+        vctLight->spotParams[1] = static_cast<float>( Math::Cos( light->getSpotlightOuterAngle() ) );
+        vctLight->spotParams[2] = static_cast<float>( light->getSpotlightFalloff() );
+        vctLight->spotParams[3] = static_cast<float>( lightType );
     }
 }

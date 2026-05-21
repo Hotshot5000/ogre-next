@@ -36,11 +36,10 @@ struct INPUT
 struct Light
 {
     
-    float4 position;    //.w contains the objLightMask
-    float4 diffuse;        //.w contains numNonCasterDirectionalLights
-    float3 specular;
-
-    float3 attenuation;
+    float4 position;    //.w contains the light type marker from getAs4DVector
+    float4 diffuse;     //.w contains numCollectedLights in lights[0]
+    float4 specular;
+    float4 attenuation; //.x contains range
     //Spotlights:
     //  spotDirection.xyz is direction
     //  spotParams.xyz contains falloff params
@@ -93,7 +92,7 @@ kernel void main_metal
     // The sample aligns the thread count to the threadgroup size. which means the thread count
     // may be different than the bounds of the texture. Test to make sure this thread
     // is referencing a pixel within the bounds of the texture.
-    if (gl_GlobalInvocationID.x >= in->width && gl_GlobalInvocationID.y >= in->height)
+    if (gl_GlobalInvocationID.x >= in->width || gl_GlobalInvocationID.y >= in->height)
         return;
 
     ushort3 pixelPos = ( gl_GlobalInvocationID /* * gl_WorkGroupID*/ );// + gl_LocalInvocationID;
@@ -101,14 +100,9 @@ kernel void main_metal
     float fDepth = depthTexture.read( pixelPos.xy );
     float linearDepth = in->projectionParams.y / ( fDepth - in->projectionParams.x );
     
-    ray shadowRay;
-    
-
     float2 uv = float2( pixel.x / in->width, pixel.y / in->height );
 //        uv.x = uv.x * 2.0f - 1.0f;
 //        uv.y = ( 1.0f - uv.y ) * 2.0f - 1.0f;
-
-    shadowRay.direction = normalize( float3( lights[0].position.xyz ) );
 
     // uv must be between 0.0 and 1.0 not -1.0 and 1.0!!!
     float3 interp = mix( mix( in->cameraCorner0.xyz, in->cameraCorner2.xyz, uv.x ),
@@ -119,8 +113,6 @@ kernel void main_metal
 
     float3 viewSpaceNormal = normalize( normalsTexture.read( pixelPos.xy ).xyz * 2.0f - 1.0f );
     float3 worldSpaceNormal = normalize( ( in->invViewMat * float4( viewSpaceNormal, 0.0f ) ).xyz );
-    float3 rayBiasNormal = dot( worldSpaceNormal, shadowRay.direction ) < 0.0f ?
-        -worldSpaceNormal : worldSpaceNormal;
     
     // Create an intersector to test for intersection between the ray and the geometry in the scene.
     intersector<triangle_data, instancing> i;
@@ -130,16 +122,74 @@ kernel void main_metal
     i.accept_any_intersection( true );
     
     typename intersector<triangle_data, instancing>::result_type intersection;
-    
-    shadowRay.origin = offset_ray( worldSpacePosition.xyz, rayBiasNormal );
-        
-    // Don't limit intersection distance.
-    shadowRay.max_distance = INFINITY;
-    shadowRay.min_distance = 0.005f;
-    
-    intersection = i.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
-    
-    float shadowFactor = intersection.type == intersection_type::triangle ? 0.5f : 1.0f;
+
+    const uint maxSupportedLights = 16u;
+    uint numLights = min( (uint)lights[0].diffuse.w, maxSupportedLights );
+    uint selectedLightIdx = maxSupportedLights;
+
+    for( uint lightIdx = 0u; lightIdx < numLights; ++lightIdx )
+    {
+        const uint lightType = (uint)( lights[lightIdx].spotParams.w + 0.5f );
+        if( lightType == 0u )
+        {
+            selectedLightIdx = lightIdx;
+            break;
+        }
+        else if( selectedLightIdx == maxSupportedLights && ( lightType == 1u || lightType == 2u ) )
+        {
+            selectedLightIdx = lightIdx;
+        }
+    }
+
+    float shadowFactor = 1.0f;
+    if( selectedLightIdx < numLights )
+    {
+        constant Light &light = lights[selectedLightIdx];
+        const uint lightType = (uint)( light.spotParams.w + 0.5f );
+
+        ray shadowRay;
+        shadowRay.min_distance = 0.005f;
+        shadowRay.max_distance = INFINITY;
+
+        bool traceShadowRay = true;
+        if( lightType == 0u )
+        {
+            shadowRay.direction = normalize( light.position.xyz );
+        }
+        else if( lightType == 1u || lightType == 2u )
+        {
+            float3 toLight = light.position.xyz - worldSpacePosition.xyz;
+            float lightDistance = length( toLight );
+            traceShadowRay = lightDistance > shadowRay.min_distance && lightDistance <= light.attenuation.x;
+
+            if( traceShadowRay )
+            {
+                shadowRay.direction = toLight / lightDistance;
+                shadowRay.max_distance = max( lightDistance - shadowRay.min_distance, 0.0f );
+
+                if( lightType == 2u )
+                {
+                    float3 lightToSurfaceDir = -shadowRay.direction;
+                    float spotCosAngle = dot( lightToSurfaceDir, normalize( light.spotDirection.xyz ) );
+                    traceShadowRay = spotCosAngle >= light.spotParams.y;
+                }
+            }
+        }
+        else
+        {
+            traceShadowRay = false;
+        }
+
+        if( traceShadowRay )
+        {
+            float3 rayBiasNormal = dot( worldSpaceNormal, shadowRay.direction ) < 0.0f ?
+                -worldSpaceNormal : worldSpaceNormal;
+            shadowRay.origin = offset_ray( worldSpacePosition.xyz, rayBiasNormal );
+
+            intersection = i.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
+            shadowFactor = intersection.type == intersection_type::triangle ? 0.5f : 1.0f;
+        }
+    }
     // shadowTexture is PFG_R16_FLOAT; only the red channel is stored.
     shadowTexture.write( float4( shadowFactor, 0.0f, 0.0f, 1.0f ), gl_GlobalInvocationID.xy );
 }
