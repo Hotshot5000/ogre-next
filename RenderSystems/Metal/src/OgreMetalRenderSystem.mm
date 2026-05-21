@@ -359,6 +359,14 @@ namespace Ogre
         rsc->setComputeProgramConstantBoolCount( 16384 );
         rsc->setComputeProgramConstantIntCount( 16384 );
 
+#if defined( __IPHONE_14_0 ) || defined( __MAC_11_0 )
+        if( @available( iOS 14.0, macOS 11.0, tvOS 14.0, * ) )
+        {
+            if( mActiveDevice->mDevice.supportsRaytracing )
+                rsc->setCapability( RSC_RAY_TRACING );
+        }
+#endif
+
 #if defined( __IPHONE_13_0 ) || defined( __MAC_10_15 )
         if( @available( iOS 13.0, macOS 10.15, * ) )
         {

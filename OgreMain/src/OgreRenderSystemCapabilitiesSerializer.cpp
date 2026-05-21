@@ -102,6 +102,7 @@ namespace Ogre
         file << "\t" << "vertex_texture_fetch " << StringConverter::toString(caps->hasCapability(RSC_VERTEX_TEXTURE_FETCH)) << endl;
         file << "\t" << "mipmap_lod_bias " << StringConverter::toString(caps->hasCapability(RSC_MIPMAP_LOD_BIAS)) << endl;
         file << "\t" << "atomic_counters " << StringConverter::toString(caps->hasCapability(RSC_ATOMIC_COUNTERS)) << endl;
+        file << "\t" << "ray_tracing " << StringConverter::toString(caps->hasCapability(RSC_RAY_TRACING)) << endl;
         file << "\t" << "texture_compression " << StringConverter::toString(caps->hasCapability(RSC_TEXTURE_COMPRESSION)) << endl;
         file << "\t" << "texture_compression_dxt " << StringConverter::toString(caps->hasCapability(RSC_TEXTURE_COMPRESSION_DXT)) << endl;
         file << "\t" << "texture_compression_vtc " << StringConverter::toString(caps->hasCapability(RSC_TEXTURE_COMPRESSION_VTC)) << endl;
@@ -453,6 +454,7 @@ namespace Ogre
         addKeywordType("vertex_texture_fetch", SET_CAPABILITY_ENUM_BOOL);
         addKeywordType("mipmap_lod_bias", SET_CAPABILITY_ENUM_BOOL);
         addKeywordType("atomic_counters", SET_CAPABILITY_ENUM_BOOL);
+        addKeywordType("ray_tracing", SET_CAPABILITY_ENUM_BOOL);
         addKeywordType("texture_compression", SET_CAPABILITY_ENUM_BOOL);
         addKeywordType("texture_compression_dxt", SET_CAPABILITY_ENUM_BOOL);
         addKeywordType("texture_compression_vtc", SET_CAPABILITY_ENUM_BOOL);
@@ -504,6 +506,7 @@ namespace Ogre
         addCapabilitiesMapping("vertex_texture_fetch", RSC_VERTEX_TEXTURE_FETCH);
         addCapabilitiesMapping("mipmap_lod_bias", RSC_MIPMAP_LOD_BIAS);
         addCapabilitiesMapping("atomic_counters", RSC_ATOMIC_COUNTERS);
+        addCapabilitiesMapping("ray_tracing", RSC_RAY_TRACING);
         addCapabilitiesMapping("texture_compression", RSC_TEXTURE_COMPRESSION);
         addCapabilitiesMapping("texture_compression_dxt", RSC_TEXTURE_COMPRESSION_DXT);
         addCapabilitiesMapping("texture_compression_vtc", RSC_TEXTURE_COMPRESSION_VTC);

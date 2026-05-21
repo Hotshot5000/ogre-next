@@ -259,6 +259,8 @@ namespace Ogre
         /// Metal: Always supported.
         RSC_SHADER_FLOAT16 = OGRE_CAPS_VALUE(CAPS_CATEGORY_COMMON_3, 15),
         RSC_UMA            = OGRE_CAPS_VALUE(CAPS_CATEGORY_COMMON_3, 16),
+        /// Supports hardware/API ray tracing with acceleration structures
+        RSC_RAY_TRACING    = OGRE_CAPS_VALUE(CAPS_CATEGORY_COMMON_3, 17),
 
         // ***** DirectX specific caps *****
         /// Is DirectX feature "per stage constants" supported
