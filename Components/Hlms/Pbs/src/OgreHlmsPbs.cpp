@@ -218,6 +218,7 @@ namespace Ogre
     const IdString PbsProperty::NeedsViewDir = IdString( "needs_view_dir" );
     const IdString PbsProperty::NeedsReflDir = IdString( "needs_refl_dir" );
     const IdString PbsProperty::NeedsEnvBrdf = IdString( "needs_env_brdf" );
+    const IdString PbsProperty::UseRtShadows = IdString( "hlms_use_rt_shadows" );
 
     // clang-format off
     const IdString *PbsProperty::UvSourcePtrs[NUM_PBSM_SOURCES] =
@@ -1170,6 +1171,14 @@ namespace Ogre
             setProperty( PbsProperty::NeedsViewDir, 1 );
         }
 
+        const bool useRtShadows = mRTShadows && mRTShadows->getShadowTexture();
+        if( useRtShadows )
+        {
+            setProperty( PbsProperty::UseRtShadows, 1 );
+            setProperty( HlmsBaseProp::VPos, 1 );
+            setProperty( HlmsBaseProp::ScreenPosInt, 1 );
+        }
+
         int32 texUnit = mReservedTexBufferSlots;
 
         if( getProperty( HlmsBaseProp::ForwardPlus ) )
@@ -1204,6 +1213,9 @@ namespace Ogre
             if( getProperty( HlmsBaseProp::UseSsr ) )
                 setTextureReg( PixelShader, "ssrTexture", texUnit++ );
         }
+
+        if( useRtShadows )
+            setTextureReg( PixelShader, "rtShadowTexture", texUnit++ );
 
         const bool refractionsAvailable = getProperty( HlmsBaseProp::SsRefractionsAvailable );
         if( refractionsAvailable )
@@ -2914,6 +2926,8 @@ namespace Ogre
                 mTexUnitSlotStart += 1;
             if( mSsrTexture )
                 mTexUnitSlotStart += 1;
+            if( mRTShadows && mRTShadows->getShadowTexture() )
+                mTexUnitSlotStart += 1;
             if( mDepthTextureNoMsaa && mDepthTexture != mDepthTextureNoMsaa )
                 mTexUnitSlotStart += 1;
             if( mRefractionsTexture )
@@ -3067,6 +3081,12 @@ namespace Ogre
                 {
                     *commandBuffer->addCommand<CbTexture>() =
                         CbTexture( (uint16)texUnit++, mSsrTexture, 0 );
+                }
+
+                if( mRTShadows && mRTShadows->getShadowTexture() )
+                {
+                    *commandBuffer->addCommand<CbTexture>() =
+                        CbTexture( (uint16)texUnit++, mRTShadows->getShadowTexture(), 0 );
                 }
 
                 if( mDepthTextureNoMsaa && mDepthTextureNoMsaa != mPrePassMsaaDepthTexture )

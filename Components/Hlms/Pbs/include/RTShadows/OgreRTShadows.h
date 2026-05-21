@@ -109,6 +109,7 @@ namespace Ogre
         void setAutoUpdate( CompositorManager2 *compositorManager, SceneManager *sceneManager );
         
         RTShadowsMeshCache *getMeshCache() { return mMeshCache; }
+        TextureGpu *getShadowTexture() const { return mShadowTexture; }
     };
 }
 

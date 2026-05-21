@@ -90,7 +90,15 @@ fragment @insertpiece( output_type ) main_metal
 		@end
 	@end
 
-	@property( hlms_ss_refractions_available )
+	@property( hlms_use_rt_shadows )
+
+			, texture2d<float, access::read> rtShadowTexture		[[texture(@value(rtShadowTexture))]]
+
+		@end
+
+
+
+		@property( hlms_ss_refractions_available )
 		@property( !hlms_use_prepass || !hlms_use_prepass_msaa || 1 )
 			@property( !hlms_use_prepass_msaa )
 				, texture2d<float> gBuf_depthTexture			[[texture(@value(gBuf_depthTexture))]]

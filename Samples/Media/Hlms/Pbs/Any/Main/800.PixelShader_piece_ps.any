@@ -865,6 +865,10 @@
 
 			@insertpiece( custom_ps_preLights )
 
+				@property( hlms_use_rt_shadows )
+					midf3 rtShadowBaseColour = finalColour;
+				@end
+
 			@property( !custom_disable_directional_lights )
 				@insertpiece( DoDirectionalLights )
 			@end
@@ -876,6 +880,11 @@
 			@insertpiece( DoAreaLtcLights )
 
 			@insertpiece( forward3dLighting )
+
+				@property( hlms_use_rt_shadows )
+					midf rtShadowFactor = midf_c( OGRE_Load2D( rtShadowTexture, iFragCoord, 0 ).x );
+					finalColour = rtShadowBaseColour + (finalColour - rtShadowBaseColour) * rtShadowFactor;
+				@end
 
 			@property( needs_env_brdf )
 				pixelData.envColourS = midf3_c( 0, 0, 0 );

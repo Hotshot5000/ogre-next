@@ -73,11 +73,6 @@ compositor_node RayTracedShadowsRenderingNode
         {
             colour_value 0.2 0.4 0.6 1
         }
-        pass render_quad
-        {
-            material Ogre/Copy/4xFP32
-            input 0 shadowTexture
-        }
         pass render_scene
         {
             load
@@ -106,9 +101,8 @@ compositor_node RayTracedShadowsRenderingNode
         }
         pass render_quad
         {
-            material RayTracedShadows/Add
-            input 0 shadowTexture
-            input 1 renderedScene
+            material Ogre/Copy/4xFP32
+            input 0 renderedScene
         }
         pass render_scene
         {

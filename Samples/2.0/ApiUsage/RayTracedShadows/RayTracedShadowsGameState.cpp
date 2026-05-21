@@ -48,6 +48,7 @@ namespace Demo
         const Ogre::String &helpDescription ) :
         TutorialGameState( helpDescription ),
         mScreenSpaceReflections( 0 ),
+        mRTShadows( 0 ),
         mAnimateObjects( true )
     {
         mDisplayHelpMode = 2;
@@ -83,6 +84,8 @@ namespace Demo
         // we apply the cubemap to everything via C++ code
         
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
+        Ogre::HlmsPbs *hlmsPbs = static_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) );
+        hlmsPbs->setRTShadows( mRTShadows );
         
         mRTShadows->setAutoUpdate( mGraphicsSystem->getRoot()->getCompositorManager2(),
                                            mGraphicsSystem->getSceneManager() );
@@ -325,7 +328,14 @@ namespace Demo
     //-----------------------------------------------------------------------------------
     void RayTracedShadowsGameState::destroyScene()
     {
+        Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
+        assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
+        Ogre::HlmsPbs *hlmsPbs = static_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) );
+        if( hlmsPbs->getRTShadows() == mRTShadows )
+            hlmsPbs->setRTShadows( 0 );
+
         delete mRTShadows;
+        mRTShadows = 0;
 //        delete mScreenSpaceReflections;
 //        mScreenSpaceReflections = 0;
     }
