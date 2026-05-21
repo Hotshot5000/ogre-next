@@ -93,7 +93,7 @@ kernel void main_metal
     // The sample aligns the thread count to the threadgroup size. which means the thread count
     // may be different than the bounds of the texture. Test to make sure this thread
     // is referencing a pixel within the bounds of the texture.
-    if (gl_GlobalInvocationID.x > in->width && gl_GlobalInvocationID.y > in->height)
+    if (gl_GlobalInvocationID.x >= in->width && gl_GlobalInvocationID.y >= in->height)
         return;
 
     ushort3 pixelPos = ( gl_GlobalInvocationID /* * gl_WorkGroupID*/ );// + gl_LocalInvocationID;
@@ -116,6 +116,11 @@ kernel void main_metal
                          uv.y );
 
     float3 worldSpacePosition = in->cameraPos.xyz + interp * linearDepth;
+
+    float3 viewSpaceNormal = normalize( normalsTexture.read( pixelPos.xy ).xyz * 2.0f - 1.0f );
+    float3 worldSpaceNormal = normalize( ( in->invViewMat * float4( viewSpaceNormal, 0.0f ) ).xyz );
+    float3 rayBiasNormal = dot( worldSpaceNormal, shadowRay.direction ) < 0.0f ?
+        -worldSpaceNormal : worldSpaceNormal;
     
     // Create an intersector to test for intersection between the ray and the geometry in the scene.
     intersector<triangle_data, instancing> i;
@@ -126,7 +131,7 @@ kernel void main_metal
     
     typename intersector<triangle_data, instancing>::result_type intersection;
     
-    shadowRay.origin = worldSpacePosition.xyz;
+    shadowRay.origin = offset_ray( worldSpacePosition.xyz, rayBiasNormal );
         
     // Don't limit intersection distance.
     shadowRay.max_distance = INFINITY;
