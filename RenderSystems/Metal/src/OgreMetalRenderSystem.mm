@@ -2848,7 +2848,7 @@ namespace Ogre
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
         
-        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options);
+        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, true);
     }
     
     // Create and compact an acceleration structure, given an acceleration structure descriptor.
@@ -2862,10 +2862,12 @@ namespace Ogre
         // build the acceleration structure, just allocates memory.
         id <MTLAccelerationStructure> accelerationStructure = refitAccelerationStructure ? mInstanceAccelerationStructure : [device newAccelerationStructureWithSize:accelSizes.accelerationStructureSize];
 
-        // Allocate scratch space used by Metal to build the acceleration structure.
+        const NSUInteger scratchBufferSize = refitAccelerationStructure ? accelSizes.refitScratchBufferSize : accelSizes.buildScratchBufferSize;
+
+        // Allocate scratch space used by Metal to build or refit the acceleration structure.
         // Use MTLResourceStorageModePrivate for best performance since the sample
         // doesn't need access to buffer's contents.
-        id <MTLBuffer> scratchBuffer = [device newBufferWithLength:accelSizes.buildScratchBufferSize options:MTLResourceStorageModePrivate];
+        id <MTLBuffer> scratchBuffer = [device newBufferWithLength:scratchBufferSize options:MTLResourceStorageModePrivate];
         
         id<MTLCommandQueue> queue = mActiveDevice->mMainCommandQueue;
 
@@ -2895,21 +2897,28 @@ namespace Ogre
                                    scratchBufferOffset:0];
         }
 
-        // Compute and write the compacted acceleration structure size into the buffer. You
-        // must already have a built accelerated structure because Metal determines the compacted
-        // size based on the final size of the acceleration structure. Compacting an acceleration
-        // structure can potentially reclaim significant amounts of memory since Metal must
-        // create the initial structure using a conservative approach.
-
-        [commandEncoder writeCompactedAccelerationStructureSize:accelerationStructure
-                                                       toBuffer:compactedSizeBuffer
-                                                         offset:0];
+        const bool allowCompaction = !refitAccelerationStructure &&
+                                     !( descriptor.usage & MTLAccelerationStructureUsageRefit );
+        if( allowCompaction )
+        {
+            // Compute and write the compacted acceleration structure size into the buffer. You
+            // must already have a built accelerated structure because Metal determines the compacted
+            // size based on the final size of the acceleration structure. Compacting an acceleration
+            // structure can potentially reclaim significant amounts of memory since Metal must
+            // create the initial structure using a conservative approach.
+            [commandEncoder writeCompactedAccelerationStructureSize:accelerationStructure
+                                                           toBuffer:compactedSizeBuffer
+                                                             offset:0];
+        }
 
         // End encoding and commit the command buffer so the GPU can start building the
         // acceleration structure.
         [commandEncoder endEncoding];
 
         [commandBuffer commit];
+
+        if( !allowCompaction )
+            return accelerationStructure;
 
         // The sample waits for Metal to finish executing the command buffer so that it can
         // read back the compacted size.
@@ -2996,10 +3005,11 @@ namespace Ogre
         accelDescriptor.instancedAccelerationStructures = mPrimitiveAccelerationStructures;
         accelDescriptor.instanceCount = instanceMeshIndex.size();
         accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
+        accelDescriptor.usage = MTLAccelerationStructureUsageRefit;
         
         // Finally, create the instance acceleration structure containing all of the instances
         // in the scene.
-        mInstanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor );
+        mInstanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor, refitAccelerationStructure );
     }
     
     //-------------------------------------------------------------------------
