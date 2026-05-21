@@ -59,6 +59,7 @@ namespace Ogre
         ItemArray mItems;
         bool mRebuildBlas;
         bool mRebuildTlas;
+        bool mEnabled;
         
     public:
         RTShadowsMeshCache();
@@ -79,6 +80,9 @@ namespace Ogre
         const ShadowsCachedMesh &addMeshToCache( const MeshPtr &mesh, Item *refItem );
         void removeMeshFromCache( Item *item );
         void removeAllItems();
+
+        void setEnabled( bool enabled ) { mEnabled = enabled; }
+        bool getEnabled() const { return mEnabled; }
         
         void updateAS();
     };

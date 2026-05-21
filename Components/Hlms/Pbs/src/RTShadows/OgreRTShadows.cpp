@@ -41,6 +41,8 @@ THE SOFTWARE.
 #include "Compositor/OgreCompositorWorkspace.h"
 #include "Compositor/OgreCompositorNode.h"
 #include "Vao/OgreConstBufferPacked.h"
+#include "OgreLogManager.h"
+#include "OgreRenderSystemCapabilities.h"
 
 
 namespace Ogre
@@ -91,28 +93,38 @@ namespace Ogre
         mCamera( camera ),
         mWorkspace( workspace ),
         mRenderWindow( renderWindow ),
+        mShadowTexture( 0 ),
+        mDepthTexture( 0 ),
+        mNormalsTexture( 0 ),
         mShadowIntersectionJob( 0 ),
         mLightsConstBuffer( 0 ),
-        mFirstBuild( true )
+        mInputDataConstBuffer( 0 ),
+        mShadowTex( 0 ),
+        mFirstBuild( true ),
+        mEnabled( false )
     {
-        HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
-
-        mShadowIntersectionJob = hlmsCompute->findComputeJobNoThrow( "RT/IntersectionTestJob" );
+        const bool rayTracingSupported =
+            mRenderSystem->getCapabilities()->hasCapability( RSC_RAY_TRACING );
+        if( rayTracingSupported )
+        {
+            HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
+            mShadowIntersectionJob = hlmsCompute->findComputeJobNoThrow( "RT/IntersectionTestJob" );
 
 #if OGRE_NO_JSON
-        OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
-                     "To use RTShadows, Ogre must be build with JSON support "
-                     "and you must include the resources bundled at "
-                     "Samples/Media/RT",
-                     "RTShadows::RTShadows" );
-#endif
-        if( !mShadowIntersectionJob )
-        {
             OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
-                         "To use RTShadows, you must include the resources bundled at "
-                         "Samples/Media/RT\n"
-                         "Could not find RT/IntersectionTestJob",
+                         "To use RTShadows, Ogre must be build with JSON support "
+                         "and you must include the resources bundled at "
+                         "Samples/Media/RT",
                          "RTShadows::RTShadows" );
+#endif
+            if( !mShadowIntersectionJob )
+            {
+                OGRE_EXCEPT( Exception::ERR_INVALIDPARAMS,
+                             "To use RTShadows, you must include the resources bundled at "
+                             "Samples/Media/RT\n"
+                             "Could not find RT/IntersectionTestJob",
+                             "RTShadows::RTShadows" );
+            }
         }
         
         //uint32 textureSize = mRenderWindow->getWidth() * mRenderWindow->getHeight();
@@ -248,7 +260,17 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void RTShadows::init()
     {
-        mMeshCache = new RTShadowsMeshCache();
+        if( !mMeshCache )
+            mMeshCache = new RTShadowsMeshCache();
+
+        mEnabled = mRenderSystem->getCapabilities()->hasCapability( RSC_RAY_TRACING );
+        mMeshCache->setEnabled( mEnabled );
+
+        if( !mEnabled )
+        {
+            LogManager::getSingleton().logMessage(
+                "RTShadows disabled: active RenderSystem does not support ray tracing acceleration structures." );
+        }
     }
     //-------------------------------------------------------------------------
     void RTShadows::updateAS()
@@ -259,6 +281,9 @@ namespace Ogre
     void RTShadows::setAutoUpdate( CompositorManager2 *compositorManager,
                                               SceneManager *sceneManager )
     {
+        if( !mEnabled )
+            compositorManager = 0;
+
         if( compositorManager && !mCompositorManager )
         {
             mSceneManager = sceneManager;
@@ -275,11 +300,15 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void RTShadows::allWorkspacesBeforeBeginUpdate()
     {
-        update( mSceneManager );
+        if( mEnabled )
+            update( mSceneManager );
     }
     //-------------------------------------------------------------------------
     void RTShadows::update( SceneManager *sceneManager )
     {
+        if( !mEnabled || !mShadowIntersectionJob )
+            return;
+
         HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
         Ogre::Matrix4 projMat = mCamera->getProjectionMatrix();
         Ogre::Matrix4 viewProj = mCamera->getProjectionMatrixWithRSDepth() * mCamera->getViewMatrix( true );

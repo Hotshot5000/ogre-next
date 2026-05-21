@@ -68,6 +68,7 @@ namespace Ogre
         ResourceTransitionArray mResourceTransitions;
         
         bool mFirstBuild;
+        bool mEnabled;
         
         void addLight( RTLight *RESTRICT_ALIAS vctLight, Light *light );
         
@@ -109,7 +110,8 @@ namespace Ogre
         void setAutoUpdate( CompositorManager2 *compositorManager, SceneManager *sceneManager );
         
         RTShadowsMeshCache *getMeshCache() { return mMeshCache; }
-        TextureGpu *getShadowTexture() const { return mShadowTexture; }
+        bool getEnabled() const { return mEnabled; }
+        TextureGpu *getShadowTexture() const { return mEnabled ? mShadowTexture : 0; }
     };
 }
 

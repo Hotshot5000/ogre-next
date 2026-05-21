@@ -42,7 +42,8 @@ namespace Ogre
 {
     RTShadowsMeshCache::RTShadowsMeshCache() :
         mRebuildBlas( true ),
-        mRebuildTlas( true )
+        mRebuildTlas( true ),
+        mEnabled( true )
     {
         
     }
@@ -91,6 +92,9 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void RTShadowsMeshCache::updateAS()
     {
+        if( !mEnabled )
+            return;
+
         std::vector<VertexArrayObject *> meshVaos;
         if( mRebuildBlas )
         {
