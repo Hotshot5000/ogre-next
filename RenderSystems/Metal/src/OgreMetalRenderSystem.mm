@@ -2871,11 +2871,11 @@ namespace Ogre
         id <MTLAccelerationStructure> accelerationStructure = refitAccelerationStructure ? mInstanceAccelerationStructure : [device newAccelerationStructureWithSize:accelSizes.accelerationStructureSize];
 
         const NSUInteger scratchBufferSize = refitAccelerationStructure ? accelSizes.refitScratchBufferSize : accelSizes.buildScratchBufferSize;
+        const NSUInteger scratchBufferAllocSize = std::max<NSUInteger>( scratchBufferSize, 1u );
 
         // Allocate scratch space used by Metal to build or refit the acceleration structure.
-        // Use MTLResourceStorageModePrivate for best performance since the sample
-        // doesn't need access to buffer's contents.
-        id <MTLBuffer> scratchBuffer = [device newBufferWithLength:scratchBufferSize options:MTLResourceStorageModePrivate];
+        // Some descriptors report zero scratch size, but Metal cannot create a zero-length buffer.
+        id <MTLBuffer> scratchBuffer = [device newBufferWithLength:scratchBufferAllocSize options:MTLResourceStorageModePrivate];
         
         id<MTLCommandQueue> queue = mActiveDevice->mMainCommandQueue;
 
