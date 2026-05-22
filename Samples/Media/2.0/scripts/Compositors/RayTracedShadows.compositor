@@ -45,7 +45,7 @@ compositor_node RayTracedShadowsRenderingNode
 	//in 3 resolvedDepthBuffer
 	in 2 rt_renderwindow
  
-    texture shadowTexture target_width target_height PFG_R16_FLOAT depth_pool 0 uav
+    texture shadowTexture target_width target_height PFG_RG16_FLOAT depth_pool 0 uav
     texture renderedScene target_width target_height PFG_RGBA8_UNORM depth_pool 0 uav
 
     target

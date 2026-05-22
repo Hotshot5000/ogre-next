@@ -866,6 +866,7 @@
 			@insertpiece( custom_ps_preLights )
 
 				@property( hlms_use_rt_shadows )
+					midf2 rtShadowFactors = midf2_c( OGRE_Load2D( rtShadowTexture, iFragCoord, 0 ).xy );
 					midf3 rtShadowBaseColour = finalColour;
 				@end
 
@@ -873,8 +874,18 @@
 				@insertpiece( DoDirectionalLights )
 			@end
 
+			@property( hlms_use_rt_shadows )
+				finalColour = rtShadowBaseColour + (finalColour - rtShadowBaseColour) * rtShadowFactors.x;
+				rtShadowBaseColour = finalColour;
+			@end
+
 			@insertpiece( DoPointLights )
 			@insertpiece( DoSpotLights )
+
+			@property( hlms_use_rt_shadows )
+				finalColour = rtShadowBaseColour + (finalColour - rtShadowBaseColour) * rtShadowFactors.y;
+				rtShadowBaseColour = finalColour;
+			@end
 
 			@insertpiece( DoAreaApproxLights )
 			@insertpiece( DoAreaLtcLights )
@@ -882,8 +893,8 @@
 			@insertpiece( forward3dLighting )
 
 				@property( hlms_use_rt_shadows )
-					midf rtShadowFactor = midf_c( OGRE_Load2D( rtShadowTexture, iFragCoord, 0 ).x );
-					finalColour = rtShadowBaseColour + (finalColour - rtShadowBaseColour) * rtShadowFactor;
+					// RT shadow factors are applied per light group above.
+					rtShadowBaseColour = finalColour;
 				@end
 
 			@property( needs_env_brdf )

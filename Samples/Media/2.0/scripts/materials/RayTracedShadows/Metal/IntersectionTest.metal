@@ -125,33 +125,42 @@ kernel void main_metal
 
     const uint maxSupportedLights = 16u;
     uint numLights = min( (uint)lights[0].diffuse.w, maxSupportedLights );
-    uint selectedLightIdx = maxSupportedLights;
+    uint selectedDirectionalIdx = maxSupportedLights;
 
     for( uint lightIdx = 0u; lightIdx < numLights; ++lightIdx )
     {
         const uint lightType = (uint)( lights[lightIdx].spotParams.w + 0.5f );
         if( lightType == 0u )
         {
-            selectedLightIdx = lightIdx;
+            selectedDirectionalIdx = lightIdx;
             break;
-        }
-        else if( selectedLightIdx == maxSupportedLights && ( lightType == 1u || lightType == 2u ) )
-        {
-            selectedLightIdx = lightIdx;
         }
     }
 
-    float shadowFactor = 1.0f;
-    if( selectedLightIdx < numLights )
+    float directionalVisibleWeight = 0.0f;
+    float directionalTotalWeight = 0.0f;
+    float localVisibleWeight = 0.0f;
+    float localTotalWeight = 0.0f;
+
+    for( uint lightIdx = 0u; lightIdx < numLights; ++lightIdx )
     {
-        constant Light &light = lights[selectedLightIdx];
+        constant Light &light = lights[lightIdx];
         const uint lightType = (uint)( light.spotParams.w + 0.5f );
+
+        if( lightType == 0u && lightIdx != selectedDirectionalIdx )
+            continue;
+
+        if( lightType != 0u && lightType != 1u && lightType != 2u )
+            continue;
 
         ray shadowRay;
         shadowRay.min_distance = 0.005f;
         shadowRay.max_distance = INFINITY;
 
         bool traceShadowRay = true;
+        // Converts RGB light color/intensity into a single scalar “brightness” weight using Rec. 709/sRGB luminance coefficients:
+        float lightWeight = max( dot( light.diffuse.xyz, float3( 0.2126f, 0.7152f, 0.0722f ) ), 0.0f );
+
         if( lightType == 0u )
         {
             shadowRay.direction = normalize( light.position.xyz );
@@ -167,19 +176,29 @@ kernel void main_metal
                 shadowRay.direction = toLight / lightDistance;
                 shadowRay.max_distance = max( lightDistance - shadowRay.min_distance, 0.0f );
 
+                float attenuation = 1.0f / ( 0.5f + ( light.attenuation.y + light.attenuation.z * lightDistance ) * lightDistance );
+                lightWeight *= max( attenuation, 0.0f );
+
                 if( lightType == 2u )
                 {
                     float3 lightToSurfaceDir = -shadowRay.direction;
                     float spotCosAngle = dot( lightToSurfaceDir, normalize( light.spotDirection.xyz ) );
                     traceShadowRay = spotCosAngle >= light.spotParams.y;
+
+                    if( traceShadowRay )
+                    {
+                        float spotAtten = saturate( ( spotCosAngle - light.spotParams.y ) /
+                                                    max( light.spotParams.x - light.spotParams.y, 1e-4f ) );
+                        lightWeight *= pow( spotAtten, light.spotParams.z );
+                    }
                 }
             }
         }
-        else
-        {
-            traceShadowRay = false;
-        }
 
+        if( lightWeight <= 0.0f )
+            continue;
+
+        float visibility = 1.0f;
         if( traceShadowRay )
         {
             float3 rayBiasNormal = dot( worldSpaceNormal, shadowRay.direction ) < 0.0f ?
@@ -187,9 +206,24 @@ kernel void main_metal
             shadowRay.origin = offset_ray( worldSpacePosition.xyz, rayBiasNormal );
 
             intersection = i.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
-            shadowFactor = intersection.type == intersection_type::triangle ? 0.5f : 1.0f;
+            visibility = intersection.type == intersection_type::triangle ? 0.5f : 1.0f;
+        }
+
+        if( lightType == 0u )
+        {
+            directionalVisibleWeight += visibility * lightWeight;
+            directionalTotalWeight += lightWeight;
+        }
+        else
+        {
+            localVisibleWeight += visibility * lightWeight;
+            localTotalWeight += lightWeight;
         }
     }
-    // shadowTexture is PFG_R16_FLOAT; only the red channel is stored.
-    shadowTexture.write( float4( shadowFactor, 0.0f, 0.0f, 1.0f ), gl_GlobalInvocationID.xy );
+
+    float directionalShadowFactor = directionalTotalWeight > 0.0f ?
+        directionalVisibleWeight / directionalTotalWeight : 1.0f;
+    float localShadowFactor = localTotalWeight > 0.0f ? localVisibleWeight / localTotalWeight : 1.0f;
+    // shadowTexture is PFG_RG16_FLOAT: R = selected directional, G = merged point/spot.
+    shadowTexture.write( float4( directionalShadowFactor, localShadowFactor, 0.0f, 1.0f ), gl_GlobalInvocationID.xy );
 }

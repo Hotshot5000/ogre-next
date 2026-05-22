@@ -400,7 +400,8 @@ namespace Ogre
             for( size_t j = 0; j < totalObjs && numCollectedLights < maxNumLights;
                  j += ARRAY_PACKED_REALS )
             {
-                for( size_t k = 0; k < ARRAY_PACKED_REALS && numCollectedLights < maxNumLights; ++k )
+                for( size_t k = 0; k < ARRAY_PACKED_REALS && j + k < totalObjs &&
+                                   numCollectedLights < maxNumLights; ++k )
                 {
                     uint32 *RESTRICT_ALIAS visibilityFlags = objData.mVisibilityFlags;
 
@@ -408,15 +409,15 @@ namespace Ogre
                         visibilityFlags[k] & lightMask*/ )
                     {
                         Light *light = static_cast<Light *>( objData.mOwner[k] );
-                        if( light->getType() == Light::LT_DIRECTIONAL ||
-                            light->getType() == Light::LT_POINT ||
-                            light->getType() == Light::LT_SPOTLIGHT )
+                        if( light->getCastShadows() &&
+                            ( light->getType() == Light::LT_DIRECTIONAL ||
+                              light->getType() == Light::LT_POINT ||
+                              light->getType() == Light::LT_SPOTLIGHT ) )
                         {
                             addLight( rtLight, light );
 //                            autoMultiplierValue = std::max( autoMultiplierValue, maxVal );
                             ++rtLight;
                             ++numCollectedLights;
-                            break;
                         }
                     }
                 }
