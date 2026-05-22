@@ -553,8 +553,11 @@ namespace Ogre
         vctLight->spotDirection[2] = static_cast<float>( spotDirection.z );
         vctLight->spotDirection[3] = static_cast<float>( light->getLightProfileIdx() );
 
-        vctLight->spotParams[0] = static_cast<float>( Math::Cos( light->getSpotlightInnerAngle() ) );
-        vctLight->spotParams[1] = static_cast<float>( Math::Cos( light->getSpotlightOuterAngle() ) );
+        const Real cosInner = Math::Cos( light->getSpotlightInnerAngle() * 0.5f );
+        const Real cosOuter = Math::Cos( light->getSpotlightOuterAngle() * 0.5f );
+        const Real invCosDiff = 1.0f / std::max<Real>( cosInner - cosOuter, 1e-4f );
+        vctLight->spotParams[0] = static_cast<float>( invCosDiff );
+        vctLight->spotParams[1] = static_cast<float>( cosOuter );
         vctLight->spotParams[2] = static_cast<float>( light->getSpotlightFalloff() );
         vctLight->spotParams[3] = static_cast<float>( lightType );
     }

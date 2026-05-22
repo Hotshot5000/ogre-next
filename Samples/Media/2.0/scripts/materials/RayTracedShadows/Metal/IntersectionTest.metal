@@ -187,8 +187,7 @@ kernel void main_metal
 
                     if( traceShadowRay )
                     {
-                        float spotAtten = saturate( ( spotCosAngle - light.spotParams.y ) /
-                                                    max( light.spotParams.x - light.spotParams.y, 1e-4f ) );
+                        float spotAtten = saturate( ( spotCosAngle - light.spotParams.y ) * light.spotParams.x );
                         lightWeight *= pow( spotAtten, light.spotParams.z );
                     }
                 }

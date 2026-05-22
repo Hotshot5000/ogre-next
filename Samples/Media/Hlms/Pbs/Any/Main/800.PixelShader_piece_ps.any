@@ -867,6 +867,7 @@
 
 				@property( hlms_use_rt_shadows )
 					midf2 rtShadowFactors = midf2_c( OGRE_Load2D( rtShadowTexture, iFragCoord, 0 ).xy );
+						rtShadowFactors.y = rtShadowFactors.y > _h( 0.0 ) ? rtShadowFactors.y : _h( 1.0 );
 					midf3 rtShadowBaseColour = finalColour;
 				@end
 
@@ -883,17 +884,25 @@
 			@insertpiece( DoSpotLights )
 
 			@property( hlms_use_rt_shadows )
-				finalColour = rtShadowBaseColour + (finalColour - rtShadowBaseColour) * rtShadowFactors.y;
+				@property( !hlms_forwardplus )
+					finalColour = rtShadowBaseColour + (finalColour - rtShadowBaseColour) * rtShadowFactors.y;
+					@end
 				rtShadowBaseColour = finalColour;
 			@end
 
 			@insertpiece( DoAreaApproxLights )
 			@insertpiece( DoAreaLtcLights )
 
-			@insertpiece( forward3dLighting )
+			@property( hlms_use_rt_shadows && hlms_forwardplus )
+					rtShadowBaseColour = finalColour;
+				@end
+
+				@insertpiece( forward3dLighting )
 
 				@property( hlms_use_rt_shadows )
-					// RT shadow factors are applied per light group above.
+					@property( hlms_forwardplus )
+							finalColour = rtShadowBaseColour + (finalColour - rtShadowBaseColour) * rtShadowFactors.y;
+						@end
 					rtShadowBaseColour = finalColour;
 				@end
 

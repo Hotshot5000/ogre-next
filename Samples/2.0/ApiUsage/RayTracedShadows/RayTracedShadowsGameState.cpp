@@ -68,6 +68,8 @@ namespace Demo
 //        mScreenSpaceReflections =
 //            new ScreenSpaceReflections( 0, mGraphicsSystem->getRoot()->getRenderSystem() );
         Ogre::SceneManager *sceneManager = mGraphicsSystem->getSceneManager();
+        sceneManager->setForwardClustered( true, 16, 8, 24, 96, 0, 0, 5, 500 );
+
         Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
         Ogre::HlmsManager *hlmsManager = mGraphicsSystem->getRoot()->getHlmsManager();
         Ogre::Camera *camera = mGraphicsSystem->getCamera();
@@ -285,7 +287,7 @@ namespace Demo
         lightNode->attachObject( light );
         light->setPowerScale( 1.0f );
         light->setType( Ogre::Light::LT_DIRECTIONAL );
-        light->setDirection( Ogre::Vector3( -1, -1, 1 ).normalisedCopy() );
+        light->setDirection( Ogre::Vector3( -1, -1, -1 ).normalisedCopy() );
 
         mLightNodes[0] = lightNode;
 
