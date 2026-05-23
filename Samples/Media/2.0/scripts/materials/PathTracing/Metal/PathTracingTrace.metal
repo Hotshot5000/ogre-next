@@ -569,7 +569,9 @@ kernel void main_metal
 
     const uint2 pixelPos = uint2( gl_GlobalInvocationID.xy );
     uint seed = wang_hash( pixelPos.x + pixelPos.y * 1664525u + frame->sampleIndex * 1013904223u );
-    const float2 jitter = float2( rand01( seed ), rand01( seed ) );
+    const float jitterX = rand01( seed );
+    const float jitterY = rand01( seed );
+    const float2 jitter = float2( jitterX, jitterY );
     const float2 uv = ( float2( pixelPos ) + jitter ) / float2( outputSize );
 
     float3 rayDirection = mix( mix( frame->cameraCorner0.xyz, frame->cameraCorner2.xyz, uv.x ),
@@ -661,8 +663,10 @@ kernel void main_metal
             if( rand01( seed ) < reflectProbability )
             {
                 const float3 reflectedDirection = reflect( pathRay.direction, bounceNormal );
+                const float roughSampleX = rand01( seed );
+                const float roughSampleY = rand01( seed );
                 const float3 roughDirection = tangent_to_world(
-                    cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), bounceNormal );
+                    cosine_sample_hemisphere( float2( roughSampleX, roughSampleY ) ), bounceNormal );
                 nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
                 nextWeight = fresnelColor / reflectProbability;
             }
@@ -718,14 +722,18 @@ kernel void main_metal
         if( rand01( seed ) < specularProbability )
         {
             const float3 reflectedDirection = reflect( pathRay.direction, bounceNormal );
+            const float roughSampleX = rand01( seed );
+            const float roughSampleY = rand01( seed );
             const float3 roughDirection = tangent_to_world(
-                cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), bounceNormal );
+                cosine_sample_hemisphere( float2( roughSampleX, roughSampleY ) ), bounceNormal );
             nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
             bounceWeight = fresnelColor / max( specularProbability, 1e-4f );
         }
         else
         {
-            const float3 localDirection = cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) );
+            const float diffuseSampleX = rand01( seed );
+            const float diffuseSampleY = rand01( seed );
+            const float3 localDirection = cosine_sample_hemisphere( float2( diffuseSampleX, diffuseSampleY ) );
             nextDirection = tangent_to_world( localDirection, bounceNormal );
             bounceWeight = baseColor * ( 1.0f - specularLuminance ) * 0.82f /
                            max( 1.0f - specularProbability, 1e-4f );
