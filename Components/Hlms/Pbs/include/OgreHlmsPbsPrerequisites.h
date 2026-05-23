@@ -107,6 +107,9 @@ namespace Ogre
     class ParallaxCorrectedCubemap;
     class ParallaxCorrectedCubemapAuto;
     class ParallaxCorrectedCubemapBase;
+    class PathTracer;
+    class PathTracerMaterialCache;
+    class PathTracerScene;
     class VctLighting;
 }  // namespace Ogre
 
