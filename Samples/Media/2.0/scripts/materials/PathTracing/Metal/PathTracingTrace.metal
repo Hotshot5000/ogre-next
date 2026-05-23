@@ -46,6 +46,53 @@ struct PathTracerLight
     float4 spotParams;
 };
 
+struct PathTracerMaterial
+{
+    float4 baseColour_roughness;
+    float4 fresnel_transparency;
+    float4 emissive_flags;
+    float4 padding;
+};
+
+struct PathTracerGeometry
+{
+    float4 material_subMesh;
+};
+
+struct SurfaceMaterial
+{
+    float3 baseColour;
+    float roughness;
+    float3 fresnel;
+    float transparency;
+    float3 emissive;
+    uint flags;
+};
+
+static SurfaceMaterial load_surface_material( uint instanceId,
+                                              device const PathTracerMaterial *materials,
+                                              device const PathTracerGeometry *geometryRecords )
+{
+    const PathTracerGeometry geometry = geometryRecords[instanceId];
+    const uint materialIdx = (uint)( geometry.material_subMesh.x + 0.5f );
+    const PathTracerMaterial material = materials[materialIdx];
+
+    SurfaceMaterial surface;
+    surface.baseColour = max( material.baseColour_roughness.xyz, float3( 0.0f ) );
+    surface.roughness = clamp( material.baseColour_roughness.w, 0.02f, 1.0f );
+    surface.fresnel = saturate( material.fresnel_transparency.xyz );
+    surface.transparency = saturate( material.fresnel_transparency.w );
+    surface.emissive = max( material.emissive_flags.xyz, float3( 0.0f ) );
+    surface.flags = (uint)( material.emissive_flags.w + 0.5f );
+    return surface;
+}
+
+static float fresnel_schlick_luminance( float3 f0, float cosTheta )
+{
+    const float3 f = f0 + ( 1.0f - f0 ) * pow( saturate( 1.0f - cosTheta ), 5.0f );
+    return saturate( dot( f, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
+}
+
 static float origin() { return 1.0f / 32.0f; }
 static float float_scale() { return 1.0f / 65536.0f; }
 static float int_scale() { return 256.0f; }
@@ -188,6 +235,8 @@ kernel void main_metal
 
     constant PathTracerFrame *frame [[buffer(0)]],
     constant PathTracerLight *lights [[buffer(1)]],
+    device const PathTracerMaterial *materials [[buffer(TEX_SLOT_START + 0)]],
+    device const PathTracerGeometry *geometryRecords [[buffer(TEX_SLOT_START + 1)]],
 
     instance_acceleration_structure accelerationStructure,
     intersection_function_table<triangle_data, instancing> intersectionFunctionTable,
@@ -232,16 +281,36 @@ kernel void main_metal
 
         const float3 geometricNormal = -pathRay.direction;
         const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
+        const SurfaceMaterial material = load_surface_material( hit.instance_id, materials, geometryRecords );
 
-        const float3 baseColor = float3( 0.8f );
+        const float opacity = material.transparency;
+        const float3 baseColor = material.baseColour * opacity;
+        radiance += throughput * material.emissive;
         radiance += throughput * baseColor * evaluate_direct_lighting( hitPosition, geometricNormal,
                                                                        lights, frame->numLights,
                                                                        accelerationStructure );
 
-        const float3 localDirection = cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) );
-        const float3 nextDirection = tangent_to_world( localDirection, geometricNormal );
+        const float nDotV = saturate( dot( geometricNormal, -pathRay.direction ) );
+        const float specularProbability = clamp( fresnel_schlick_luminance( material.fresnel, nDotV ),
+                                                 0.02f, 0.95f );
+        float3 nextDirection;
+        float3 bounceWeight;
+        if( rand01( seed ) < specularProbability )
+        {
+            const float3 reflectedDirection = reflect( pathRay.direction, geometricNormal );
+            const float3 roughDirection = tangent_to_world(
+                cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), geometricNormal );
+            nextDirection = normalize( mix( reflectedDirection, roughDirection, material.roughness * material.roughness ) );
+            bounceWeight = mix( material.fresnel, float3( 1.0f ), 0.04f ) / specularProbability;
+        }
+        else
+        {
+            const float3 localDirection = cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) );
+            nextDirection = tangent_to_world( localDirection, geometricNormal );
+            bounceWeight = baseColor / max( 1.0f - specularProbability, 0.05f );
+        }
 
-        throughput *= baseColor;
+        throughput *= bounceWeight;
         pathRay.origin = offset_ray( hitPosition, geometricNormal );
         pathRay.direction = nextDirection;
         pathRay.min_distance = 0.005f;

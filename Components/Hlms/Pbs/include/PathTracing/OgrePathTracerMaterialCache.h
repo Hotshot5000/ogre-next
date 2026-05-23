@@ -46,9 +46,10 @@ namespace Ogre
             uint32            materialIdx;
         };
 
+        typedef FastArray<MaterialRecord> MaterialRecordArray;
+
     private:
         typedef map<HlmsPbsDatablock *, uint32>::type MaterialIndexMap;
-        typedef FastArray<MaterialRecord>             MaterialRecordArray;
 
         MaterialIndexMap    mMaterialIndex;
         MaterialRecordArray mMaterials;

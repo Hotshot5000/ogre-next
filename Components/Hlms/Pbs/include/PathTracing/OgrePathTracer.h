@@ -36,21 +36,46 @@ THE SOFTWARE.
 
 namespace Ogre
 {
+    class RTShadowsMeshCache;
+
     class _OgreHlmsPbsExport PathTracer
     {
     private:
-        TextureGpu      *mRenderWindow;
-        RenderSystem    *mRenderSystem;
-        VaoManager      *mVaoManager;
-        HlmsManager     *mHlmsManager;
-        Camera          *mCamera;
-        PathTracerScene  mScene;
-        uint32           mSampleCount;
-        bool             mEnabled;
+        TextureGpu          *mRenderWindow;
+        RenderSystem        *mRenderSystem;
+        VaoManager          *mVaoManager;
+        HlmsManager         *mHlmsManager;
+        Camera              *mCamera;
+        CompositorWorkspace *mWorkspace;
+        PathTracerScene      mScene;
+        RTShadowsMeshCache  *mMeshCache;
+
+        HlmsComputeJob      *mTraceJob;
+        TextureGpu          *mAccumulationTexture;
+        TextureGpu          *mRadianceTexture;
+        ConstBufferPacked   *mFrameConstBuffer;
+        ConstBufferPacked   *mLightsConstBuffer;
+        ReadOnlyBufferPacked *mMaterialBuffer;
+        ReadOnlyBufferPacked *mGeometryBuffer;
+        ResourceTransitionArray mResourceTransitions;
+
+        uint32               mSampleCount;
+        bool                 mEnabled;
+        bool                 mInitialized;
+
+        void initResources();
+        void destroyResources();
+        void updateAccelerationStructure();
+        void uploadFrameConstants( uint32 numLights );
+        uint32 uploadLights( SceneManager *sceneManager );
+        void uploadMaterialBuffer();
+        void uploadGeometryBuffer();
+        void bindJobResources();
 
     public:
         PathTracer( TextureGpu *renderWindow, RenderSystem *renderSystem,
-                    HlmsManager *hlmsManager, Camera *camera );
+                    HlmsManager *hlmsManager, Camera *camera,
+                    CompositorWorkspace *workspace );
         ~PathTracer();
 
         void setEnabled( bool enabled );

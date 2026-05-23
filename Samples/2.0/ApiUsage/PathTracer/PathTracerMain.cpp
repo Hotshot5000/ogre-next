@@ -31,7 +31,7 @@ namespace Demo
         Ogre::CompositorWorkspace *setupCompositor() override
         {
             Ogre::CompositorManager2 *compositorManager = mRoot->getCompositorManager2();
-            const Ogre::String compositorName = "PbsMaterialsWorkspace";
+            const Ogre::String compositorName = "PathTracerWorkspace";
 
             return compositorManager->addWorkspace( mSceneManager, mRenderWindow->getTexture(), mCamera,
                                                     compositorName, true );

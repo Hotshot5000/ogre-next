@@ -10,7 +10,12 @@
             "source" : "PathTracingTrace",
 
             "inform_shader_of_texture_data_change" : true,
-            "uav_units" : 2
+            "uav_units" : 2,
+
+            "textures" :
+            [
+                {}, {}
+            ]
         }
     }
 }

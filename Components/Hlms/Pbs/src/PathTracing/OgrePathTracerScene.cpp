@@ -31,6 +31,9 @@ THE SOFTWARE.
 #include "PathTracing/OgrePathTracerScene.h"
 #include "OgreException.h"
 #include "OgreItem.h"
+#include "OgreSubItem.h"
+#include "OgreHlmsPbsDatablock.h"
+#include "OgreHlms.h"
 
 namespace Ogre
 {
@@ -51,6 +54,14 @@ namespace Ogre
             return;
 
         mItems.push_back( item );
+
+        for( size_t i = 0u; i < item->getNumSubItems(); ++i )
+        {
+            HlmsDatablock *datablock = item->getSubItem( i )->getDatablock();
+            if( datablock && datablock->getCreator()->getType() == HLMS_PBS )
+                mMaterialCache.addDatablock( static_cast<HlmsPbsDatablock *>( datablock ) );
+        }
+
         markGeometryDirty();
     }
     //-------------------------------------------------------------------------
@@ -67,7 +78,8 @@ namespace Ogre
     void PathTracerScene::removeAllItems()
     {
         mItems.clear();
-        markInstancesDirty();
+        mMaterialCache.clear();
+        markGeometryDirty();
     }
     //-------------------------------------------------------------------------
     void PathTracerScene::markGeometryDirty()

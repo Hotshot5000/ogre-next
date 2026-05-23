@@ -52,7 +52,8 @@ namespace Demo
         Ogre::Camera *camera = mGraphicsSystem->getCamera();
 
         mPathTracer = new Ogre::PathTracer( mGraphicsSystem->getRenderWindow()->getTexture(),
-                                            renderSystem, hlmsManager, camera );
+                                            renderSystem, hlmsManager, camera,
+                                            mGraphicsSystem->getCompositorWorkspace() );
         mPathTracer->setEnabled( true );
 
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
