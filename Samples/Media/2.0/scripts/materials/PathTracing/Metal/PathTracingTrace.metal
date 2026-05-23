@@ -12,6 +12,26 @@ using namespace raytracing;
 #define RAY_MASK_SECONDARY     GEOMETRY_MASK_GEOMETRY
 #define RAY_MASK_SHADOW        GEOMETRY_MASK_GEOMETRY
 
+constexpr constant uint kTextureArraySlots = 8u;
+constexpr constant uint kReflectionTextureSlots = 4u;
+constexpr constant uint kMaxSupportedLights = 16u;
+constexpr constant uint kMaxTransparentShadowSteps = 8u;
+constexpr constant float kRayMinDistance = 0.005f;
+constexpr constant float kSelfHitSkipDistance = 0.02f;
+constexpr constant float kTransparentShadowStepBias = 0.01f;
+constexpr constant float kVisibilityCutoff = 0.02f;
+constexpr constant float kEpsilon = 1e-4f;
+constexpr constant float kMinFiniteDenominator = 1e-5f;
+constexpr constant float kPi = 3.14159265359f;
+constexpr constant float kInvPi = 0.318309886f;
+constexpr constant float kMaxSpecularTerm = 4.0f;
+constexpr constant float kMaxRadiance = 32.0f;
+constexpr constant float kMinRoughness = 0.02f;
+constexpr constant float kTransparentReflectProbabilityMin = 0.01f;
+constexpr constant float kTransparentReflectProbabilityMax = 0.55f;
+constexpr constant float kSpecularProbabilityMin = 0.005f;
+constexpr constant float kSpecularProbabilityMax = 0.08f;
+
 struct PathTracerFrame
 {
     float4x4 invProjectionMat;
@@ -111,9 +131,9 @@ static SurfaceMaterial load_surface_material( uint instanceId,
 
     SurfaceMaterial surface;
     surface.baseColour = saturate( material.baseColour_roughness.xyz );
-    surface.roughness = clamp( material.baseColour_roughness.w, 0.02f, 1.0f );
+    surface.roughness = clamp( material.baseColour_roughness.w, kMinRoughness, 1.0f );
     const float3 fresnelInput = max( material.fresnel_transparency.xyz, float3( 0.0f ) );
-    const float3 iorF0 = pow( ( fresnelInput - 1.0f ) / max( fresnelInput + 1.0f, float3( 1e-4f ) ),
+    const float3 iorF0 = pow( ( fresnelInput - 1.0f ) / max( fresnelInput + 1.0f, float3( kEpsilon ) ),
                               float3( 2.0f ) );
     surface.fresnel = select( saturate( fresnelInput ), saturate( iorF0 ), fresnelInput > float3( 1.0f ) );
     surface.flags = (uint)( material.emissive_flags.w + 0.5f );
@@ -186,10 +206,10 @@ static float2 material_uv( const SurfaceMaterial material,
 static float3 sample_diffuse_texture( const SurfaceMaterial material,
                                       const PathTracerTriangle triangle,
                                       float2 barycentric,
-                                      array<texture2d_array<float>, 8> diffuseTextures,
+                                      array<texture2d_array<float>, kTextureArraySlots> diffuseTextures,
                                       sampler diffuseSampler )
 {
-    if( !material.hasDiffuseTexture || material.diffuseTextureIdx < 0 || material.diffuseTextureIdx >= 8 ||
+    if( !material.hasDiffuseTexture || material.diffuseTextureIdx < 0 || material.diffuseTextureIdx >= int( kTextureArraySlots ) ||
         triangle.normalZ_flags.y < 0.5f )
     {
         return float3( 1.0f );
@@ -204,11 +224,11 @@ static float3 sample_diffuse_texture( const SurfaceMaterial material,
 static float sample_roughness_texture( const SurfaceMaterial material,
                                        const PathTracerTriangle triangle,
                                        float2 barycentric,
-                                       array<texture2d_array<float>, 8> roughnessTextures,
+                                       array<texture2d_array<float>, kTextureArraySlots> roughnessTextures,
                                        sampler roughnessSampler )
 {
     if( !material.hasRoughnessTexture || material.roughnessTextureIdx < 0 ||
-        material.roughnessTextureIdx >= 8 || triangle.normalZ_flags.y < 0.5f )
+        material.roughnessTextureIdx >= int( kTextureArraySlots ) || triangle.normalZ_flags.y < 0.5f )
     {
         return 1.0f;
     }
@@ -221,11 +241,11 @@ static float sample_roughness_texture( const SurfaceMaterial material,
 static float3 sample_emissive_texture( const SurfaceMaterial material,
                                        const PathTracerTriangle triangle,
                                        float2 barycentric,
-                                       array<texture2d_array<float>, 8> emissiveTextures,
+                                       array<texture2d_array<float>, kTextureArraySlots> emissiveTextures,
                                        sampler emissiveSampler )
 {
     if( !material.hasEmissiveTexture || material.emissiveTextureIdx < 0 ||
-        material.emissiveTextureIdx >= 8 || triangle.normalZ_flags.y < 0.5f )
+        material.emissiveTextureIdx >= int( kTextureArraySlots ) || triangle.normalZ_flags.y < 0.5f )
     {
         return float3( 1.0f );
     }
@@ -239,10 +259,10 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
                                     const PathTracerTriangle triangle,
                                     float2 barycentric,
                                     float3 geometricNormal,
-                                    array<texture2d_array<float>, 8> normalTextures,
+                                    array<texture2d_array<float>, kTextureArraySlots> normalTextures,
                                     sampler normalSampler )
 {
-    if( !material.hasNormalTexture || material.normalTextureIdx < 0 || material.normalTextureIdx >= 8 ||
+    if( !material.hasNormalTexture || material.normalTextureIdx < 0 || material.normalTextureIdx >= int( kTextureArraySlots ) ||
         triangle.normalZ_flags.y < 0.5f || material.normalMapWeight <= 0.0f )
     {
         return geometricNormal;
@@ -259,12 +279,12 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
         float3( tangentSampleXY, sqrt( max( 0.0f, 1.0f - dot( tangentSampleXY, tangentSampleXY ) ) ) ) );
 
     float3 tangent = normalize( triangle.tangent.xyz );
-    if( !all( isfinite( tangent ) ) || dot( tangent, tangent ) < 1e-5f )
+    if( !all( isfinite( tangent ) ) || dot( tangent, tangent ) < kMinFiniteDenominator )
         return geometricNormal;
     tangent = normalize( tangent - geometricNormal * dot( tangent, geometricNormal ) );
 
     float3 bitangent = normalize( triangle.bitangent.xyz );
-    if( !all( isfinite( bitangent ) ) || dot( bitangent, bitangent ) < 1e-5f )
+    if( !all( isfinite( bitangent ) ) || dot( bitangent, bitangent ) < kMinFiniteDenominator )
         bitangent = normalize( cross( geometricNormal, tangent ) );
     bitangent = dot( bitangent, cross( geometricNormal, tangent ) ) < 0.0f ? -bitangent : bitangent;
 
@@ -280,11 +300,11 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
 
 static float3 sample_reflection_texture( const SurfaceMaterial material,
                                          float3 direction,
-                                         array<texturecube<float>, 4> reflectionTextures,
+                                         array<texturecube<float>, kReflectionTextureSlots> reflectionTextures,
                                          sampler reflectionSampler )
 {
     if( !material.hasReflectionTexture || material.reflectionTextureIdx < 0 ||
-        material.reflectionTextureIdx >= 4 )
+        material.reflectionTextureIdx >= int( kReflectionTextureSlots ) )
     {
         return float3( 0.0f );
     }
@@ -375,7 +395,7 @@ static float ggx_distribution( float nDotH, float roughness )
     const float a = max( roughness * roughness, 0.002f );
     const float a2 = a * a;
     const float denom = nDotH * nDotH * ( a2 - 1.0f ) + 1.0f;
-    return a2 / max( 3.14159265359f * denom * denom, 1e-5f );
+    return a2 / max( kPi * denom * denom, kMinFiniteDenominator );
 }
 
 static float smith_ggx_visibility( float nDotV, float nDotL, float roughness )
@@ -383,7 +403,7 @@ static float smith_ggx_visibility( float nDotV, float nDotL, float roughness )
     const float a = max( roughness * roughness, 0.002f );
     const float ggxV = nDotL * sqrt( nDotV * nDotV * ( 1.0f - a ) + a );
     const float ggxL = nDotV * sqrt( nDotL * nDotL * ( 1.0f - a ) + a );
-    return 0.5f / max( ggxV + ggxL, 1e-5f );
+    return 0.5f / max( ggxV + ggxL, kMinFiniteDenominator );
 }
 
 static float evaluate_light_visibility( float3 surfacePosition,
@@ -398,13 +418,13 @@ static float evaluate_light_visibility( float3 surfacePosition,
     ray shadowRay;
     shadowRay.origin = offset_ray( surfacePosition, dot( surfaceNormal, lightDirection ) < 0.0f ? -surfaceNormal : surfaceNormal );
     shadowRay.direction = lightDirection;
-    shadowRay.min_distance = 0.005f;
+    shadowRay.min_distance = kRayMinDistance;
     shadowRay.max_distance = maxDistance;
 
     intersector<triangle_data, instancing> shadowIntersector;
     float visibility = 1.0f;
 
-    for( uint step = 0u; step < 8u; ++step )
+    for( uint step = 0u; step < kMaxTransparentShadowSteps; ++step )
     {
         typename intersector<triangle_data, instancing>::result_type shadowHit =
             shadowIntersector.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
@@ -412,15 +432,15 @@ static float evaluate_light_visibility( float3 surfacePosition,
         if( shadowHit.type != intersection_type::triangle )
             return visibility;
 
-        if( shadowHit.instance_id == currentInstanceId && shadowHit.distance <= 0.02f )
+        if( shadowHit.instance_id == currentInstanceId && shadowHit.distance <= kSelfHitSkipDistance )
         {
-            const float consumedDistance = shadowHit.distance + 0.02f;
+            const float consumedDistance = shadowHit.distance + kSelfHitSkipDistance;
             if( consumedDistance >= shadowRay.max_distance )
                 return visibility;
 
             shadowRay.origin += shadowRay.direction * consumedDistance;
             shadowRay.max_distance -= consumedDistance;
-            shadowRay.min_distance = 0.005f;
+            shadowRay.min_distance = kRayMinDistance;
             continue;
         }
 
@@ -430,20 +450,20 @@ static float evaluate_light_visibility( float3 surfacePosition,
             return 0.0f;
 
         const float transmission = saturate( 1.0f - blocker.transparency );
-        if( transmission <= 0.02f )
+        if( transmission <= kVisibilityCutoff )
             return 0.0f;
 
         visibility *= transmission;
-        if( visibility <= 0.02f )
+        if( visibility <= kVisibilityCutoff )
             return 0.0f;
 
-        const float consumedDistance = shadowHit.distance + 0.01f;
+        const float consumedDistance = shadowHit.distance + kTransparentShadowStepBias;
         if( consumedDistance >= shadowRay.max_distance )
             return visibility;
 
         shadowRay.origin += shadowRay.direction * consumedDistance;
         shadowRay.max_distance -= consumedDistance;
-        shadowRay.min_distance = 0.005f;
+        shadowRay.min_distance = kRayMinDistance;
     }
 
     return visibility;
@@ -465,8 +485,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
     DirectLighting result;
     result.diffuse = float3( 0.0f );
     result.specular = float3( 0.0f );
-    const uint maxSupportedLights = 16u;
-    numLights = min( numLights, maxSupportedLights );
+    numLights = min( numLights, kMaxSupportedLights );
 
     for( uint lightIdx = 0u; lightIdx < numLights; ++lightIdx )
     {
@@ -485,11 +504,11 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
         {
             const float3 toLight = light.position.xyz - surfacePosition;
             const float lightDistance = length( toLight );
-            if( lightDistance <= 0.005f || lightDistance > light.attenuation.x )
+            if( lightDistance <= kRayMinDistance || lightDistance > light.attenuation.x )
                 continue;
 
             lightDirection = toLight / lightDistance;
-            maxDistance = max( lightDistance - 0.005f, 0.0f );
+            maxDistance = max( lightDistance - kRayMinDistance, 0.0f );
             attenuation = 1.0f / ( 0.5f + ( light.attenuation.y + light.attenuation.z * lightDistance ) * lightDistance );
 
             if( lightType == 2u )
@@ -533,7 +552,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
 
         const float specularTerm = min( ggx_distribution( nDotH, roughness ) *
                                         smith_ggx_visibility( nDotV, nDotL, roughness ) * nDotL,
-                                        4.0f );
+                                        kMaxSpecularTerm );
         result.specular += light.specular.xyz * lightScale * specularTerm * fresnel;
     }
 
@@ -550,11 +569,11 @@ kernel void main_metal
     device const PathTracerMaterial *materials [[buffer(TEX_SLOT_START + 0)]],
     device const PathTracerGeometry *geometryRecords [[buffer(TEX_SLOT_START + 1)]],
     device const PathTracerTriangle *triangleRecords [[buffer(TEX_SLOT_START + 2)]],
-    array<texture2d_array<float>, 8> diffuseTextures [[texture(10)]],
-    array<texture2d_array<float>, 8> roughnessTextures [[texture(18)]],
-    array<texture2d_array<float>, 8> normalTextures [[texture(26)]],
-    array<texture2d_array<float>, 8> emissiveTextures [[texture(34)]],
-    array<texturecube<float>, 4> reflectionTextures [[texture(42)]],
+    array<texture2d_array<float>, kTextureArraySlots> diffuseTextures [[texture(10)]],
+    array<texture2d_array<float>, kTextureArraySlots> roughnessTextures [[texture(18)]],
+    array<texture2d_array<float>, kTextureArraySlots> normalTextures [[texture(26)]],
+    array<texture2d_array<float>, kTextureArraySlots> emissiveTextures [[texture(34)]],
+    array<texturecube<float>, kReflectionTextureSlots> reflectionTextures [[texture(42)]],
     sampler diffuseSampler [[sampler(10)]],
 
     instance_acceleration_structure accelerationStructure,
@@ -582,7 +601,7 @@ kernel void main_metal
     ray pathRay;
     pathRay.origin = frame->cameraPos.xyz;
     pathRay.direction = rayDirection;
-    pathRay.min_distance = 0.005f;
+    pathRay.min_distance = kRayMinDistance;
     pathRay.max_distance = INFINITY;
 
     intersector<triangle_data, instancing> pathIntersector;
@@ -651,13 +670,14 @@ kernel void main_metal
             if( opacity > 0.001f )
             {
                 const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * 0.025f;
-                radiance += throughput * ( baseColor * 0.318309886f ) *
+                radiance += throughput * ( baseColor * kInvPi ) *
                             ( directLighting.diffuse + skyDiffuse ) * opacity * 0.25f;
             }
 
             const float reflectProbability = clamp( fresnel_schlick_luminance( materialFresnel, bounceNDotV ) *
                                                     ( 1.0f - roughness * 0.65f ),
-                                                    0.01f, 0.55f );
+                                                    kTransparentReflectProbabilityMin,
+                                                    kTransparentReflectProbabilityMax );
             float3 nextDirection;
             float3 nextWeight;
             if( rand01( seed ) < reflectProbability )
@@ -674,7 +694,7 @@ kernel void main_metal
             {
                 const float eta = frontFacing ? ( 1.0f / 1.45f ) : 1.45f;
                 float3 refractedDirection = refract( pathRay.direction, geometricNormal, eta );
-                if( dot( refractedDirection, refractedDirection ) <= 1e-5f )
+                if( dot( refractedDirection, refractedDirection ) <= kMinFiniteDenominator )
                 {
                     nextDirection = reflect( pathRay.direction, geometricNormal );
                     nextWeight = fresnelColor;
@@ -694,13 +714,13 @@ kernel void main_metal
                                          dot( nextDirection, geometricNormal ) < 0.0f ? -geometricNormal :
                                                                                         geometricNormal );
             pathRay.direction = nextDirection;
-            pathRay.min_distance = 0.005f;
+            pathRay.min_distance = kRayMinDistance;
             pathRay.max_distance = INFINITY;
             continue;
         }
 
         const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * 0.08f;
-        radiance += throughput * ( baseColor * 0.318309886f ) * ( directLighting.diffuse + skyDiffuse );
+        radiance += throughput * ( baseColor * kInvPi ) * ( directLighting.diffuse + skyDiffuse );
         radiance += throughput * directLighting.specular * opacity;
         if( material.hasReflectionTexture )
         {
@@ -715,8 +735,10 @@ kernel void main_metal
         const float diffuseLuminance = dot( baseColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
         const float diffuseBsdfWeight = diffuseLuminance * ( 1.0f - specularLuminance );
         const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * 0.20f;
-        const float bsdfWeightSum = max( diffuseBsdfWeight + specularBsdfWeight, 1e-4f );
-        const float specularProbability = clamp( specularBsdfWeight / bsdfWeightSum, 0.005f, 0.08f );
+        const float bsdfWeightSum = max( diffuseBsdfWeight + specularBsdfWeight, kEpsilon );
+        const float specularProbability = clamp( specularBsdfWeight / bsdfWeightSum,
+                                                  kSpecularProbabilityMin,
+                                                  kSpecularProbabilityMax );
         float3 nextDirection;
         float3 bounceWeight;
         if( rand01( seed ) < specularProbability )
@@ -727,7 +749,7 @@ kernel void main_metal
             const float3 roughDirection = tangent_to_world(
                 cosine_sample_hemisphere( float2( roughSampleX, roughSampleY ) ), bounceNormal );
             nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
-            bounceWeight = fresnelColor / max( specularProbability, 1e-4f );
+            bounceWeight = fresnelColor / max( specularProbability, kEpsilon );
         }
         else
         {
@@ -736,13 +758,13 @@ kernel void main_metal
             const float3 localDirection = cosine_sample_hemisphere( float2( diffuseSampleX, diffuseSampleY ) );
             nextDirection = tangent_to_world( localDirection, bounceNormal );
             bounceWeight = baseColor * ( 1.0f - specularLuminance ) * 0.82f /
-                           max( 1.0f - specularProbability, 1e-4f );
+                           max( 1.0f - specularProbability, kEpsilon );
         }
 
         throughput *= min( bounceWeight, float3( 1.0f ) );
         pathRay.origin = offset_ray( hitPosition, geometricNormal );
         pathRay.direction = nextDirection;
-        pathRay.min_distance = 0.005f;
+        pathRay.min_distance = kRayMinDistance;
         pathRay.max_distance = INFINITY;
 
         if( bounce >= 2u )
@@ -754,7 +776,7 @@ kernel void main_metal
         }
     }
 
-    radiance = min( max( radiance, float3( 0.0f ) ), float3( 32.0f ) );
+    radiance = min( max( radiance, float3( 0.0f ) ), float3( kMaxRadiance ) );
 
     const bool resetAccumulation = frame->sampleIndex == 0u;
     const float4 previous = resetAccumulation ? float4( 0.0f ) : accumulationTexture.read( pixelPos );
