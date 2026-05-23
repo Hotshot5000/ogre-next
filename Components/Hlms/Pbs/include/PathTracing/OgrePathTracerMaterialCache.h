@@ -31,6 +31,7 @@ THE SOFTWARE.
 
 #include "OgreHlmsPbsPrerequisites.h"
 #include <ogrestd/map.h>
+#include "OgreHlmsPbsDatablock.h"
 
 #include "OgreHeaderPrefix.h"
 

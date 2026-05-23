@@ -1,0 +1,16 @@
+{
+    "compute" :
+    {
+        "PathTracing/TraceJob" :
+        {
+            "threads_per_group" : [16, 16, 1],
+            "thread_groups" : [32, 32, 1],
+            "thread_groups_based_on_uav" : 1,
+
+            "source" : "PathTracingTrace",
+
+            "inform_shader_of_texture_data_change" : true,
+            "uav_units" : 2
+        }
+    }
+}

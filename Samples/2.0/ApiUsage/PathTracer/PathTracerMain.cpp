@@ -53,6 +53,8 @@ namespace Demo
 
             addResourceLocation( originalDataFolder + "2.0/scripts/materials/PbsMaterials",
                                  getMediaReadArchiveType(), "General" );
+            addResourceLocation( originalDataFolder + "2.0/scripts/materials/PathTracing",
+                                 getMediaReadArchiveType(), "General" );
         }
 
     public:

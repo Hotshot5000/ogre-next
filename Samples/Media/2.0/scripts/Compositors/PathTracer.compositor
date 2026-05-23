@@ -1,0 +1,45 @@
+compositor_node PathTracerRenderingNode
+{
+    in 0 rt_renderwindow
+
+    texture accumulationTexture target_width target_height PFG_RGBA32_FLOAT depth_pool 0 uav keep_content
+    texture radianceTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav
+
+    target
+    {
+        pass compute
+        {
+            job PathTracing/TraceJob
+
+            uav 0 accumulationTexture read write
+            uav 1 radianceTexture write
+        }
+    }
+
+    target rt_renderwindow
+    {
+        pass clear
+        {
+            colour_value 0.02 0.025 0.03 1
+        }
+
+        pass render_quad
+        {
+            material PathTracing/Resolve
+            input 0 radianceTexture
+        }
+
+        pass render_scene
+        {
+            lod_update_list false
+            overlays on
+            rq_first 254
+            rq_last 255
+        }
+    }
+}
+
+workspace PathTracerWorkspace
+{
+    connect_output PathTracerRenderingNode 0
+}
