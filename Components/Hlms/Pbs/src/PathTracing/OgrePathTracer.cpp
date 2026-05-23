@@ -33,6 +33,7 @@ THE SOFTWARE.
 
 #include "Compositor/OgreCompositorNode.h"
 #include "Compositor/OgreCompositorWorkspace.h"
+#include "Vao/OgreAsyncTicket.h"
 #include "OgreHlmsCompute.h"
 #include "OgreHlmsComputeJob.h"
 #include "OgreHlmsManager.h"
@@ -40,12 +41,16 @@ THE SOFTWARE.
 #include "OgreItem.h"
 #include "OgreLight.h"
 #include "OgreLogManager.h"
+#include "OgreMesh2.h"
 #include "OgreRenderSystem.h"
 #include "OgreRenderSystemCapabilities.h"
 #include "OgreSceneManager.h"
 #include "OgreSubItem.h"
+#include "OgreSubMesh2.h"
 #include "OgreTextureGpu.h"
 #include "Vao/OgreConstBufferPacked.h"
+#include "Vao/OgreIndexBufferPacked.h"
+#include "Vao/OgreVertexArrayObject.h"
 #include "Vao/OgreReadOnlyBufferPacked.h"
 #include "Vao/OgreVaoManager.h"
 
@@ -89,7 +94,8 @@ namespace Ogre
             float baseColour_roughness[4];
             float fresnel_transparency[4];
             float emissive_flags[4];
-            float diffuseTextureIdx_slice_uvScale_hasTexture[4];
+            float diffuseTextureIdx_slice_hasTexture[4];
+            float diffuseUvOffsetScale[4];
         };
 
         const size_t MaxPathTracerDiffuseTextures = 8u;
@@ -99,9 +105,64 @@ namespace Ogre
             float material_subMesh[4];
         };
 
+        struct PathTracerTriangleGpu
+        {
+            float uv0_uv1[4];
+            float uv2_normalX_normalY[4];
+            float normalZ_flags[4];
+        };
+
         void copyMatrix( float *dst, const Matrix4 &src )
         {
             memcpy( dst, &src, sizeof( float ) * 16u );
+        }
+
+        float readFloatComponent( const char *data, VertexElementType type, size_t componentIdx )
+        {
+            switch( type )
+            {
+            case VET_FLOAT1:
+            case VET_FLOAT2:
+            case VET_FLOAT3:
+            case VET_FLOAT4:
+                return reinterpret_cast<const float *>( data )[componentIdx];
+            case VET_HALF2:
+            case VET_HALF4:
+                return Bitwise::halfToFloat( reinterpret_cast<const uint16 *>( data )[componentIdx] );
+            case VET_SHORT2_SNORM:
+            case VET_SHORT4_SNORM:
+                return std::max( -1.0f, reinterpret_cast<const int16 *>( data )[componentIdx] / 32767.0f );
+            case VET_UBYTE4_NORM:
+                return reinterpret_cast<const uint8 *>( data )[componentIdx] / 255.0f;
+            case VET_BYTE4_SNORM:
+                return std::max( -1.0f, reinterpret_cast<const int8 *>( data )[componentIdx] / 127.0f );
+            default:
+                return 0.0f;
+            }
+        }
+
+        void readFloat2At( const VertexArrayObject::ReadRequests &request, size_t vertexIdx, float *dst )
+        {
+            const char *data = request.data + vertexIdx * request.vertexBuffer->getBytesPerElement();
+            dst[0] = readFloatComponent( data, request.type, 0u );
+            dst[1] = readFloatComponent( data, request.type, 1u );
+        }
+
+        Vector3 readNormalAt( const VertexArrayObject::ReadRequests &request, size_t vertexIdx )
+        {
+            const char *data = request.data + vertexIdx * request.vertexBuffer->getBytesPerElement();
+            Vector3 normal( readFloatComponent( data, request.type, 0u ),
+                            readFloatComponent( data, request.type, 1u ),
+                            readFloatComponent( data, request.type, 2u ) );
+            normal.normalise();
+            return normal;
+        }
+
+        uint32 readIndexAt( const uint8 *indexData, IndexBufferPacked *indexBuffer, size_t indexIdx )
+        {
+            if( indexBuffer->getIndexType() == IndexBufferPacked::IT_16BIT )
+                return reinterpret_cast<const uint16 *>( indexData )[indexIdx];
+            return reinterpret_cast<const uint32 *>( indexData )[indexIdx];
         }
 
         void addLight( PathTracerLightGpu *dst, Light *light )
@@ -155,6 +216,7 @@ namespace Ogre
         mLightsConstBuffer( 0 ),
         mMaterialBuffer( 0 ),
         mGeometryBuffer( 0 ),
+        mTriangleBuffer( 0 ),
         mSampleCount( 0u ),
         mEnabled( false ),
         mInitialized( false )
@@ -249,6 +311,14 @@ namespace Ogre
                 mGeometryBuffer->unmap( UO_UNMAP_ALL );
             mVaoManager->destroyReadOnlyBuffer( mGeometryBuffer );
             mGeometryBuffer = 0;
+        }
+
+        if( mTriangleBuffer )
+        {
+            if( mTriangleBuffer->getMappingState() != MS_UNMAPPED )
+                mTriangleBuffer->unmap( UO_UNMAP_ALL );
+            mVaoManager->destroyReadOnlyBuffer( mTriangleBuffer );
+            mTriangleBuffer = 0;
         }
 
         delete mMeshCache;
@@ -435,13 +505,12 @@ namespace Ogre
             const Vector3 emissive = datablock->getEmissive();
 
             int diffuseTextureIdx = -1;
-            Real textureUvScale = 0.2f;
+            Vector4 textureOffsetScale( 0.0f, 0.0f, 1.0f, 1.0f );
             TextureGpu *diffuseTexture = datablock->getTexture( PBSM_DIFFUSE );
             if( !diffuseTexture )
             {
                 diffuseTexture = datablock->getTexture( PBSM_DETAIL0 );
-                const Vector4 detailOffsetScale = datablock->getDetailMapOffsetScale( 0u );
-                textureUvScale *= std::max<Real>( detailOffsetScale.z, detailOffsetScale.w );
+                textureOffsetScale = datablock->getDetailMapOffsetScale( 0u );
             }
 
             if( diffuseTexture )
@@ -471,11 +540,15 @@ namespace Ogre
             dst[i].emissive_flags[1] = emissive.y;
             dst[i].emissive_flags[2] = emissive.z;
             dst[i].emissive_flags[3] = static_cast<float>( datablock->getTransparencyMode() );
-            dst[i].diffuseTextureIdx_slice_uvScale_hasTexture[0] = static_cast<float>( diffuseTextureIdx );
-            dst[i].diffuseTextureIdx_slice_uvScale_hasTexture[1] =
+            dst[i].diffuseTextureIdx_slice_hasTexture[0] = static_cast<float>( diffuseTextureIdx );
+            dst[i].diffuseTextureIdx_slice_hasTexture[1] =
                 diffuseTexture ? static_cast<float>( diffuseTexture->getInternalSliceStart() ) : 0.0f;
-            dst[i].diffuseTextureIdx_slice_uvScale_hasTexture[2] = static_cast<float>( textureUvScale );
-            dst[i].diffuseTextureIdx_slice_uvScale_hasTexture[3] = diffuseTextureIdx >= 0 ? 1.0f : 0.0f;
+            dst[i].diffuseTextureIdx_slice_hasTexture[2] = diffuseTextureIdx >= 0 ? 1.0f : 0.0f;
+            dst[i].diffuseTextureIdx_slice_hasTexture[3] = 0.0f;
+            dst[i].diffuseUvOffsetScale[0] = static_cast<float>( textureOffsetScale.x );
+            dst[i].diffuseUvOffsetScale[1] = static_cast<float>( textureOffsetScale.y );
+            dst[i].diffuseUvOffsetScale[2] = static_cast<float>( textureOffsetScale.z );
+            dst[i].diffuseUvOffsetScale[3] = static_cast<float>( textureOffsetScale.w );
         }
 
         mMaterialBuffer->upload( staging.data(), 0u, bytesNeeded );
@@ -484,12 +557,25 @@ namespace Ogre
     void PathTracer::uploadGeometryBuffer()
     {
         size_t numGeometryRecords = 0u;
+        size_t numTriangleRecords = 0u;
         const PathTracerScene::ItemArray &items = mScene.getItems();
         for( size_t i = 0u; i < items.size(); ++i )
-            numGeometryRecords += items[i]->getNumSubItems();
+        {
+            Item *item = items[i];
+            numGeometryRecords += item->getNumSubItems();
+            for( size_t subItemIdx = 0u; subItemIdx < item->getNumSubItems(); ++subItemIdx )
+            {
+                VertexArrayObject *vao = item->getMesh()->getSubMesh( static_cast<unsigned>( subItemIdx ) )
+                                             ->mVao[VpNormal]
+                                             .front();
+                numTriangleRecords += vao->getPrimitiveCount() / 3u;
+            }
+        }
 
         numGeometryRecords = std::max<size_t>( numGeometryRecords, 1u );
+        numTriangleRecords = std::max<size_t>( numTriangleRecords, 1u );
         const size_t bytesNeeded = numGeometryRecords * sizeof( PathTracerGeometryGpu );
+        const size_t triangleBytesNeeded = numTriangleRecords * sizeof( PathTracerTriangleGpu );
 
         if( !mGeometryBuffer || mGeometryBuffer->getTotalSizeBytes() < bytesNeeded )
         {
@@ -499,11 +585,24 @@ namespace Ogre
                                                                  BT_DEFAULT, 0, false );
         }
 
+        if( !mTriangleBuffer || mTriangleBuffer->getTotalSizeBytes() < triangleBytesNeeded )
+        {
+            if( mTriangleBuffer )
+                mVaoManager->destroyReadOnlyBuffer( mTriangleBuffer );
+            mTriangleBuffer = mVaoManager->createReadOnlyBuffer( PFG_RGBA32_FLOAT, triangleBytesNeeded,
+                                                                 BT_DEFAULT, 0, false );
+        }
+
         std::vector<PathTracerGeometryGpu> staging( numGeometryRecords );
         PathTracerGeometryGpu *dst = staging.data();
         memset( dst, 0, bytesNeeded );
 
+        std::vector<PathTracerTriangleGpu> triangleStaging( numTriangleRecords );
+        PathTracerTriangleGpu *triangleDst = triangleStaging.data();
+        memset( triangleDst, 0, triangleBytesNeeded );
+
         size_t geometryIdx = 0u;
+        size_t triangleIdx = 0u;
         for( size_t itemIdx = 0u; itemIdx < items.size(); ++itemIdx )
         {
             Item *item = items[itemIdx];
@@ -520,12 +619,112 @@ namespace Ogre
                 dst[geometryIdx].material_subMesh[0] = static_cast<float>( materialIdx );
                 dst[geometryIdx].material_subMesh[1] = static_cast<float>( itemIdx );
                 dst[geometryIdx].material_subMesh[2] = static_cast<float>( subItemIdx );
-                dst[geometryIdx].material_subMesh[3] = 0.0f;
+                dst[geometryIdx].material_subMesh[3] = static_cast<float>( triangleIdx );
+
+                SubMesh *subMesh = item->getMesh()->getSubMesh( static_cast<unsigned>( subItemIdx ) );
+                VertexArrayObject *vao = subMesh->mVao[VpNormal].front();
+                IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
+                const uint32 indexCount = vao->getPrimitiveCount();
+
+                size_t uvBufferIdx = 0u;
+                size_t uvOffset = 0u;
+                size_t normalBufferIdx = 0u;
+                size_t normalOffset = 0u;
+                const bool hasUv = vao->findBySemantic( VES_TEXTURE_COORDINATES, uvBufferIdx, uvOffset ) != 0;
+                const bool hasNormal = vao->findBySemantic( VES_NORMAL, normalBufferIdx, normalOffset ) != 0;
+
+                VertexArrayObject::ReadRequestsVec readRequests;
+                size_t uvRequestIdx = std::numeric_limits<size_t>::max();
+                size_t normalRequestIdx = std::numeric_limits<size_t>::max();
+                if( hasUv )
+                {
+                    uvRequestIdx = readRequests.size();
+                    readRequests.push_back( VES_TEXTURE_COORDINATES );
+                }
+                if( hasNormal )
+                {
+                    normalRequestIdx = readRequests.size();
+                    readRequests.push_back( VES_NORMAL );
+                }
+
+                if( !readRequests.empty() )
+                {
+                    if( indexBuffer )
+                        vao->readRequests( readRequests, 0u, 0u, true );
+                    else
+                        vao->readRequests( readRequests, vao->getPrimitiveStart(), indexCount, true );
+                    vao->mapAsyncTickets( readRequests );
+                }
+
+                AsyncTicketPtr indexTicket;
+                const uint8 *indexData = 0;
+                if( indexBuffer )
+                {
+                    if( indexBuffer->getShadowCopy() )
+                    {
+                        indexData = reinterpret_cast<const uint8 *>( indexBuffer->getShadowCopy() ) +
+                                    vao->getPrimitiveStart() * indexBuffer->getBytesPerElement();
+                    }
+                    else
+                    {
+                        indexTicket = indexBuffer->readRequest( vao->getPrimitiveStart(), indexCount );
+                        indexData = reinterpret_cast<const uint8 *>( indexTicket->map() );
+                    }
+                }
+
+                for( uint32 idx = 0u; idx + 2u < indexCount; idx += 3u )
+                {
+                    const uint32 vertexIdx0 = indexBuffer ? readIndexAt( indexData, indexBuffer, idx + 0u ) : idx + 0u;
+                    const uint32 vertexIdx1 = indexBuffer ? readIndexAt( indexData, indexBuffer, idx + 1u ) : idx + 1u;
+                    const uint32 vertexIdx2 = indexBuffer ? readIndexAt( indexData, indexBuffer, idx + 2u ) : idx + 2u;
+
+                    float uv0[2] = { 0.0f, 0.0f };
+                    float uv1[2] = { 0.0f, 0.0f };
+                    float uv2[2] = { 0.0f, 0.0f };
+                    if( hasUv )
+                    {
+                        readFloat2At( readRequests[uvRequestIdx], vertexIdx0, uv0 );
+                        readFloat2At( readRequests[uvRequestIdx], vertexIdx1, uv1 );
+                        readFloat2At( readRequests[uvRequestIdx], vertexIdx2, uv2 );
+                    }
+
+                    Vector3 normal( 0.0f, 1.0f, 0.0f );
+                    if( hasNormal )
+                    {
+                        normal = readNormalAt( readRequests[normalRequestIdx], vertexIdx0 ) +
+                                 readNormalAt( readRequests[normalRequestIdx], vertexIdx1 ) +
+                                 readNormalAt( readRequests[normalRequestIdx], vertexIdx2 );
+                        normal.normalise();
+                        const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
+                        const Vector4 worldNormal4 = transform.transformAffine( Vector4( normal, 0.0f ) );
+                        normal = Vector3( worldNormal4.x, worldNormal4.y, worldNormal4.z );
+                        normal.normalise();
+                    }
+
+                    triangleDst[triangleIdx].uv0_uv1[0] = uv0[0];
+                    triangleDst[triangleIdx].uv0_uv1[1] = uv0[1];
+                    triangleDst[triangleIdx].uv0_uv1[2] = uv1[0];
+                    triangleDst[triangleIdx].uv0_uv1[3] = uv1[1];
+                    triangleDst[triangleIdx].uv2_normalX_normalY[0] = uv2[0];
+                    triangleDst[triangleIdx].uv2_normalX_normalY[1] = uv2[1];
+                    triangleDst[triangleIdx].uv2_normalX_normalY[2] = normal.x;
+                    triangleDst[triangleIdx].uv2_normalX_normalY[3] = normal.y;
+                    triangleDst[triangleIdx].normalZ_flags[0] = normal.z;
+                    triangleDst[triangleIdx].normalZ_flags[1] = hasUv ? 1.0f : 0.0f;
+                    ++triangleIdx;
+                }
+
+                if( indexTicket )
+                    indexTicket->unmap();
+                if( !readRequests.empty() )
+                    vao->unmapAsyncTickets( readRequests );
+
                 ++geometryIdx;
             }
         }
 
         mGeometryBuffer->upload( staging.data(), 0u, bytesNeeded );
+        mTriangleBuffer->upload( triangleStaging.data(), 0u, triangleBytesNeeded );
     }
     //-------------------------------------------------------------------------
     void PathTracer::bindJobResources()
@@ -549,6 +748,14 @@ namespace Ogre
             mTraceJob->setTexBuffer( 1, geometrySlot );
         }
 
+        if( mTriangleBuffer )
+        {
+            DescriptorSetTexture2::BufferSlot triangleSlot(
+                DescriptorSetTexture2::BufferSlot::makeEmpty() );
+            triangleSlot.buffer = mTriangleBuffer;
+            mTraceJob->setTexBuffer( 2, triangleSlot );
+        }
+
         TextureGpu *fallbackDiffuseTexture = mDiffuseTextures.empty() ? 0 : mDiffuseTextures[0];
         if( fallbackDiffuseTexture )
         {
@@ -557,7 +764,7 @@ namespace Ogre
                 DescriptorSetTexture2::TextureSlot diffuseSlot(
                     DescriptorSetTexture2::TextureSlot::makeEmpty() );
                 diffuseSlot.texture = i < mDiffuseTextures.size() ? mDiffuseTextures[i] : fallbackDiffuseTexture;
-                mTraceJob->setTexture( static_cast<uint8>( 2u + i ), diffuseSlot );
+                mTraceJob->setTexture( static_cast<uint8>( 3u + i ), diffuseSlot );
             }
         }
 

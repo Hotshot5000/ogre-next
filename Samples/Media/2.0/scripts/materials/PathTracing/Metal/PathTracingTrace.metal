@@ -51,12 +51,20 @@ struct PathTracerMaterial
     float4 baseColour_roughness;
     float4 fresnel_transparency;
     float4 emissive_flags;
-    float4 diffuseTextureIdx_slice_uvScale_hasTexture;
+    float4 diffuseTextureIdx_slice_hasTexture;
+    float4 diffuseUvOffsetScale;
 };
 
 struct PathTracerGeometry
 {
     float4 material_subMesh;
+};
+
+struct PathTracerTriangle
+{
+    float4 uv0_uv1;
+    float4 uv2_normalX_normalY;
+    float4 normalZ_flags;
 };
 
 struct SurfaceMaterial
@@ -69,7 +77,7 @@ struct SurfaceMaterial
     uint flags;
     int diffuseTextureIdx;
     uint diffuseTextureSlice;
-    float uvScale;
+    float4 diffuseUvOffsetScale;
     bool hasDiffuseTexture;
 };
 
@@ -88,31 +96,53 @@ static SurfaceMaterial load_surface_material( uint instanceId,
     surface.transparency = saturate( material.fresnel_transparency.w );
     surface.emissive = max( material.emissive_flags.xyz, float3( 0.0f ) );
     surface.flags = (uint)( material.emissive_flags.w + 0.5f );
-    surface.diffuseTextureIdx = (int)( material.diffuseTextureIdx_slice_uvScale_hasTexture.x + 0.5f );
-    surface.diffuseTextureSlice = (uint)( material.diffuseTextureIdx_slice_uvScale_hasTexture.y + 0.5f );
-    surface.uvScale = max( material.diffuseTextureIdx_slice_uvScale_hasTexture.z, 0.0001f );
-    surface.hasDiffuseTexture = material.diffuseTextureIdx_slice_uvScale_hasTexture.w > 0.5f;
+    surface.diffuseTextureIdx = (int)( material.diffuseTextureIdx_slice_hasTexture.x + 0.5f );
+    surface.diffuseTextureSlice = (uint)( material.diffuseTextureIdx_slice_hasTexture.y + 0.5f );
+    surface.hasDiffuseTexture = material.diffuseTextureIdx_slice_hasTexture.z > 0.5f;
+    surface.diffuseUvOffsetScale = material.diffuseUvOffsetScale;
     return surface;
 }
 
+static PathTracerTriangle load_triangle( uint instanceId,
+                                         uint primitiveId,
+                                         device const PathTracerGeometry *geometryRecords,
+                                         device const PathTracerTriangle *triangleRecords )
+{
+    const PathTracerGeometry geometry = geometryRecords[instanceId];
+    const uint triangleStart = (uint)( geometry.material_subMesh.w + 0.5f );
+    return triangleRecords[triangleStart + primitiveId];
+}
+
+static float2 interpolate_uv( const PathTracerTriangle triangle, float2 barycentric )
+{
+    const float w = 1.0f - barycentric.x - barycentric.y;
+    const float2 uv0 = triangle.uv0_uv1.xy;
+    const float2 uv1 = triangle.uv0_uv1.zw;
+    const float2 uv2 = triangle.uv2_normalX_normalY.xy;
+    return uv0 * w + uv1 * barycentric.x + uv2 * barycentric.y;
+}
+
+static float3 load_triangle_normal( const PathTracerTriangle triangle, float3 fallbackNormal )
+{
+    const float3 normal = normalize( float3( triangle.uv2_normalX_normalY.zw,
+                                             triangle.normalZ_flags.x ) );
+    return all( isfinite( normal ) ) ? normal : fallbackNormal;
+}
+
 static float3 sample_diffuse_texture( const SurfaceMaterial material,
-                                      float3 position,
-                                      float3 normal,
+                                      const PathTracerTriangle triangle,
+                                      float2 barycentric,
                                       array<texture2d_array<float>, 8> diffuseTextures,
                                       sampler diffuseSampler )
 {
-    if( !material.hasDiffuseTexture || material.diffuseTextureIdx < 0 || material.diffuseTextureIdx >= 8 )
+    if( !material.hasDiffuseTexture || material.diffuseTextureIdx < 0 || material.diffuseTextureIdx >= 8 ||
+        triangle.normalZ_flags.y < 0.5f )
+    {
         return float3( 1.0f );
+    }
 
-    const float3 absNormal = abs( normal );
-    float2 uv;
-    if( absNormal.y >= absNormal.x && absNormal.y >= absNormal.z )
-        uv = position.xz * material.uvScale;
-    else if( absNormal.x >= absNormal.z )
-        uv = position.zy * material.uvScale;
-    else
-        uv = position.xy * material.uvScale;
-
+    const float2 uv = interpolate_uv( triangle, barycentric ) * material.diffuseUvOffsetScale.zw +
+                      material.diffuseUvOffsetScale.xy;
     return diffuseTextures[material.diffuseTextureIdx].sample( diffuseSampler, fract( uv ),
                                                                material.diffuseTextureSlice ).xyz;
 }
@@ -267,8 +297,9 @@ kernel void main_metal
     constant PathTracerLight *lights [[buffer(1)]],
     device const PathTracerMaterial *materials [[buffer(TEX_SLOT_START + 0)]],
     device const PathTracerGeometry *geometryRecords [[buffer(TEX_SLOT_START + 1)]],
-    array<texture2d_array<float>, 8> diffuseTextures [[texture(TEX_SLOT_START + 2)]],
-    sampler diffuseSampler [[sampler(2)]],
+    device const PathTracerTriangle *triangleRecords [[buffer(TEX_SLOT_START + 2)]],
+    array<texture2d_array<float>, 8> diffuseTextures [[texture(10)]],
+    sampler diffuseSampler [[sampler(10)]],
 
     instance_acceleration_structure accelerationStructure,
     intersection_function_table<triangle_data, instancing> intersectionFunctionTable,
@@ -311,12 +342,16 @@ kernel void main_metal
             break;
         }
 
-        const float3 geometricNormal = -pathRay.direction;
+        const PathTracerTriangle triangle = load_triangle( hit.instance_id, hit.primitive_id,
+                                                           geometryRecords, triangleRecords );
+        const float3 geometricNormal = faceforward( load_triangle_normal( triangle, -pathRay.direction ),
+                                                    pathRay.direction, -pathRay.direction );
         const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
         const SurfaceMaterial material = load_surface_material( hit.instance_id, materials, geometryRecords );
 
         const float opacity = material.transparency;
-        const float3 textureColour = sample_diffuse_texture( material, hitPosition, geometricNormal,
+        const float3 textureColour = sample_diffuse_texture( material, triangle,
+                                                             hit.triangle_barycentric_coord,
                                                              diffuseTextures, diffuseSampler );
         const float3 baseColor = material.baseColour * textureColour * opacity;
         radiance += throughput * material.emissive;

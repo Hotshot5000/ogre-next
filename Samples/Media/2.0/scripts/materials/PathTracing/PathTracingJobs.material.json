@@ -11,10 +11,11 @@
 
             "inform_shader_of_texture_data_change" : true,
             "uav_units" : 2,
+            "gl_tex_slot_start" : 7,
 
             "textures" :
             [
-                {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+                {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
             ]
         }
     }
