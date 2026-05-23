@@ -98,6 +98,7 @@ struct SurfaceMaterial
     bool hasEmissiveTexture;
     int reflectionTextureIdx;
     bool hasReflectionTexture;
+    float specularWeight;
 };
 
 static SurfaceMaterial load_surface_material( uint instanceId,
@@ -136,6 +137,8 @@ static SurfaceMaterial load_surface_material( uint instanceId,
     surface.hasEmissiveTexture = material.emissiveTextureIdx_slice_hasTexture.z > 0.5f;
     surface.reflectionTextureIdx = (int)( material.reflectionTextureIdx_slice_hasTexture.x + 0.5f );
     surface.hasReflectionTexture = material.reflectionTextureIdx_slice_hasTexture.z > 0.5f;
+    surface.specularWeight = material.reflectionTextureIdx_slice_hasTexture.w > 0.0f ?
+        saturate( material.reflectionTextureIdx_slice_hasTexture.w ) : 1.0f;
     return surface;
 }
 
@@ -269,7 +272,7 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
                                            geometricNormal * tangentSample.z );
     if( !all( isfinite( mappedNormal ) ) )
         return geometricNormal;
-    return normalize( mix( geometricNormal, mappedNormal, material.normalMapWeight * 0.25f ) );
+    return normalize( mix( geometricNormal, mappedNormal, material.normalMapWeight ) );
 }
 
 static float3 sample_reflection_texture( const SurfaceMaterial material,
@@ -478,7 +481,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
         const float specularTerm = min( ggx_distribution( nDotH, roughness ) *
                                         smith_ggx_visibility( nDotV, nDotL, roughness ) * nDotL,
                                         4.0f );
-        result.specular += light.specular.xyz * lightScale * specularTerm * fresnel * 0.25f;
+        result.specular += light.specular.xyz * lightScale * specularTerm * fresnel;
     }
 
     return result;
@@ -572,10 +575,13 @@ kernel void main_metal
         radiance += throughput * material.emissive * emissiveTexture;
 
         const float3 viewDirection = -pathRay.direction;
+        const float3 bounceNormal = shadingNormal;
         const float nDotV = saturate( dot( shadingNormal, viewDirection ) );
-        const float3 fresnelColor = fresnel_schlick( material.fresnel, nDotV );
+        const float bounceNDotV = saturate( dot( bounceNormal, viewDirection ) );
+        const float3 materialFresnel = material.fresnel * material.specularWeight;
+        const float3 fresnelColor = fresnel_schlick( materialFresnel, nDotV );
         const DirectLighting directLighting = evaluate_direct_lighting( hitPosition, shadingNormal,
-                                                                        viewDirection, material.fresnel,
+                                                                        viewDirection, materialFresnel,
                                                                         roughness, lights,
                                                                         frame->numLights,
                                                                         accelerationStructure );
@@ -591,16 +597,16 @@ kernel void main_metal
                             ( directLighting.diffuse + skyDiffuse ) * opacity * 0.25f;
             }
 
-            const float reflectProbability = clamp( fresnel_schlick_scalar( material.fresnel, nDotV ) *
+            const float reflectProbability = clamp( fresnel_schlick_scalar( materialFresnel, bounceNDotV ) *
                                                     ( 1.0f - roughness * 0.65f ),
                                                     0.01f, 0.55f );
             float3 nextDirection;
             float3 nextWeight;
             if( rand01( seed ) < reflectProbability )
             {
-                const float3 reflectedDirection = reflect( pathRay.direction, shadingNormal );
+                const float3 reflectedDirection = reflect( pathRay.direction, bounceNormal );
                 const float3 roughDirection = tangent_to_world(
-                    cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), shadingNormal );
+                    cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), bounceNormal );
                 nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
                 nextWeight = fresnelColor / reflectProbability;
             }
@@ -617,8 +623,8 @@ kernel void main_metal
                 {
                     nextDirection = normalize( refractedDirection );
                     const float3 tint = mix( float3( 1.0f ), saturate( material.baseColour ),
-                                             0.12f * max( transmission, 0.25f ) );
-                    nextWeight = tint * max( transmission, 0.05f ) * 0.35f /
+                                             0.06f * max( transmission, 0.25f ) );
+                    nextWeight = tint * max( transmission, 0.05f ) * 0.25f /
                                  max( 1.0f - reflectProbability, 0.05f );
                 }
             }
@@ -655,16 +661,16 @@ kernel void main_metal
         float3 bounceWeight;
         if( rand01( seed ) < specularProbability )
         {
-            const float3 reflectedDirection = reflect( pathRay.direction, shadingNormal );
+            const float3 reflectedDirection = reflect( pathRay.direction, bounceNormal );
             const float3 roughDirection = tangent_to_world(
-                cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), shadingNormal );
+                cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), bounceNormal );
             nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
             bounceWeight = fresnelColor / max( specularProbability, 1e-4f );
         }
         else
         {
             const float3 localDirection = cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) );
-            nextDirection = tangent_to_world( localDirection, shadingNormal );
+            nextDirection = tangent_to_world( localDirection, bounceNormal );
             bounceWeight = baseColor * ( 1.0f - specularLuminance ) * 0.82f /
                            max( 1.0f - specularProbability, 1e-4f );
         }

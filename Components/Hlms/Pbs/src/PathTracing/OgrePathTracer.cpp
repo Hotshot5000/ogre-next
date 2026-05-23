@@ -564,6 +564,26 @@ namespace Ogre
             const Vector3 diffuse = datablock->getDiffuse();
             const Vector3 fresnel = datablock->getFresnel();
             const Vector3 emissive = datablock->getEmissive();
+            const Vector3 specular = datablock->getSpecular();
+            const float roughness = datablock->getRoughness();
+            const float clampedRoughness = std::min( std::max( roughness, 0.0f ), 1.0f );
+            const float smoothness = 1.0f - clampedRoughness;
+            const bool isTransparent = datablock->getTransparencyMode() != HlmsPbsDatablock::None &&
+                                       datablock->getTransparency() < 0.995f;
+            const bool isMetallicWorkflow = datablock->getWorkflow() == HlmsPbsDatablock::MetallicWorkflow;
+            const float metalness = isMetallicWorkflow ? datablock->getMetalness() : 0.0f;
+            const float specularLuminance =
+                std::max( 0.0f, specular.x * 0.2126f + specular.y * 0.7152f + specular.z * 0.0722f );
+
+            float pathSpecularWeight = 1.0f;
+            if( isMetallicWorkflow )
+                pathSpecularWeight = std::max( 0.2f, metalness );
+            else if( !isTransparent )
+                pathSpecularWeight = std::max( 0.03f, smoothness * smoothness * specularLuminance * 0.45f );
+
+            float normalMapWeight = static_cast<float>( datablock->getNormalMapWeight() );
+            if( !isTransparent && !isMetallicWorkflow )
+                normalMapWeight *= std::max( 0.15f, pathSpecularWeight );
 
             int diffuseTextureIdx = -1;
             Vector4 textureOffsetScale( 0.0f, 0.0f, 1.0f, 1.0f );
@@ -596,7 +616,7 @@ namespace Ogre
             dst[i].baseColour_roughness[0] = diffuse.x;
             dst[i].baseColour_roughness[1] = diffuse.y;
             dst[i].baseColour_roughness[2] = diffuse.z;
-            dst[i].baseColour_roughness[3] = datablock->getRoughness();
+            dst[i].baseColour_roughness[3] = roughness;
             dst[i].fresnel_transparency[0] = fresnel.x;
             dst[i].fresnel_transparency[1] = fresnel.y;
             dst[i].fresnel_transparency[2] = fresnel.z;
@@ -623,7 +643,7 @@ namespace Ogre
             dst[i].normalTextureIdx_slice_hasTexture[1] =
                 normalTexture ? static_cast<float>( normalTexture->getInternalSliceStart() ) : 0.0f;
             dst[i].normalTextureIdx_slice_hasTexture[2] = normalTextureIdx >= 0 ? 1.0f : 0.0f;
-            dst[i].normalTextureIdx_slice_hasTexture[3] = static_cast<float>( datablock->getNormalMapWeight() );
+            dst[i].normalTextureIdx_slice_hasTexture[3] = normalMapWeight;
             dst[i].emissiveTextureIdx_slice_hasTexture[0] = static_cast<float>( emissiveTextureIdx );
             dst[i].emissiveTextureIdx_slice_hasTexture[1] =
                 emissiveTexture ? static_cast<float>( emissiveTexture->getInternalSliceStart() ) : 0.0f;
@@ -633,7 +653,7 @@ namespace Ogre
             dst[i].reflectionTextureIdx_slice_hasTexture[1] =
                 reflectionTexture ? static_cast<float>( reflectionTexture->getInternalSliceStart() ) : 0.0f;
             dst[i].reflectionTextureIdx_slice_hasTexture[2] = reflectionTextureIdx >= 0 ? 1.0f : 0.0f;
-            dst[i].reflectionTextureIdx_slice_hasTexture[3] = 0.0f;
+            dst[i].reflectionTextureIdx_slice_hasTexture[3] = pathSpecularWeight;
         }
 
         mMaterialBuffer->upload( staging.data(), 0u, bytesNeeded );
