@@ -111,7 +111,10 @@ static SurfaceMaterial load_surface_material( uint instanceId,
     SurfaceMaterial surface;
     surface.baseColour = saturate( material.baseColour_roughness.xyz );
     surface.roughness = clamp( material.baseColour_roughness.w, 0.02f, 1.0f );
-    surface.fresnel = saturate( material.fresnel_transparency.xyz );
+    const float3 fresnelInput = max( material.fresnel_transparency.xyz, float3( 0.0f ) );
+    const float3 iorF0 = pow( ( fresnelInput - 1.0f ) / max( fresnelInput + 1.0f, float3( 1e-4f ) ),
+                              float3( 2.0f ) );
+    surface.fresnel = select( saturate( fresnelInput ), saturate( iorF0 ), fresnelInput > float3( 1.0f ) );
     surface.flags = (uint)( material.emissive_flags.w + 0.5f );
     const uint transparencyMode = surface.flags & 15u;
     surface.transparency = transparencyMode == 0u ? 1.0f : saturate( material.fresnel_transparency.w );
@@ -266,7 +269,7 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
                                            geometricNormal * tangentSample.z );
     if( !all( isfinite( mappedNormal ) ) )
         return geometricNormal;
-    return normalize( mix( geometricNormal, mappedNormal, material.normalMapWeight * 0.45f ) );
+    return normalize( mix( geometricNormal, mappedNormal, material.normalMapWeight * 0.25f ) );
 }
 
 static float3 sample_reflection_texture( const SurfaceMaterial material,
@@ -475,7 +478,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
         const float specularTerm = min( ggx_distribution( nDotH, roughness ) *
                                         smith_ggx_visibility( nDotV, nDotL, roughness ) * nDotL,
                                         4.0f );
-        result.specular += light.specular.xyz * lightScale * specularTerm * fresnel;
+        result.specular += light.specular.xyz * lightScale * specularTerm * fresnel * 0.25f;
     }
 
     return result;
@@ -557,7 +560,7 @@ kernel void main_metal
                                                                  roughnessTextures, diffuseSampler );
         const float mappedRoughness = material.hasRoughnessTexture ?
             max( material.roughness, roughnessTexture ) : material.roughness;
-        const float roughness = clamp( mappedRoughness, 0.18f, 1.0f );
+        const float roughness = clamp( mappedRoughness, 0.35f, 1.0f );
         const float3 shadingNormal = apply_normal_texture( material, triangle,
                                                            hit.triangle_barycentric_coord,
                                                            geometricNormal, normalTextures,
@@ -589,8 +592,8 @@ kernel void main_metal
             }
 
             const float reflectProbability = clamp( fresnel_schlick_scalar( material.fresnel, nDotV ) *
-                                                    ( 1.0f - roughness * 0.35f ),
-                                                    0.02f, 0.75f );
+                                                    ( 1.0f - roughness * 0.65f ),
+                                                    0.01f, 0.55f );
             float3 nextDirection;
             float3 nextWeight;
             if( rand01( seed ) < reflectProbability )
@@ -614,8 +617,8 @@ kernel void main_metal
                 {
                     nextDirection = normalize( refractedDirection );
                     const float3 tint = mix( float3( 1.0f ), saturate( material.baseColour ),
-                                             0.45f * max( transmission, 0.25f ) );
-                    nextWeight = tint * max( transmission, 0.05f ) * 0.65f /
+                                             0.12f * max( transmission, 0.25f ) );
+                    nextWeight = tint * max( transmission, 0.05f ) * 0.35f /
                                  max( 1.0f - reflectProbability, 0.05f );
                 }
             }
@@ -637,7 +640,7 @@ kernel void main_metal
         {
             const float3 reflectionDirection = reflect( pathRay.direction, shadingNormal );
             const float reflectionWeight = saturate( specularLuminance ) *
-                                           ( 1.0f - roughness * 0.85f );
+                                           ( 1.0f - roughness * 0.95f ) * 0.20f;
             radiance += throughput * sample_reflection_texture( material, reflectionDirection,
                                                                 reflectionTextures, diffuseSampler ) *
                         fresnelColor * reflectionWeight * opacity;
@@ -645,9 +648,9 @@ kernel void main_metal
 
         const float diffuseLuminance = dot( baseColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
         const float diffuseBsdfWeight = diffuseLuminance * ( 1.0f - specularLuminance );
-        const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * 0.5f;
+        const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * 0.20f;
         const float bsdfWeightSum = max( diffuseBsdfWeight + specularBsdfWeight, 1e-4f );
-        const float specularProbability = clamp( specularBsdfWeight / bsdfWeightSum, 0.01f, 0.20f );
+        const float specularProbability = clamp( specularBsdfWeight / bsdfWeightSum, 0.005f, 0.08f );
         float3 nextDirection;
         float3 bounceWeight;
         if( rand01( seed ) < specularProbability )
