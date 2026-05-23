@@ -416,11 +416,11 @@ namespace Ogre
             if( mMaterialBuffer )
                 mVaoManager->destroyReadOnlyBuffer( mMaterialBuffer );
             mMaterialBuffer = mVaoManager->createReadOnlyBuffer( PFG_RGBA32_FLOAT, bytesNeeded,
-                                                                 BT_DYNAMIC_PERSISTENT, 0, false );
+                                                                 BT_DEFAULT, 0, false );
         }
 
-        PathTracerMaterialGpu *dst = reinterpret_cast<PathTracerMaterialGpu *>(
-            mMaterialBuffer->map( 0, mMaterialBuffer->getNumElements() ) );
+        std::vector<PathTracerMaterialGpu> staging( numMaterials );
+        PathTracerMaterialGpu *dst = staging.data();
         memset( dst, 0, bytesNeeded );
 
         for( size_t i = 0u; i < materials.size(); ++i )
@@ -444,7 +444,7 @@ namespace Ogre
             dst[i].emissive_flags[3] = static_cast<float>( datablock->getTransparencyMode() );
         }
 
-        mMaterialBuffer->unmap( UO_KEEP_PERSISTENT );
+        mMaterialBuffer->upload( staging.data(), 0u, bytesNeeded );
     }
     //-------------------------------------------------------------------------
     void PathTracer::uploadGeometryBuffer()
@@ -462,11 +462,11 @@ namespace Ogre
             if( mGeometryBuffer )
                 mVaoManager->destroyReadOnlyBuffer( mGeometryBuffer );
             mGeometryBuffer = mVaoManager->createReadOnlyBuffer( PFG_RGBA32_FLOAT, bytesNeeded,
-                                                                 BT_DYNAMIC_PERSISTENT, 0, false );
+                                                                 BT_DEFAULT, 0, false );
         }
 
-        PathTracerGeometryGpu *dst = reinterpret_cast<PathTracerGeometryGpu *>(
-            mGeometryBuffer->map( 0, mGeometryBuffer->getNumElements() ) );
+        std::vector<PathTracerGeometryGpu> staging( numGeometryRecords );
+        PathTracerGeometryGpu *dst = staging.data();
         memset( dst, 0, bytesNeeded );
 
         size_t geometryIdx = 0u;
@@ -491,7 +491,7 @@ namespace Ogre
             }
         }
 
-        mGeometryBuffer->unmap( UO_KEEP_PERSISTENT );
+        mGeometryBuffer->upload( staging.data(), 0u, bytesNeeded );
     }
     //-------------------------------------------------------------------------
     void PathTracer::bindJobResources()

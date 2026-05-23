@@ -55,6 +55,8 @@ namespace Demo
                                  getMediaReadArchiveType(), "General" );
             addResourceLocation( originalDataFolder + "2.0/scripts/materials/PathTracing",
                                  getMediaReadArchiveType(), "General" );
+            addResourceLocation( originalDataFolder + "2.0/scripts/materials/PathTracing/Metal",
+                                 getMediaReadArchiveType(), "General" );
         }
 
     public:
