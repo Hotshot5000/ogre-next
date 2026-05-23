@@ -822,20 +822,31 @@ namespace Ogre
                     }
 
                     Vector3 normal( 0.0f, 1.0f, 0.0f );
+                    Vector3 vertexNormal( 0.0f, 1.0f, 0.0f );
+                    bool hasValidVertexNormal = false;
                     if( hasNormal )
                     {
-                        normal = readNormalAt( readRequests[normalRequestIdx], vertexIdx0 ) +
-                                 readNormalAt( readRequests[normalRequestIdx], vertexIdx1 ) +
-                                 readNormalAt( readRequests[normalRequestIdx], vertexIdx2 );
-                        normal.normalise();
-                        const Vector4 worldNormal4 = transform.transformAffine( Vector4( normal, 0.0f ) );
-                        normal = Vector3( worldNormal4.x, worldNormal4.y, worldNormal4.z );
-                        normal.normalise();
+                        vertexNormal = readNormalAt( readRequests[normalRequestIdx], vertexIdx0 ) +
+                                       readNormalAt( readRequests[normalRequestIdx], vertexIdx1 ) +
+                                       readNormalAt( readRequests[normalRequestIdx], vertexIdx2 );
+                        if( vertexNormal.squaredLength() > 1e-8f )
+                        {
+                            vertexNormal.normalise();
+                            const Vector4 worldNormal4 =
+                                transform.transformAffine( Vector4( vertexNormal, 0.0f ) );
+                            vertexNormal = Vector3( worldNormal4.x, worldNormal4.y, worldNormal4.z );
+                            if( vertexNormal.squaredLength() > 1e-8f )
+                            {
+                                vertexNormal.normalise();
+                                normal = vertexNormal;
+                                hasValidVertexNormal = true;
+                            }
+                        }
                     }
 
                     Vector3 tangent( 1.0f, 0.0f, 0.0f );
                     Vector3 bitangent( 0.0f, 0.0f, 1.0f );
-                    if( hasPosition && hasUv )
+                    if( hasPosition )
                     {
                         const Vector3 localPos0 = readFloat3At( readRequests[positionRequestIdx], vertexIdx0 );
                         const Vector3 localPos1 = readFloat3At( readRequests[positionRequestIdx], vertexIdx1 );
@@ -847,22 +858,35 @@ namespace Ogre
                                              worldPos14.z - worldPos04.z );
                         const Vector3 edge2( worldPos24.x - worldPos04.x, worldPos24.y - worldPos04.y,
                                              worldPos24.z - worldPos04.z );
-                        const float du1 = uv1[0] - uv0[0];
-                        const float dv1 = uv1[1] - uv0[1];
-                        const float du2 = uv2[0] - uv0[0];
-                        const float dv2 = uv2[1] - uv0[1];
-                        const float determinant = du1 * dv2 - dv1 * du2;
-                        if( Math::Abs( determinant ) > 1e-8f )
+
+                        Vector3 faceNormal = edge1.crossProduct( edge2 );
+                        if( faceNormal.squaredLength() > 1e-8f )
                         {
-                            const float invDeterminant = 1.0f / determinant;
-                            tangent = ( edge1 * dv2 - edge2 * dv1 ) * invDeterminant;
-                            bitangent = ( edge2 * du1 - edge1 * du2 ) * invDeterminant;
-                            tangent -= normal * tangent.dotProduct( normal );
-                            if( tangent.squaredLength() > 1e-8f )
-                                tangent.normalise();
-                            bitangent -= normal * bitangent.dotProduct( normal );
-                            if( bitangent.squaredLength() > 1e-8f )
-                                bitangent.normalise();
+                            faceNormal.normalise();
+                            if( hasValidVertexNormal && faceNormal.dotProduct( vertexNormal ) < 0.0f )
+                                faceNormal = -faceNormal;
+                            normal = faceNormal;
+                        }
+
+                        if( hasUv )
+                        {
+                            const float du1 = uv1[0] - uv0[0];
+                            const float dv1 = uv1[1] - uv0[1];
+                            const float du2 = uv2[0] - uv0[0];
+                            const float dv2 = uv2[1] - uv0[1];
+                            const float determinant = du1 * dv2 - dv1 * du2;
+                            if( Math::Abs( determinant ) > 1e-8f )
+                            {
+                                const float invDeterminant = 1.0f / determinant;
+                                tangent = ( edge1 * dv2 - edge2 * dv1 ) * invDeterminant;
+                                bitangent = ( edge2 * du1 - edge1 * du2 ) * invDeterminant;
+                                tangent -= normal * tangent.dotProduct( normal );
+                                if( tangent.squaredLength() > 1e-8f )
+                                    tangent.normalise();
+                                bitangent -= normal * bitangent.dotProduct( normal );
+                                if( bitangent.squaredLength() > 1e-8f )
+                                    bitangent.normalise();
+                            }
                         }
                     }
 
