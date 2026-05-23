@@ -230,7 +230,17 @@ namespace Ogre
                 dst->specular[i] = static_cast<float>( specularColour[i] );
             }
 
-            const Vector4 light4dVec = light->getAs4DVector();
+            Vector4 light4dVec;
+            if( light->getType() == Light::LT_DIRECTIONAL )
+            {
+                light4dVec = -light->getDerivedDirectionUpdated();
+                light4dVec.w = 0.0f;
+            }
+            else
+            {
+                light4dVec = light->getParentNode()->_getDerivedPositionUpdated();
+                light4dVec.w = 1.0f;
+            }
             for( size_t i = 0u; i < 4u; ++i )
                 dst->position[i] = static_cast<float>( light4dVec[i] );
 
