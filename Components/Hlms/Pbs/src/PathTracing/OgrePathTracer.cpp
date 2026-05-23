@@ -447,7 +447,7 @@ namespace Ogre
         frame->width = static_cast<float>( mRenderWindow->getWidth() );
         frame->height = static_cast<float>( mRenderWindow->getHeight() );
         frame->sampleIndex = mSampleCount;
-        frame->maxBounces = 2u;
+        frame->maxBounces = 4u;
         frame->numLights = numLights;
         frame->flags = 0u;
 

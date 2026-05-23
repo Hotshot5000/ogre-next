@@ -183,6 +183,18 @@ static float fresnel_schlick_luminance( float3 f0, float cosTheta )
     return saturate( dot( f, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
 }
 
+static float fresnel_schlick_scalar( float3 f0, float cosTheta )
+{
+    const float3 f = f0 + ( 1.0f - f0 ) * pow( saturate( 1.0f - cosTheta ), 5.0f );
+    return saturate( dot( f, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
+}
+
+static bool is_transparent_surface( const SurfaceMaterial material )
+{
+    const uint transparencyMode = material.flags & 15u;
+    return transparencyMode == 1u || transparencyMode == 3u || material.transparency < 0.995f;
+}
+
 static float origin() { return 1.0f / 32.0f; }
 static float float_scale() { return 1.0f / 65536.0f; }
 static float int_scale() { return 256.0f; }
@@ -394,8 +406,9 @@ kernel void main_metal
 
         const PathTracerTriangle triangle = load_triangle( hit.instance_id, hit.primitive_id,
                                                            geometryRecords, triangleRecords );
-        const float3 geometricNormal = faceforward( load_triangle_normal( triangle, -pathRay.direction ),
-                                                    pathRay.direction, -pathRay.direction );
+        const float3 rawNormal = load_triangle_normal( triangle, -pathRay.direction );
+        const bool frontFacing = dot( pathRay.direction, rawNormal ) < 0.0f;
+        const float3 geometricNormal = frontFacing ? rawNormal : -rawNormal;
         const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
         const SurfaceMaterial material = load_surface_material( hit.instance_id, materials, geometryRecords );
 
@@ -415,10 +428,63 @@ kernel void main_metal
                                                                         material.roughness, lights,
                                                                         frame->numLights,
                                                                         accelerationStructure );
+        const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
+        if( is_transparent_surface( material ) )
+        {
+            const float transmission = saturate( 1.0f - opacity );
+            radiance += throughput * directLighting.specular;
+            if( opacity > 0.001f )
+            {
+                const float3 skyDiffuse = sample_sky( geometricNormal, *frame ) * 0.025f;
+                radiance += throughput * ( baseColor * 0.318309886f ) *
+                            ( directLighting.diffuse + skyDiffuse ) * opacity * 0.25f;
+            }
+
+            const float reflectProbability = clamp( fresnel_schlick_scalar( material.fresnel, nDotV ),
+                                                    0.02f, 0.95f );
+            float3 nextDirection;
+            float3 nextWeight;
+            if( rand01( seed ) < reflectProbability )
+            {
+                const float3 reflectedDirection = reflect( pathRay.direction, geometricNormal );
+                const float3 roughDirection = tangent_to_world(
+                    cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), geometricNormal );
+                nextDirection = normalize( mix( reflectedDirection, roughDirection,
+                                               material.roughness * material.roughness ) );
+                nextWeight = fresnelColor / reflectProbability;
+            }
+            else
+            {
+                const float eta = frontFacing ? ( 1.0f / 1.45f ) : 1.45f;
+                float3 refractedDirection = refract( pathRay.direction, geometricNormal, eta );
+                if( dot( refractedDirection, refractedDirection ) <= 1e-5f )
+                {
+                    nextDirection = reflect( pathRay.direction, geometricNormal );
+                    nextWeight = fresnelColor;
+                }
+                else
+                {
+                    nextDirection = normalize( refractedDirection );
+                    const float3 tint = mix( float3( 1.0f ), saturate( material.baseColour ),
+                                             0.45f * max( transmission, 0.25f ) );
+                    nextWeight = tint * max( transmission, 0.05f ) /
+                                 max( 1.0f - reflectProbability, 0.05f );
+                }
+            }
+
+            throughput *= min( nextWeight, float3( 1.0f ) );
+            pathRay.origin = offset_ray( hitPosition,
+                                         dot( nextDirection, geometricNormal ) < 0.0f ? -geometricNormal :
+                                                                                        geometricNormal );
+            pathRay.direction = nextDirection;
+            pathRay.min_distance = 0.005f;
+            pathRay.max_distance = INFINITY;
+            continue;
+        }
+
         const float3 skyDiffuse = sample_sky( geometricNormal, *frame ) * 0.08f;
         radiance += throughput * ( baseColor * 0.318309886f ) * ( directLighting.diffuse + skyDiffuse );
         radiance += throughput * directLighting.specular * opacity;
-        const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
         if( material.hasReflectionTexture )
         {
             const float3 reflectionDirection = reflect( pathRay.direction, geometricNormal );
