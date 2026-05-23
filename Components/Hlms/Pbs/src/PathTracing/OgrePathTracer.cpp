@@ -97,9 +97,11 @@ namespace Ogre
             float emissive_flags[4];
             float diffuseTextureIdx_slice_hasTexture[4];
             float diffuseUvOffsetScale[4];
+            float reflectionTextureIdx_slice_hasTexture[4];
         };
 
         const size_t MaxPathTracerDiffuseTextures = 8u;
+        const size_t MaxPathTracerReflectionTextures = 4u;
 
         struct PathTracerGeometryGpu
         {
@@ -267,6 +269,7 @@ namespace Ogre
                 "PathTracer disabled: could not find PathTracing/TraceJob." );
             return;
         }
+        mTraceJob->setNumSamplerUnits( 16u );
 
         CompositorNode *pathTracerNode = mWorkspace->findNode( "PathTracerRenderingNode" );
         if( !pathTracerNode )
@@ -512,6 +515,7 @@ namespace Ogre
         PathTracerMaterialGpu *dst = staging.data();
         memset( dst, 0, bytesNeeded );
         mDiffuseTextures.clear();
+        mReflectionTextures.clear();
 
         for( size_t i = 0u; i < materials.size(); ++i )
         {
@@ -544,6 +548,23 @@ namespace Ogre
                     diffuseTextureIdx = static_cast<int>( texIt - mDiffuseTextures.begin() );
             }
 
+            int reflectionTextureIdx = -1;
+            TextureGpu *reflectionTexture = datablock->getTexture( PBSM_REFLECTION );
+            if( reflectionTexture )
+            {
+                FastArray<TextureGpu *>::const_iterator texIt =
+                    std::find( mReflectionTextures.begin(), mReflectionTextures.end(), reflectionTexture );
+                if( texIt == mReflectionTextures.end() &&
+                    mReflectionTextures.size() < MaxPathTracerReflectionTextures )
+                {
+                    mReflectionTextures.push_back( reflectionTexture );
+                    texIt = mReflectionTextures.end() - 1;
+                }
+
+                if( texIt != mReflectionTextures.end() )
+                    reflectionTextureIdx = static_cast<int>( texIt - mReflectionTextures.begin() );
+            }
+
             dst[i].baseColour_roughness[0] = diffuse.x;
             dst[i].baseColour_roughness[1] = diffuse.y;
             dst[i].baseColour_roughness[2] = diffuse.z;
@@ -556,8 +577,6 @@ namespace Ogre
             dst[i].emissive_flags[1] = emissive.y;
             dst[i].emissive_flags[2] = emissive.z;
             dst[i].emissive_flags[3] = static_cast<float>( datablock->getTransparencyMode() );
-            if( datablock->getTexture( PBSM_REFLECTION ) && !diffuseTexture )
-                dst[i].emissive_flags[3] += 16.0f;
             dst[i].diffuseTextureIdx_slice_hasTexture[0] = static_cast<float>( diffuseTextureIdx );
             dst[i].diffuseTextureIdx_slice_hasTexture[1] =
                 diffuseTexture ? static_cast<float>( diffuseTexture->getInternalSliceStart() ) : 0.0f;
@@ -567,6 +586,11 @@ namespace Ogre
             dst[i].diffuseUvOffsetScale[1] = static_cast<float>( textureOffsetScale.y );
             dst[i].diffuseUvOffsetScale[2] = static_cast<float>( textureOffsetScale.z );
             dst[i].diffuseUvOffsetScale[3] = static_cast<float>( textureOffsetScale.w );
+            dst[i].reflectionTextureIdx_slice_hasTexture[0] = static_cast<float>( reflectionTextureIdx );
+            dst[i].reflectionTextureIdx_slice_hasTexture[1] =
+                reflectionTexture ? static_cast<float>( reflectionTexture->getInternalSliceStart() ) : 0.0f;
+            dst[i].reflectionTextureIdx_slice_hasTexture[2] = reflectionTextureIdx >= 0 ? 1.0f : 0.0f;
+            dst[i].reflectionTextureIdx_slice_hasTexture[3] = 0.0f;
         }
 
         mMaterialBuffer->upload( staging.data(), 0u, bytesNeeded );
@@ -777,12 +801,34 @@ namespace Ogre
         TextureGpu *fallbackDiffuseTexture = mDiffuseTextures.empty() ? 0 : mDiffuseTextures[0];
         if( fallbackDiffuseTexture )
         {
+            for( size_t i = 3u; i < 10u; ++i )
+            {
+                DescriptorSetTexture2::TextureSlot fillerSlot(
+                    DescriptorSetTexture2::TextureSlot::makeEmpty() );
+                fillerSlot.texture = fallbackDiffuseTexture;
+                mTraceJob->setTexture( static_cast<uint8>( i ), fillerSlot, 0, false );
+            }
+
             for( size_t i = 0u; i < MaxPathTracerDiffuseTextures; ++i )
             {
                 DescriptorSetTexture2::TextureSlot diffuseSlot(
                     DescriptorSetTexture2::TextureSlot::makeEmpty() );
                 diffuseSlot.texture = i < mDiffuseTextures.size() ? mDiffuseTextures[i] : fallbackDiffuseTexture;
-                mTraceJob->setTexture( static_cast<uint8>( 3u + i ), diffuseSlot );
+                mTraceJob->setTexture( static_cast<uint8>( 10u + i ), diffuseSlot, 0, i == 0u );
+            }
+        }
+
+        TextureGpu *fallbackReflectionTexture = mReflectionTextures.empty() ? 0 : mReflectionTextures[0];
+        if( fallbackReflectionTexture )
+        {
+            const size_t reflectionSlotStart = 10u + MaxPathTracerDiffuseTextures;
+            for( size_t i = 0u; i < MaxPathTracerReflectionTextures; ++i )
+            {
+                DescriptorSetTexture2::TextureSlot reflectionSlot(
+                    DescriptorSetTexture2::TextureSlot::makeEmpty() );
+                reflectionSlot.texture =
+                    i < mReflectionTextures.size() ? mReflectionTextures[i] : fallbackReflectionTexture;
+                mTraceJob->setTexture( static_cast<uint8>( reflectionSlotStart + i ), reflectionSlot, 0, false );
             }
         }
 

@@ -59,6 +59,7 @@ namespace Ogre
         ReadOnlyBufferPacked *mGeometryBuffer;
         ReadOnlyBufferPacked *mTriangleBuffer;
         FastArray<TextureGpu *> mDiffuseTextures;
+        FastArray<TextureGpu *> mReflectionTextures;
         ResourceTransitionArray mResourceTransitions;
 
         Matrix4              mLastViewMatrix;
