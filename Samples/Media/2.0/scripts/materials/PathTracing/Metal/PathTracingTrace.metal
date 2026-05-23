@@ -538,6 +538,7 @@ kernel void main_metal
     const float4 accumulated = previous + float4( radiance, 1.0f );
     accumulationTexture.write( accumulated, pixelPos );
 
-    const float invSampleCount = 1.0f / max( accumulated.w, 1.0f );
-    radianceTexture.write( float4( accumulated.xyz * invSampleCount, 1.0f ), pixelPos );
+    const float sampleCount = max( accumulated.w, 1.0f );
+    const float invSampleCount = 1.0f / sampleCount;
+    radianceTexture.write( float4( accumulated.xyz * invSampleCount, sampleCount ), pixelPos );
 }

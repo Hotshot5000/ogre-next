@@ -34,7 +34,7 @@ namespace Demo
     PathTracerGameState::PathTracerGameState( const Ogre::String &helpDescription ) :
         TutorialGameState( helpDescription ),
         mPathTracer( 0 ),
-        mAnimateObjects( false ),
+        mAnimateObjects( true ),
         mNumSpheres( 0u ),
         mTransparencyMode( Ogre::HlmsPbsDatablock::Transparent ),
         mTransparencyValue( 1.0f )
