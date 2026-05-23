@@ -53,6 +53,9 @@ struct PathTracerMaterial
     float4 emissive_flags;
     float4 diffuseTextureIdx_slice_hasTexture;
     float4 diffuseUvOffsetScale;
+    float4 roughnessTextureIdx_slice_hasTexture;
+    float4 normalTextureIdx_slice_hasTexture;
+    float4 emissiveTextureIdx_slice_hasTexture;
     float4 reflectionTextureIdx_slice_hasTexture;
 };
 
@@ -66,6 +69,8 @@ struct PathTracerTriangle
     float4 uv0_uv1;
     float4 uv2_normalX_normalY;
     float4 normalZ_flags;
+    float4 tangent;
+    float4 bitangent;
 };
 
 struct SurfaceMaterial
@@ -81,6 +86,16 @@ struct SurfaceMaterial
     float4 diffuseUvOffsetScale;
     bool hasDiffuseTexture;
     bool manualSrgbDecode;
+    int roughnessTextureIdx;
+    uint roughnessTextureSlice;
+    bool hasRoughnessTexture;
+    int normalTextureIdx;
+    uint normalTextureSlice;
+    float normalMapWeight;
+    bool hasNormalTexture;
+    int emissiveTextureIdx;
+    uint emissiveTextureSlice;
+    bool hasEmissiveTexture;
     int reflectionTextureIdx;
     bool hasReflectionTexture;
 };
@@ -106,6 +121,16 @@ static SurfaceMaterial load_surface_material( uint instanceId,
     surface.hasDiffuseTexture = material.diffuseTextureIdx_slice_hasTexture.z > 0.5f;
     surface.manualSrgbDecode = material.diffuseTextureIdx_slice_hasTexture.w > 0.5f;
     surface.diffuseUvOffsetScale = material.diffuseUvOffsetScale;
+    surface.roughnessTextureIdx = (int)( material.roughnessTextureIdx_slice_hasTexture.x + 0.5f );
+    surface.roughnessTextureSlice = (uint)( material.roughnessTextureIdx_slice_hasTexture.y + 0.5f );
+    surface.hasRoughnessTexture = material.roughnessTextureIdx_slice_hasTexture.z > 0.5f;
+    surface.normalTextureIdx = (int)( material.normalTextureIdx_slice_hasTexture.x + 0.5f );
+    surface.normalTextureSlice = (uint)( material.normalTextureIdx_slice_hasTexture.y + 0.5f );
+    surface.hasNormalTexture = material.normalTextureIdx_slice_hasTexture.z > 0.5f;
+    surface.normalMapWeight = saturate( material.normalTextureIdx_slice_hasTexture.w );
+    surface.emissiveTextureIdx = (int)( material.emissiveTextureIdx_slice_hasTexture.x + 0.5f );
+    surface.emissiveTextureSlice = (uint)( material.emissiveTextureIdx_slice_hasTexture.y + 0.5f );
+    surface.hasEmissiveTexture = material.emissiveTextureIdx_slice_hasTexture.z > 0.5f;
     surface.reflectionTextureIdx = (int)( material.reflectionTextureIdx_slice_hasTexture.x + 0.5f );
     surface.hasReflectionTexture = material.reflectionTextureIdx_slice_hasTexture.z > 0.5f;
     return surface;
@@ -144,6 +169,14 @@ static float3 srgb_to_linear( float3 color )
                    color > float3( 0.04045f ) );
 }
 
+static float2 material_uv( const SurfaceMaterial material,
+                           const PathTracerTriangle triangle,
+                           float2 barycentric )
+{
+    return interpolate_uv( triangle, barycentric ) * material.diffuseUvOffsetScale.zw +
+           material.diffuseUvOffsetScale.xy;
+}
+
 static float3 sample_diffuse_texture( const SurfaceMaterial material,
                                       const PathTracerTriangle triangle,
                                       float2 barycentric,
@@ -156,10 +189,84 @@ static float3 sample_diffuse_texture( const SurfaceMaterial material,
         return float3( 1.0f );
     }
 
-    const float2 uv = interpolate_uv( triangle, barycentric ) * material.diffuseUvOffsetScale.zw +
-                      material.diffuseUvOffsetScale.xy;
-    return diffuseTextures[material.diffuseTextureIdx].sample( diffuseSampler, fract( uv ),
+    return diffuseTextures[material.diffuseTextureIdx].sample( diffuseSampler,
+                                                               fract( material_uv( material, triangle,
+                                                                                   barycentric ) ),
                                                                material.diffuseTextureSlice ).xyz;
+}
+
+static float sample_roughness_texture( const SurfaceMaterial material,
+                                       const PathTracerTriangle triangle,
+                                       float2 barycentric,
+                                       array<texture2d_array<float>, 8> roughnessTextures,
+                                       sampler roughnessSampler )
+{
+    if( !material.hasRoughnessTexture || material.roughnessTextureIdx < 0 ||
+        material.roughnessTextureIdx >= 8 || triangle.normalZ_flags.y < 0.5f )
+    {
+        return 1.0f;
+    }
+
+    return roughnessTextures[material.roughnessTextureIdx].sample(
+        roughnessSampler, fract( material_uv( material, triangle, barycentric ) ),
+        material.roughnessTextureSlice ).x;
+}
+
+static float3 sample_emissive_texture( const SurfaceMaterial material,
+                                       const PathTracerTriangle triangle,
+                                       float2 barycentric,
+                                       array<texture2d_array<float>, 8> emissiveTextures,
+                                       sampler emissiveSampler )
+{
+    if( !material.hasEmissiveTexture || material.emissiveTextureIdx < 0 ||
+        material.emissiveTextureIdx >= 8 || triangle.normalZ_flags.y < 0.5f )
+    {
+        return float3( 1.0f );
+    }
+
+    return emissiveTextures[material.emissiveTextureIdx].sample(
+        emissiveSampler, fract( material_uv( material, triangle, barycentric ) ),
+        material.emissiveTextureSlice ).xyz;
+}
+
+static float3 apply_normal_texture( const SurfaceMaterial material,
+                                    const PathTracerTriangle triangle,
+                                    float2 barycentric,
+                                    float3 geometricNormal,
+                                    array<texture2d_array<float>, 8> normalTextures,
+                                    sampler normalSampler )
+{
+    if( !material.hasNormalTexture || material.normalTextureIdx < 0 || material.normalTextureIdx >= 8 ||
+        triangle.normalZ_flags.y < 0.5f || material.normalMapWeight <= 0.0f )
+    {
+        return geometricNormal;
+    }
+
+    const float4 normalSample = normalTextures[material.normalTextureIdx].sample(
+        normalSampler, fract( material_uv( material, triangle, barycentric ) ),
+        material.normalTextureSlice );
+    const float normalY = normalSample.w < 0.999f ? normalSample.w : normalSample.y;
+    const float2 tangentSampleXY = float2( normalSample.x, normalY ) * 2.0f - 1.0f;
+    if( dot( tangentSampleXY, tangentSampleXY ) > 0.98f )
+        return geometricNormal;
+    const float3 tangentSample = normalize(
+        float3( tangentSampleXY, sqrt( max( 0.0f, 1.0f - dot( tangentSampleXY, tangentSampleXY ) ) ) ) );
+
+    float3 tangent = normalize( triangle.tangent.xyz );
+    if( !all( isfinite( tangent ) ) || dot( tangent, tangent ) < 1e-5f )
+        return geometricNormal;
+    tangent = normalize( tangent - geometricNormal * dot( tangent, geometricNormal ) );
+
+    float3 bitangent = normalize( triangle.bitangent.xyz );
+    if( !all( isfinite( bitangent ) ) || dot( bitangent, bitangent ) < 1e-5f )
+        bitangent = normalize( cross( geometricNormal, tangent ) );
+    bitangent = dot( bitangent, cross( geometricNormal, tangent ) ) < 0.0f ? -bitangent : bitangent;
+
+    const float3 mappedNormal = normalize( tangent * tangentSample.x + bitangent * tangentSample.y +
+                                           geometricNormal * tangentSample.z );
+    if( !all( isfinite( mappedNormal ) ) )
+        return geometricNormal;
+    return normalize( mix( geometricNormal, mappedNormal, material.normalMapWeight * 0.45f ) );
 }
 
 static float3 sample_reflection_texture( const SurfaceMaterial material,
@@ -255,6 +362,27 @@ struct DirectLighting
     float3 specular;
 };
 
+static float3 fresnel_schlick( float3 f0, float cosTheta )
+{
+    return f0 + ( 1.0f - f0 ) * pow( saturate( 1.0f - cosTheta ), 5.0f );
+}
+
+static float ggx_distribution( float nDotH, float roughness )
+{
+    const float a = max( roughness * roughness, 0.002f );
+    const float a2 = a * a;
+    const float denom = nDotH * nDotH * ( a2 - 1.0f ) + 1.0f;
+    return a2 / max( 3.14159265359f * denom * denom, 1e-5f );
+}
+
+static float smith_ggx_visibility( float nDotV, float nDotL, float roughness )
+{
+    const float a = max( roughness * roughness, 0.002f );
+    const float ggxV = nDotL * sqrt( nDotV * nDotV * ( 1.0f - a ) + a );
+    const float ggxL = nDotV * sqrt( nDotL * nDotL * ( 1.0f - a ) + a );
+    return 0.5f / max( ggxV + ggxL, 1e-5f );
+}
+
 static float evaluate_light_visibility( float3 surfacePosition,
                                         float3 surfaceNormal,
                                         float3 lightDirection,
@@ -336,13 +464,18 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
         const float visibility = evaluate_light_visibility( surfacePosition, surfaceNormal, lightDirection,
                                                             maxDistance, accelerationStructure );
         const float lightScale = attenuation * visibility;
-        result.diffuse += light.diffuse.xyz * lightScale * nDotL;
-
         const float3 halfVector = normalize( lightDirection + viewDirection );
+        const float nDotV = saturate( dot( surfaceNormal, viewDirection ) );
         const float nDotH = saturate( dot( surfaceNormal, halfVector ) );
-        const float shininess = mix( 96.0f, 8.0f, saturate( roughness ) );
-        const float specularTerm = pow( nDotH, shininess ) * ( 1.0f - roughness * 0.7f );
-        result.specular += light.specular.xyz * lightScale * specularTerm * fresnelColor;
+        const float vDotH = saturate( dot( viewDirection, halfVector ) );
+        const float3 fresnel = fresnel_schlick( fresnelColor, vDotH );
+        const float diffuseEnergy = 1.0f - saturate( dot( fresnel, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
+        result.diffuse += light.diffuse.xyz * lightScale * nDotL * diffuseEnergy;
+
+        const float specularTerm = min( ggx_distribution( nDotH, roughness ) *
+                                        smith_ggx_visibility( nDotV, nDotL, roughness ) * nDotL,
+                                        4.0f );
+        result.specular += light.specular.xyz * lightScale * specularTerm * fresnel;
     }
 
     return result;
@@ -359,7 +492,10 @@ kernel void main_metal
     device const PathTracerGeometry *geometryRecords [[buffer(TEX_SLOT_START + 1)]],
     device const PathTracerTriangle *triangleRecords [[buffer(TEX_SLOT_START + 2)]],
     array<texture2d_array<float>, 8> diffuseTextures [[texture(10)]],
-    array<texturecube<float>, 4> reflectionTextures [[texture(18)]],
+    array<texture2d_array<float>, 8> roughnessTextures [[texture(18)]],
+    array<texture2d_array<float>, 8> normalTextures [[texture(26)]],
+    array<texture2d_array<float>, 8> emissiveTextures [[texture(34)]],
+    array<texturecube<float>, 4> reflectionTextures [[texture(42)]],
     sampler diffuseSampler [[sampler(10)]],
 
     instance_acceleration_structure accelerationStructure,
@@ -416,16 +552,28 @@ kernel void main_metal
         const float3 textureColour = sample_diffuse_texture( material, triangle,
                                                              hit.triangle_barycentric_coord,
                                                              diffuseTextures, diffuseSampler );
+        const float roughnessTexture = sample_roughness_texture( material, triangle,
+                                                                 hit.triangle_barycentric_coord,
+                                                                 roughnessTextures, diffuseSampler );
+        const float mappedRoughness = material.hasRoughnessTexture ?
+            max( material.roughness, roughnessTexture ) : material.roughness;
+        const float roughness = clamp( mappedRoughness, 0.18f, 1.0f );
+        const float3 shadingNormal = apply_normal_texture( material, triangle,
+                                                           hit.triangle_barycentric_coord,
+                                                           geometricNormal, normalTextures,
+                                                           diffuseSampler );
         const float3 baseColor = material.baseColour * textureColour * opacity;
-        radiance += throughput * material.emissive;
+        const float3 emissiveTexture = sample_emissive_texture( material, triangle,
+                                                                hit.triangle_barycentric_coord,
+                                                                emissiveTextures, diffuseSampler );
+        radiance += throughput * material.emissive * emissiveTexture;
 
         const float3 viewDirection = -pathRay.direction;
-        const float nDotV = saturate( dot( geometricNormal, viewDirection ) );
-        const float3 fresnelColor = material.fresnel +
-                                    ( 1.0f - material.fresnel ) * pow( saturate( 1.0f - nDotV ), 5.0f );
-        const DirectLighting directLighting = evaluate_direct_lighting( hitPosition, geometricNormal,
-                                                                        viewDirection, fresnelColor,
-                                                                        material.roughness, lights,
+        const float nDotV = saturate( dot( shadingNormal, viewDirection ) );
+        const float3 fresnelColor = fresnel_schlick( material.fresnel, nDotV );
+        const DirectLighting directLighting = evaluate_direct_lighting( hitPosition, shadingNormal,
+                                                                        viewDirection, material.fresnel,
+                                                                        roughness, lights,
                                                                         frame->numLights,
                                                                         accelerationStructure );
         const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
@@ -435,22 +583,22 @@ kernel void main_metal
             radiance += throughput * directLighting.specular;
             if( opacity > 0.001f )
             {
-                const float3 skyDiffuse = sample_sky( geometricNormal, *frame ) * 0.025f;
+                const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * 0.025f;
                 radiance += throughput * ( baseColor * 0.318309886f ) *
                             ( directLighting.diffuse + skyDiffuse ) * opacity * 0.25f;
             }
 
-            const float reflectProbability = clamp( fresnel_schlick_scalar( material.fresnel, nDotV ),
-                                                    0.02f, 0.95f );
+            const float reflectProbability = clamp( fresnel_schlick_scalar( material.fresnel, nDotV ) *
+                                                    ( 1.0f - roughness * 0.35f ),
+                                                    0.02f, 0.75f );
             float3 nextDirection;
             float3 nextWeight;
             if( rand01( seed ) < reflectProbability )
             {
-                const float3 reflectedDirection = reflect( pathRay.direction, geometricNormal );
+                const float3 reflectedDirection = reflect( pathRay.direction, shadingNormal );
                 const float3 roughDirection = tangent_to_world(
-                    cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), geometricNormal );
-                nextDirection = normalize( mix( reflectedDirection, roughDirection,
-                                               material.roughness * material.roughness ) );
+                    cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), shadingNormal );
+                nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
                 nextWeight = fresnelColor / reflectProbability;
             }
             else
@@ -467,7 +615,7 @@ kernel void main_metal
                     nextDirection = normalize( refractedDirection );
                     const float3 tint = mix( float3( 1.0f ), saturate( material.baseColour ),
                                              0.45f * max( transmission, 0.25f ) );
-                    nextWeight = tint * max( transmission, 0.05f ) /
+                    nextWeight = tint * max( transmission, 0.05f ) * 0.65f /
                                  max( 1.0f - reflectProbability, 0.05f );
                 }
             }
@@ -482,38 +630,40 @@ kernel void main_metal
             continue;
         }
 
-        const float3 skyDiffuse = sample_sky( geometricNormal, *frame ) * 0.08f;
+        const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * 0.08f;
         radiance += throughput * ( baseColor * 0.318309886f ) * ( directLighting.diffuse + skyDiffuse );
         radiance += throughput * directLighting.specular * opacity;
         if( material.hasReflectionTexture )
         {
-            const float3 reflectionDirection = reflect( pathRay.direction, geometricNormal );
+            const float3 reflectionDirection = reflect( pathRay.direction, shadingNormal );
             const float reflectionWeight = saturate( specularLuminance ) *
-                                           ( 1.0f - material.roughness * 0.85f );
+                                           ( 1.0f - roughness * 0.85f );
             radiance += throughput * sample_reflection_texture( material, reflectionDirection,
                                                                 reflectionTextures, diffuseSampler ) *
                         fresnelColor * reflectionWeight * opacity;
         }
 
-        const float specularCap = material.hasReflectionTexture ? 0.03f : 0.25f;
-        const float specularProbability = clamp( specularLuminance *
-                                                 ( 1.0f - material.roughness * 0.75f ),
-                                                 0.02f, specularCap );
+        const float diffuseLuminance = dot( baseColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
+        const float diffuseBsdfWeight = diffuseLuminance * ( 1.0f - specularLuminance );
+        const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * 0.5f;
+        const float bsdfWeightSum = max( diffuseBsdfWeight + specularBsdfWeight, 1e-4f );
+        const float specularProbability = clamp( specularBsdfWeight / bsdfWeightSum, 0.01f, 0.20f );
         float3 nextDirection;
         float3 bounceWeight;
         if( rand01( seed ) < specularProbability )
         {
-            const float3 reflectedDirection = reflect( pathRay.direction, geometricNormal );
+            const float3 reflectedDirection = reflect( pathRay.direction, shadingNormal );
             const float3 roughDirection = tangent_to_world(
-                cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), geometricNormal );
-            nextDirection = normalize( mix( reflectedDirection, roughDirection, material.roughness * material.roughness ) );
-            bounceWeight = fresnelColor / specularProbability;
+                cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), shadingNormal );
+            nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
+            bounceWeight = fresnelColor / max( specularProbability, 1e-4f );
         }
         else
         {
             const float3 localDirection = cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) );
-            nextDirection = tangent_to_world( localDirection, geometricNormal );
-            bounceWeight = baseColor / max( 1.0f - specularProbability, 0.05f );
+            nextDirection = tangent_to_world( localDirection, shadingNormal );
+            bounceWeight = baseColor * ( 1.0f - specularLuminance ) * 0.82f /
+                           max( 1.0f - specularProbability, 1e-4f );
         }
 
         throughput *= min( bounceWeight, float3( 1.0f ) );

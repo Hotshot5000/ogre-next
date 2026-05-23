@@ -97,11 +97,23 @@ namespace Ogre
             float emissive_flags[4];
             float diffuseTextureIdx_slice_hasTexture[4];
             float diffuseUvOffsetScale[4];
+            float roughnessTextureIdx_slice_hasTexture[4];
+            float normalTextureIdx_slice_hasTexture[4];
+            float emissiveTextureIdx_slice_hasTexture[4];
             float reflectionTextureIdx_slice_hasTexture[4];
         };
 
-        const size_t MaxPathTracerDiffuseTextures = 8u;
+        const size_t MaxPathTracerMaterialTextures = 8u;
         const size_t MaxPathTracerReflectionTextures = 4u;
+        const size_t PathTracerDiffuseTextureSlotStart = 10u;
+        const size_t PathTracerRoughnessTextureSlotStart =
+            PathTracerDiffuseTextureSlotStart + MaxPathTracerMaterialTextures;
+        const size_t PathTracerNormalTextureSlotStart =
+            PathTracerRoughnessTextureSlotStart + MaxPathTracerMaterialTextures;
+        const size_t PathTracerEmissiveTextureSlotStart =
+            PathTracerNormalTextureSlotStart + MaxPathTracerMaterialTextures;
+        const size_t PathTracerReflectionTextureSlotStart =
+            PathTracerEmissiveTextureSlotStart + MaxPathTracerMaterialTextures;
 
         struct PathTracerGeometryGpu
         {
@@ -113,6 +125,8 @@ namespace Ogre
             float uv0_uv1[4];
             float uv2_normalX_normalY[4];
             float normalZ_flags[4];
+            float tangent[4];
+            float bitangent[4];
         };
 
         void copyMatrix( float *dst, const Matrix4 &src )
@@ -165,14 +179,38 @@ namespace Ogre
             dst[1] = readFloatComponent( data, request.type, 1u );
         }
 
-        Vector3 readNormalAt( const VertexArrayObject::ReadRequests &request, size_t vertexIdx )
+        Vector3 readFloat3At( const VertexArrayObject::ReadRequests &request, size_t vertexIdx )
         {
             const char *data = request.data + vertexIdx * request.vertexBuffer->getBytesPerElement();
-            Vector3 normal( readFloatComponent( data, request.type, 0u ),
+            return Vector3( readFloatComponent( data, request.type, 0u ),
                             readFloatComponent( data, request.type, 1u ),
                             readFloatComponent( data, request.type, 2u ) );
+        }
+
+        Vector3 readNormalAt( const VertexArrayObject::ReadRequests &request, size_t vertexIdx )
+        {
+            Vector3 normal = readFloat3At( request, vertexIdx );
             normal.normalise();
             return normal;
+        }
+
+        int addTextureToList( TextureGpu *texture, FastArray<TextureGpu *> &textures, size_t maxTextures )
+        {
+            if( !texture )
+                return -1;
+
+            FastArray<TextureGpu *>::const_iterator texIt =
+                std::find( textures.begin(), textures.end(), texture );
+            if( texIt == textures.end() && textures.size() < maxTextures )
+            {
+                textures.push_back( texture );
+                texIt = textures.end() - 1;
+            }
+
+            if( texIt == textures.end() )
+                return -1;
+
+            return static_cast<int>( texIt - textures.begin() );
         }
 
         uint32 readIndexAt( const uint8 *indexData, IndexBufferPacked *indexBuffer, size_t indexIdx )
@@ -515,6 +553,9 @@ namespace Ogre
         PathTracerMaterialGpu *dst = staging.data();
         memset( dst, 0, bytesNeeded );
         mDiffuseTextures.clear();
+        mRoughnessTextures.clear();
+        mNormalTextures.clear();
+        mEmissiveTextures.clear();
         mReflectionTextures.clear();
 
         for( size_t i = 0u; i < materials.size(); ++i )
@@ -533,37 +574,24 @@ namespace Ogre
                 textureOffsetScale = datablock->getDetailMapOffsetScale( 0u );
             }
 
-            if( diffuseTexture )
-            {
-                FastArray<TextureGpu *>::const_iterator texIt =
-                    std::find( mDiffuseTextures.begin(), mDiffuseTextures.end(), diffuseTexture );
-                if( texIt == mDiffuseTextures.end() &&
-                    mDiffuseTextures.size() < MaxPathTracerDiffuseTextures )
-                {
-                    mDiffuseTextures.push_back( diffuseTexture );
-                    texIt = mDiffuseTextures.end() - 1;
-                }
+            diffuseTextureIdx = addTextureToList( diffuseTexture, mDiffuseTextures,
+                                                  MaxPathTracerMaterialTextures );
 
-                if( texIt != mDiffuseTextures.end() )
-                    diffuseTextureIdx = static_cast<int>( texIt - mDiffuseTextures.begin() );
-            }
+            TextureGpu *roughnessTexture = datablock->getTexture( PBSM_ROUGHNESS );
+            const int roughnessTextureIdx = addTextureToList( roughnessTexture, mRoughnessTextures,
+                                                             MaxPathTracerMaterialTextures );
 
-            int reflectionTextureIdx = -1;
+            TextureGpu *normalTexture = datablock->getTexture( PBSM_NORMAL );
+            const int normalTextureIdx = addTextureToList( normalTexture, mNormalTextures,
+                                                          MaxPathTracerMaterialTextures );
+
+            TextureGpu *emissiveTexture = datablock->getTexture( PBSM_EMISSIVE );
+            const int emissiveTextureIdx = addTextureToList( emissiveTexture, mEmissiveTextures,
+                                                            MaxPathTracerMaterialTextures );
+
             TextureGpu *reflectionTexture = datablock->getTexture( PBSM_REFLECTION );
-            if( reflectionTexture )
-            {
-                FastArray<TextureGpu *>::const_iterator texIt =
-                    std::find( mReflectionTextures.begin(), mReflectionTextures.end(), reflectionTexture );
-                if( texIt == mReflectionTextures.end() &&
-                    mReflectionTextures.size() < MaxPathTracerReflectionTextures )
-                {
-                    mReflectionTextures.push_back( reflectionTexture );
-                    texIt = mReflectionTextures.end() - 1;
-                }
-
-                if( texIt != mReflectionTextures.end() )
-                    reflectionTextureIdx = static_cast<int>( texIt - mReflectionTextures.begin() );
-            }
+            const int reflectionTextureIdx = addTextureToList( reflectionTexture, mReflectionTextures,
+                                                              MaxPathTracerReflectionTextures );
 
             dst[i].baseColour_roughness[0] = diffuse.x;
             dst[i].baseColour_roughness[1] = diffuse.y;
@@ -586,6 +614,21 @@ namespace Ogre
             dst[i].diffuseUvOffsetScale[1] = static_cast<float>( textureOffsetScale.y );
             dst[i].diffuseUvOffsetScale[2] = static_cast<float>( textureOffsetScale.z );
             dst[i].diffuseUvOffsetScale[3] = static_cast<float>( textureOffsetScale.w );
+            dst[i].roughnessTextureIdx_slice_hasTexture[0] = static_cast<float>( roughnessTextureIdx );
+            dst[i].roughnessTextureIdx_slice_hasTexture[1] =
+                roughnessTexture ? static_cast<float>( roughnessTexture->getInternalSliceStart() ) : 0.0f;
+            dst[i].roughnessTextureIdx_slice_hasTexture[2] = roughnessTextureIdx >= 0 ? 1.0f : 0.0f;
+            dst[i].roughnessTextureIdx_slice_hasTexture[3] = 0.0f;
+            dst[i].normalTextureIdx_slice_hasTexture[0] = static_cast<float>( normalTextureIdx );
+            dst[i].normalTextureIdx_slice_hasTexture[1] =
+                normalTexture ? static_cast<float>( normalTexture->getInternalSliceStart() ) : 0.0f;
+            dst[i].normalTextureIdx_slice_hasTexture[2] = normalTextureIdx >= 0 ? 1.0f : 0.0f;
+            dst[i].normalTextureIdx_slice_hasTexture[3] = static_cast<float>( datablock->getNormalMapWeight() );
+            dst[i].emissiveTextureIdx_slice_hasTexture[0] = static_cast<float>( emissiveTextureIdx );
+            dst[i].emissiveTextureIdx_slice_hasTexture[1] =
+                emissiveTexture ? static_cast<float>( emissiveTexture->getInternalSliceStart() ) : 0.0f;
+            dst[i].emissiveTextureIdx_slice_hasTexture[2] = emissiveTextureIdx >= 0 ? 1.0f : 0.0f;
+            dst[i].emissiveTextureIdx_slice_hasTexture[3] = 0.0f;
             dst[i].reflectionTextureIdx_slice_hasTexture[0] = static_cast<float>( reflectionTextureIdx );
             dst[i].reflectionTextureIdx_slice_hasTexture[1] =
                 reflectionTexture ? static_cast<float>( reflectionTexture->getInternalSliceStart() ) : 0.0f;
@@ -668,16 +711,25 @@ namespace Ogre
                 IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
                 const uint32 indexCount = vao->getPrimitiveCount();
 
+                size_t positionBufferIdx = 0u;
+                size_t positionOffset = 0u;
                 size_t uvBufferIdx = 0u;
                 size_t uvOffset = 0u;
                 size_t normalBufferIdx = 0u;
                 size_t normalOffset = 0u;
+                const bool hasPosition = vao->findBySemantic( VES_POSITION, positionBufferIdx, positionOffset ) != 0;
                 const bool hasUv = vao->findBySemantic( VES_TEXTURE_COORDINATES, uvBufferIdx, uvOffset ) != 0;
                 const bool hasNormal = vao->findBySemantic( VES_NORMAL, normalBufferIdx, normalOffset ) != 0;
 
                 VertexArrayObject::ReadRequestsVec readRequests;
+                size_t positionRequestIdx = std::numeric_limits<size_t>::max();
                 size_t uvRequestIdx = std::numeric_limits<size_t>::max();
                 size_t normalRequestIdx = std::numeric_limits<size_t>::max();
+                if( hasPosition )
+                {
+                    positionRequestIdx = readRequests.size();
+                    readRequests.push_back( VES_POSITION );
+                }
                 if( hasUv )
                 {
                     uvRequestIdx = readRequests.size();
@@ -714,6 +766,7 @@ namespace Ogre
                     }
                 }
 
+                const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
                 for( uint32 idx = 0u; idx + 2u < indexCount; idx += 3u )
                 {
                     const uint32 vertexIdx0 = indexBuffer ? readIndexAt( indexData, indexBuffer, idx + 0u ) : idx + 0u;
@@ -737,10 +790,42 @@ namespace Ogre
                                  readNormalAt( readRequests[normalRequestIdx], vertexIdx1 ) +
                                  readNormalAt( readRequests[normalRequestIdx], vertexIdx2 );
                         normal.normalise();
-                        const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
                         const Vector4 worldNormal4 = transform.transformAffine( Vector4( normal, 0.0f ) );
                         normal = Vector3( worldNormal4.x, worldNormal4.y, worldNormal4.z );
                         normal.normalise();
+                    }
+
+                    Vector3 tangent( 1.0f, 0.0f, 0.0f );
+                    Vector3 bitangent( 0.0f, 0.0f, 1.0f );
+                    if( hasPosition && hasUv )
+                    {
+                        const Vector3 localPos0 = readFloat3At( readRequests[positionRequestIdx], vertexIdx0 );
+                        const Vector3 localPos1 = readFloat3At( readRequests[positionRequestIdx], vertexIdx1 );
+                        const Vector3 localPos2 = readFloat3At( readRequests[positionRequestIdx], vertexIdx2 );
+                        const Vector4 worldPos04 = transform.transformAffine( Vector4( localPos0, 1.0f ) );
+                        const Vector4 worldPos14 = transform.transformAffine( Vector4( localPos1, 1.0f ) );
+                        const Vector4 worldPos24 = transform.transformAffine( Vector4( localPos2, 1.0f ) );
+                        const Vector3 edge1( worldPos14.x - worldPos04.x, worldPos14.y - worldPos04.y,
+                                             worldPos14.z - worldPos04.z );
+                        const Vector3 edge2( worldPos24.x - worldPos04.x, worldPos24.y - worldPos04.y,
+                                             worldPos24.z - worldPos04.z );
+                        const float du1 = uv1[0] - uv0[0];
+                        const float dv1 = uv1[1] - uv0[1];
+                        const float du2 = uv2[0] - uv0[0];
+                        const float dv2 = uv2[1] - uv0[1];
+                        const float determinant = du1 * dv2 - dv1 * du2;
+                        if( Math::Abs( determinant ) > 1e-8f )
+                        {
+                            const float invDeterminant = 1.0f / determinant;
+                            tangent = ( edge1 * dv2 - edge2 * dv1 ) * invDeterminant;
+                            bitangent = ( edge2 * du1 - edge1 * du2 ) * invDeterminant;
+                            tangent -= normal * tangent.dotProduct( normal );
+                            if( tangent.squaredLength() > 1e-8f )
+                                tangent.normalise();
+                            bitangent -= normal * bitangent.dotProduct( normal );
+                            if( bitangent.squaredLength() > 1e-8f )
+                                bitangent.normalise();
+                        }
                     }
 
                     triangleDst[triangleIdx].uv0_uv1[0] = uv0[0];
@@ -753,6 +838,12 @@ namespace Ogre
                     triangleDst[triangleIdx].uv2_normalX_normalY[3] = normal.y;
                     triangleDst[triangleIdx].normalZ_flags[0] = normal.z;
                     triangleDst[triangleIdx].normalZ_flags[1] = hasUv ? 1.0f : 0.0f;
+                    triangleDst[triangleIdx].tangent[0] = tangent.x;
+                    triangleDst[triangleIdx].tangent[1] = tangent.y;
+                    triangleDst[triangleIdx].tangent[2] = tangent.z;
+                    triangleDst[triangleIdx].bitangent[0] = bitangent.x;
+                    triangleDst[triangleIdx].bitangent[1] = bitangent.y;
+                    triangleDst[triangleIdx].bitangent[2] = bitangent.z;
                     ++triangleIdx;
                 }
 
@@ -798,37 +889,58 @@ namespace Ogre
             mTraceJob->setTexBuffer( 2, triangleSlot );
         }
 
-        TextureGpu *fallbackDiffuseTexture = mDiffuseTextures.empty() ? 0 : mDiffuseTextures[0];
-        if( fallbackDiffuseTexture )
+        TextureGpu *fallbackMaterialTexture = 0;
+        if( !mDiffuseTextures.empty() )
+            fallbackMaterialTexture = mDiffuseTextures[0];
+        else if( !mRoughnessTextures.empty() )
+            fallbackMaterialTexture = mRoughnessTextures[0];
+        else if( !mNormalTextures.empty() )
+            fallbackMaterialTexture = mNormalTextures[0];
+        else if( !mEmissiveTextures.empty() )
+            fallbackMaterialTexture = mEmissiveTextures[0];
+
+        if( fallbackMaterialTexture )
         {
-            for( size_t i = 3u; i < 10u; ++i )
+            for( size_t i = 3u; i < PathTracerDiffuseTextureSlotStart; ++i )
             {
                 DescriptorSetTexture2::TextureSlot fillerSlot(
                     DescriptorSetTexture2::TextureSlot::makeEmpty() );
-                fillerSlot.texture = fallbackDiffuseTexture;
+                fillerSlot.texture = fallbackMaterialTexture;
                 mTraceJob->setTexture( static_cast<uint8>( i ), fillerSlot, 0, false );
             }
 
-            for( size_t i = 0u; i < MaxPathTracerDiffuseTextures; ++i )
+            FastArray<TextureGpu *> *materialTextureArrays[4] = {
+                &mDiffuseTextures, &mRoughnessTextures, &mNormalTextures, &mEmissiveTextures };
+            const size_t textureSlotStarts[4] = { PathTracerDiffuseTextureSlotStart,
+                                                  PathTracerRoughnessTextureSlotStart,
+                                                  PathTracerNormalTextureSlotStart,
+                                                  PathTracerEmissiveTextureSlotStart };
+            for( size_t arrayIdx = 0u; arrayIdx < 4u; ++arrayIdx )
             {
-                DescriptorSetTexture2::TextureSlot diffuseSlot(
-                    DescriptorSetTexture2::TextureSlot::makeEmpty() );
-                diffuseSlot.texture = i < mDiffuseTextures.size() ? mDiffuseTextures[i] : fallbackDiffuseTexture;
-                mTraceJob->setTexture( static_cast<uint8>( 10u + i ), diffuseSlot, 0, i == 0u );
+                FastArray<TextureGpu *> &textures = *materialTextureArrays[arrayIdx];
+                for( size_t i = 0u; i < MaxPathTracerMaterialTextures; ++i )
+                {
+                    DescriptorSetTexture2::TextureSlot textureSlot(
+                        DescriptorSetTexture2::TextureSlot::makeEmpty() );
+                    textureSlot.texture = i < textures.size() ? textures[i] : fallbackMaterialTexture;
+                    const bool setSampler = arrayIdx == 0u && i == 0u;
+                    mTraceJob->setTexture( static_cast<uint8>( textureSlotStarts[arrayIdx] + i ),
+                                           textureSlot, 0, setSampler );
+                }
             }
         }
 
         TextureGpu *fallbackReflectionTexture = mReflectionTextures.empty() ? 0 : mReflectionTextures[0];
         if( fallbackReflectionTexture )
         {
-            const size_t reflectionSlotStart = 10u + MaxPathTracerDiffuseTextures;
             for( size_t i = 0u; i < MaxPathTracerReflectionTextures; ++i )
             {
                 DescriptorSetTexture2::TextureSlot reflectionSlot(
                     DescriptorSetTexture2::TextureSlot::makeEmpty() );
                 reflectionSlot.texture =
                     i < mReflectionTextures.size() ? mReflectionTextures[i] : fallbackReflectionTexture;
-                mTraceJob->setTexture( static_cast<uint8>( reflectionSlotStart + i ), reflectionSlot, 0, false );
+                mTraceJob->setTexture( static_cast<uint8>( PathTracerReflectionTextureSlotStart + i ),
+                                       reflectionSlot, 0, false );
             }
         }
 
