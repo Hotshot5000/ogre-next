@@ -299,12 +299,6 @@ static float fresnel_schlick_luminance( float3 f0, float cosTheta )
     return saturate( dot( f, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
 }
 
-static float fresnel_schlick_scalar( float3 f0, float cosTheta )
-{
-    const float3 f = f0 + ( 1.0f - f0 ) * pow( saturate( 1.0f - cosTheta ), 5.0f );
-    return saturate( dot( f, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
-}
-
 static bool is_transparent_surface( const SurfaceMaterial material )
 {
     const uint transparencyMode = material.flags & 15u;
@@ -659,7 +653,7 @@ kernel void main_metal
                             ( directLighting.diffuse + skyDiffuse ) * opacity * 0.25f;
             }
 
-            const float reflectProbability = clamp( fresnel_schlick_scalar( materialFresnel, bounceNDotV ) *
+            const float reflectProbability = clamp( fresnel_schlick_luminance( materialFresnel, bounceNDotV ) *
                                                     ( 1.0f - roughness * 0.65f ),
                                                     0.01f, 0.55f );
             float3 nextDirection;
