@@ -431,13 +431,13 @@ namespace Ogre
         frame->cameraFront[1] = cameraFront.y;
         frame->cameraFront[2] = cameraFront.z;
 
-        frame->skyZenith[0] = 0.52f;
-        frame->skyZenith[1] = 0.58f;
+        frame->skyZenith[0] = 0.72f;
+        frame->skyZenith[1] = 0.74f;
         frame->skyZenith[2] = 0.68f;
         frame->skyZenith[3] = 1.0f;
-        frame->skyHorizon[0] = 1.0f;
-        frame->skyHorizon[1] = 0.88f;
-        frame->skyHorizon[2] = 0.52f;
+        frame->skyHorizon[0] = 1.18f;
+        frame->skyHorizon[1] = 1.05f;
+        frame->skyHorizon[2] = 0.62f;
         frame->skyHorizon[3] = 1.0f;
 
         Vector2 projectionAB = mCamera->getProjectionParamsAB();

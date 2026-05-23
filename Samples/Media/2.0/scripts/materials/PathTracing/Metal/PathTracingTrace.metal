@@ -237,6 +237,12 @@ static float3 sample_sky( float3 direction, constant PathTracerFrame &frame )
     return mix( frame.skyHorizon.xyz, frame.skyZenith.xyz, t );
 }
 
+struct DirectLighting
+{
+    float3 diffuse;
+    float3 specular;
+};
+
 static float evaluate_light_visibility( float3 surfacePosition,
                                         float3 surfaceNormal,
                                         float3 lightDirection,
@@ -257,13 +263,18 @@ static float evaluate_light_visibility( float3 surfacePosition,
     return shadowHit.type == intersection_type::triangle ? 0.0f : 1.0f;
 }
 
-static float3 evaluate_direct_lighting( float3 surfacePosition,
-                                        float3 surfaceNormal,
-                                        constant PathTracerLight *lights,
-                                        uint numLights,
-                                        instance_acceleration_structure accelerationStructure )
+static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
+                                                float3 surfaceNormal,
+                                                float3 viewDirection,
+                                                float3 fresnelColor,
+                                                float roughness,
+                                                constant PathTracerLight *lights,
+                                                uint numLights,
+                                                instance_acceleration_structure accelerationStructure )
 {
-    float3 result = float3( 0.0f );
+    DirectLighting result;
+    result.diffuse = float3( 0.0f );
+    result.specular = float3( 0.0f );
     const uint maxSupportedLights = 16u;
     numLights = min( numLights, maxSupportedLights );
 
@@ -312,7 +323,14 @@ static float3 evaluate_direct_lighting( float3 surfacePosition,
 
         const float visibility = evaluate_light_visibility( surfacePosition, surfaceNormal, lightDirection,
                                                             maxDistance, accelerationStructure );
-        result += light.diffuse.xyz * attenuation * nDotL * visibility;
+        const float lightScale = attenuation * visibility;
+        result.diffuse += light.diffuse.xyz * lightScale * nDotL;
+
+        const float3 halfVector = normalize( lightDirection + viewDirection );
+        const float nDotH = saturate( dot( surfaceNormal, halfVector ) );
+        const float shininess = mix( 96.0f, 8.0f, saturate( roughness ) );
+        const float specularTerm = pow( nDotH, shininess ) * ( 1.0f - roughness * 0.7f );
+        result.specular += light.specular.xyz * lightScale * specularTerm * fresnelColor;
     }
 
     return result;
@@ -387,13 +405,19 @@ kernel void main_metal
                                                              diffuseTextures, diffuseSampler );
         const float3 baseColor = material.baseColour * textureColour * opacity;
         radiance += throughput * material.emissive;
-        radiance += throughput * ( baseColor * 0.318309886f ) *
-                    evaluate_direct_lighting( hitPosition, geometricNormal, lights, frame->numLights,
-                                              accelerationStructure );
 
-        const float nDotV = saturate( dot( geometricNormal, -pathRay.direction ) );
+        const float3 viewDirection = -pathRay.direction;
+        const float nDotV = saturate( dot( geometricNormal, viewDirection ) );
         const float3 fresnelColor = material.fresnel +
                                     ( 1.0f - material.fresnel ) * pow( saturate( 1.0f - nDotV ), 5.0f );
+        const DirectLighting directLighting = evaluate_direct_lighting( hitPosition, geometricNormal,
+                                                                        viewDirection, fresnelColor,
+                                                                        material.roughness, lights,
+                                                                        frame->numLights,
+                                                                        accelerationStructure );
+        const float3 skyDiffuse = sample_sky( geometricNormal, *frame ) * 0.08f;
+        radiance += throughput * ( baseColor * 0.318309886f ) * ( directLighting.diffuse + skyDiffuse );
+        radiance += throughput * directLighting.specular * opacity;
         const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
         if( material.hasReflectionTexture )
         {
