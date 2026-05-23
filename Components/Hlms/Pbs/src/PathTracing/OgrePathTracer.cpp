@@ -576,14 +576,7 @@ namespace Ogre
                 std::max( 0.0f, specular.x * 0.2126f + specular.y * 0.7152f + specular.z * 0.0722f );
 
             float pathSpecularWeight = 1.0f;
-            if( isMetallicWorkflow )
-                pathSpecularWeight = std::max( 0.2f, metalness );
-            else if( !isTransparent )
-                pathSpecularWeight = std::max( 0.03f, smoothness * smoothness * specularLuminance * 0.45f );
-
             float normalMapWeight = static_cast<float>( datablock->getNormalMapWeight() );
-            if( !isTransparent && !isMetallicWorkflow )
-                normalMapWeight *= std::max( 0.15f, pathSpecularWeight );
 
             int diffuseTextureIdx = -1;
             Vector4 textureOffsetScale( 0.0f, 0.0f, 1.0f, 1.0f );
@@ -612,6 +605,17 @@ namespace Ogre
             TextureGpu *reflectionTexture = datablock->getTexture( PBSM_REFLECTION );
             const int reflectionTextureIdx = addTextureToList( reflectionTexture, mReflectionTextures,
                                                               MaxPathTracerReflectionTextures );
+            const bool hasReflectionTexture = reflectionTextureIdx >= 0;
+
+            if( isMetallicWorkflow )
+            {
+                pathSpecularWeight = std::max( 0.2f, metalness );
+            }
+            else if( !isTransparent && !hasReflectionTexture )
+            {
+                pathSpecularWeight = std::max( 0.03f, smoothness * smoothness * specularLuminance * 0.45f );
+                normalMapWeight *= std::max( 0.15f, pathSpecularWeight );
+            }
 
             dst[i].baseColour_roughness[0] = diffuse.x;
             dst[i].baseColour_roughness[1] = diffuse.y;
@@ -652,7 +656,7 @@ namespace Ogre
             dst[i].reflectionTextureIdx_slice_hasTexture[0] = static_cast<float>( reflectionTextureIdx );
             dst[i].reflectionTextureIdx_slice_hasTexture[1] =
                 reflectionTexture ? static_cast<float>( reflectionTexture->getInternalSliceStart() ) : 0.0f;
-            dst[i].reflectionTextureIdx_slice_hasTexture[2] = reflectionTextureIdx >= 0 ? 1.0f : 0.0f;
+            dst[i].reflectionTextureIdx_slice_hasTexture[2] = hasReflectionTexture ? 1.0f : 0.0f;
             dst[i].reflectionTextureIdx_slice_hasTexture[3] = pathSpecularWeight;
         }
 
