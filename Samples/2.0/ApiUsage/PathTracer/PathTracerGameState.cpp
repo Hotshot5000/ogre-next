@@ -34,7 +34,7 @@ namespace Demo
     PathTracerGameState::PathTracerGameState( const Ogre::String &helpDescription ) :
         TutorialGameState( helpDescription ),
         mPathTracer( 0 ),
-        mAnimateObjects( true )
+        mAnimateObjects( false )
     {
         mDisplayHelpMode = 2;
         mNumDisplayHelpModes = 3;

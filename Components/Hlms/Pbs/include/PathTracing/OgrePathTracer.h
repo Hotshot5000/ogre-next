@@ -57,6 +57,7 @@ namespace Ogre
         ConstBufferPacked   *mLightsConstBuffer;
         ReadOnlyBufferPacked *mMaterialBuffer;
         ReadOnlyBufferPacked *mGeometryBuffer;
+        FastArray<TextureGpu *> mDiffuseTextures;
         ResourceTransitionArray mResourceTransitions;
 
         uint32               mSampleCount;

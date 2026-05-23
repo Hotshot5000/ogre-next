@@ -51,7 +51,7 @@ struct PathTracerMaterial
     float4 baseColour_roughness;
     float4 fresnel_transparency;
     float4 emissive_flags;
-    float4 padding;
+    float4 diffuseTextureIdx_slice_uvScale_hasTexture;
 };
 
 struct PathTracerGeometry
@@ -67,6 +67,10 @@ struct SurfaceMaterial
     float transparency;
     float3 emissive;
     uint flags;
+    int diffuseTextureIdx;
+    uint diffuseTextureSlice;
+    float uvScale;
+    bool hasDiffuseTexture;
 };
 
 static SurfaceMaterial load_surface_material( uint instanceId,
@@ -78,13 +82,39 @@ static SurfaceMaterial load_surface_material( uint instanceId,
     const PathTracerMaterial material = materials[materialIdx];
 
     SurfaceMaterial surface;
-    surface.baseColour = max( material.baseColour_roughness.xyz, float3( 0.0f ) );
+    surface.baseColour = saturate( material.baseColour_roughness.xyz );
     surface.roughness = clamp( material.baseColour_roughness.w, 0.02f, 1.0f );
     surface.fresnel = saturate( material.fresnel_transparency.xyz );
     surface.transparency = saturate( material.fresnel_transparency.w );
     surface.emissive = max( material.emissive_flags.xyz, float3( 0.0f ) );
     surface.flags = (uint)( material.emissive_flags.w + 0.5f );
+    surface.diffuseTextureIdx = (int)( material.diffuseTextureIdx_slice_uvScale_hasTexture.x + 0.5f );
+    surface.diffuseTextureSlice = (uint)( material.diffuseTextureIdx_slice_uvScale_hasTexture.y + 0.5f );
+    surface.uvScale = max( material.diffuseTextureIdx_slice_uvScale_hasTexture.z, 0.0001f );
+    surface.hasDiffuseTexture = material.diffuseTextureIdx_slice_uvScale_hasTexture.w > 0.5f;
     return surface;
+}
+
+static float3 sample_diffuse_texture( const SurfaceMaterial material,
+                                      float3 position,
+                                      float3 normal,
+                                      array<texture2d_array<float>, 8> diffuseTextures,
+                                      sampler diffuseSampler )
+{
+    if( !material.hasDiffuseTexture || material.diffuseTextureIdx < 0 || material.diffuseTextureIdx >= 8 )
+        return float3( 1.0f );
+
+    const float3 absNormal = abs( normal );
+    float2 uv;
+    if( absNormal.y >= absNormal.x && absNormal.y >= absNormal.z )
+        uv = position.xz * material.uvScale;
+    else if( absNormal.x >= absNormal.z )
+        uv = position.zy * material.uvScale;
+    else
+        uv = position.xy * material.uvScale;
+
+    return diffuseTextures[material.diffuseTextureIdx].sample( diffuseSampler, fract( uv ),
+                                                               material.diffuseTextureSlice ).xyz;
 }
 
 static float fresnel_schlick_luminance( float3 f0, float cosTheta )
@@ -237,6 +267,8 @@ kernel void main_metal
     constant PathTracerLight *lights [[buffer(1)]],
     device const PathTracerMaterial *materials [[buffer(TEX_SLOT_START + 0)]],
     device const PathTracerGeometry *geometryRecords [[buffer(TEX_SLOT_START + 1)]],
+    array<texture2d_array<float>, 8> diffuseTextures [[texture(TEX_SLOT_START + 2)]],
+    sampler diffuseSampler [[sampler(2)]],
 
     instance_acceleration_structure accelerationStructure,
     intersection_function_table<triangle_data, instancing> intersectionFunctionTable,
@@ -284,14 +316,18 @@ kernel void main_metal
         const SurfaceMaterial material = load_surface_material( hit.instance_id, materials, geometryRecords );
 
         const float opacity = material.transparency;
-        const float3 baseColor = material.baseColour * opacity;
+        const float3 textureColour = sample_diffuse_texture( material, hitPosition, geometricNormal,
+                                                             diffuseTextures, diffuseSampler );
+        const float3 baseColor = material.baseColour * textureColour * opacity;
         radiance += throughput * material.emissive;
-        radiance += throughput * baseColor * evaluate_direct_lighting( hitPosition, geometricNormal,
-                                                                       lights, frame->numLights,
-                                                                       accelerationStructure );
+        radiance += throughput * ( baseColor * 0.318309886f ) *
+                    evaluate_direct_lighting( hitPosition, geometricNormal, lights, frame->numLights,
+                                              accelerationStructure );
 
         const float nDotV = saturate( dot( geometricNormal, -pathRay.direction ) );
-        const float specularProbability = clamp( fresnel_schlick_luminance( material.fresnel, nDotV ),
+        const float3 fresnelColor = material.fresnel +
+                                    ( 1.0f - material.fresnel ) * pow( saturate( 1.0f - nDotV ), 5.0f );
+        const float specularProbability = clamp( dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) ),
                                                  0.02f, 0.95f );
         float3 nextDirection;
         float3 bounceWeight;
@@ -301,7 +337,7 @@ kernel void main_metal
             const float3 roughDirection = tangent_to_world(
                 cosine_sample_hemisphere( float2( rand01( seed ), rand01( seed ) ) ), geometricNormal );
             nextDirection = normalize( mix( reflectedDirection, roughDirection, material.roughness * material.roughness ) );
-            bounceWeight = mix( material.fresnel, float3( 1.0f ), 0.04f ) / specularProbability;
+            bounceWeight = fresnelColor / specularProbability;
         }
         else
         {
@@ -310,7 +346,7 @@ kernel void main_metal
             bounceWeight = baseColor / max( 1.0f - specularProbability, 0.05f );
         }
 
-        throughput *= bounceWeight;
+        throughput *= min( bounceWeight, float3( 8.0f ) );
         pathRay.origin = offset_ray( hitPosition, geometricNormal );
         pathRay.direction = nextDirection;
         pathRay.min_distance = 0.005f;
@@ -324,6 +360,8 @@ kernel void main_metal
             throughput /= continueProbability;
         }
     }
+
+    radiance = min( max( radiance, float3( 0.0f ) ), float3( 32.0f ) );
 
     const bool resetAccumulation = frame->sampleIndex == 0u;
     const float4 previous = resetAccumulation ? float4( 0.0f ) : accumulationTexture.read( pixelPos );

@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "OgreRenderSystemCapabilities.h"
 #include "OgreSceneManager.h"
 #include "OgreSubItem.h"
+#include "OgreTextureGpu.h"
 #include "Vao/OgreConstBufferPacked.h"
 #include "Vao/OgreReadOnlyBufferPacked.h"
 #include "Vao/OgreVaoManager.h"
@@ -88,8 +89,10 @@ namespace Ogre
             float baseColour_roughness[4];
             float fresnel_transparency[4];
             float emissive_flags[4];
-            float padding[4];
+            float diffuseTextureIdx_slice_uvScale_hasTexture[4];
         };
+
+        const size_t MaxPathTracerDiffuseTextures = 8u;
 
         struct PathTracerGeometryGpu
         {
@@ -422,6 +425,7 @@ namespace Ogre
         std::vector<PathTracerMaterialGpu> staging( numMaterials );
         PathTracerMaterialGpu *dst = staging.data();
         memset( dst, 0, bytesNeeded );
+        mDiffuseTextures.clear();
 
         for( size_t i = 0u; i < materials.size(); ++i )
         {
@@ -429,6 +433,31 @@ namespace Ogre
             const Vector3 diffuse = datablock->getDiffuse();
             const Vector3 fresnel = datablock->getFresnel();
             const Vector3 emissive = datablock->getEmissive();
+
+            int diffuseTextureIdx = -1;
+            Real textureUvScale = 0.2f;
+            TextureGpu *diffuseTexture = datablock->getTexture( PBSM_DIFFUSE );
+            if( !diffuseTexture )
+            {
+                diffuseTexture = datablock->getTexture( PBSM_DETAIL0 );
+                const Vector4 detailOffsetScale = datablock->getDetailMapOffsetScale( 0u );
+                textureUvScale *= std::max<Real>( detailOffsetScale.z, detailOffsetScale.w );
+            }
+
+            if( diffuseTexture )
+            {
+                FastArray<TextureGpu *>::const_iterator texIt =
+                    std::find( mDiffuseTextures.begin(), mDiffuseTextures.end(), diffuseTexture );
+                if( texIt == mDiffuseTextures.end() &&
+                    mDiffuseTextures.size() < MaxPathTracerDiffuseTextures )
+                {
+                    mDiffuseTextures.push_back( diffuseTexture );
+                    texIt = mDiffuseTextures.end() - 1;
+                }
+
+                if( texIt != mDiffuseTextures.end() )
+                    diffuseTextureIdx = static_cast<int>( texIt - mDiffuseTextures.begin() );
+            }
 
             dst[i].baseColour_roughness[0] = diffuse.x;
             dst[i].baseColour_roughness[1] = diffuse.y;
@@ -442,6 +471,11 @@ namespace Ogre
             dst[i].emissive_flags[1] = emissive.y;
             dst[i].emissive_flags[2] = emissive.z;
             dst[i].emissive_flags[3] = static_cast<float>( datablock->getTransparencyMode() );
+            dst[i].diffuseTextureIdx_slice_uvScale_hasTexture[0] = static_cast<float>( diffuseTextureIdx );
+            dst[i].diffuseTextureIdx_slice_uvScale_hasTexture[1] =
+                diffuseTexture ? static_cast<float>( diffuseTexture->getInternalSliceStart() ) : 0.0f;
+            dst[i].diffuseTextureIdx_slice_uvScale_hasTexture[2] = static_cast<float>( textureUvScale );
+            dst[i].diffuseTextureIdx_slice_uvScale_hasTexture[3] = diffuseTextureIdx >= 0 ? 1.0f : 0.0f;
         }
 
         mMaterialBuffer->upload( staging.data(), 0u, bytesNeeded );
@@ -513,6 +547,18 @@ namespace Ogre
                 DescriptorSetTexture2::BufferSlot::makeEmpty() );
             geometrySlot.buffer = mGeometryBuffer;
             mTraceJob->setTexBuffer( 1, geometrySlot );
+        }
+
+        TextureGpu *fallbackDiffuseTexture = mDiffuseTextures.empty() ? 0 : mDiffuseTextures[0];
+        if( fallbackDiffuseTexture )
+        {
+            for( size_t i = 0u; i < MaxPathTracerDiffuseTextures; ++i )
+            {
+                DescriptorSetTexture2::TextureSlot diffuseSlot(
+                    DescriptorSetTexture2::TextureSlot::makeEmpty() );
+                diffuseSlot.texture = i < mDiffuseTextures.size() ? mDiffuseTextures[i] : fallbackDiffuseTexture;
+                mTraceJob->setTexture( static_cast<uint8>( 2u + i ), diffuseSlot );
+            }
         }
 
         DescriptorSetUav::TextureSlot accumulationSlot( DescriptorSetUav::TextureSlot::makeEmpty() );
