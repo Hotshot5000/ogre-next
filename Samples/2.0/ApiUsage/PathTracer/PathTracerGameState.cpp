@@ -34,7 +34,10 @@ namespace Demo
     PathTracerGameState::PathTracerGameState( const Ogre::String &helpDescription ) :
         TutorialGameState( helpDescription ),
         mPathTracer( 0 ),
-        mAnimateObjects( false )
+        mAnimateObjects( false ),
+        mNumSpheres( 0u ),
+        mTransparencyMode( Ogre::HlmsPbsDatablock::Transparent ),
+        mTransparencyValue( 1.0f )
     {
         mDisplayHelpMode = 2;
         mNumDisplayHelpModes = 3;
@@ -160,6 +163,7 @@ namespace Demo
                         Ogre::TextureFilter::TypeGenerateDefaultMipmaps );
 
                     datablock->setTexture( Ogre::PBSM_REFLECTION, texture );
+                    datablock->setTransparency( 1.0f, Ogre::HlmsPbsDatablock::None );
                     datablock->setDiffuse( Ogre::Vector3( 0.0f, 1.0f, 0.0f ) );
                     datablock->setRoughness(
                         std::max( 0.02f, float( x ) / std::max( 1.0f, (float)( numX - 1 ) ) ) );

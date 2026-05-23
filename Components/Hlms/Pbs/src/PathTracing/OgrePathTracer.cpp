@@ -43,6 +43,7 @@ THE SOFTWARE.
 #include "OgreLogManager.h"
 #include "OgreMesh2.h"
 #include "OgreRenderSystem.h"
+#include "OgrePixelFormatGpuUtils.h"
 #include "OgreRenderSystemCapabilities.h"
 #include "OgreSceneManager.h"
 #include "OgreSubItem.h"
@@ -115,6 +116,20 @@ namespace Ogre
         void copyMatrix( float *dst, const Matrix4 &src )
         {
             memcpy( dst, &src, sizeof( float ) * 16u );
+        }
+
+        bool matricesDiffer( const Matrix4 &a, const Matrix4 &b )
+        {
+            const Real epsilon = Real( 1e-6 );
+            for( size_t row = 0u; row < 4u; ++row )
+            {
+                for( size_t col = 0u; col < 4u; ++col )
+                {
+                    if( Math::Abs( a[row][col] - b[row][col] ) > epsilon )
+                        return true;
+                }
+            }
+            return false;
         }
 
         float readFloatComponent( const char *data, VertexElementType type, size_t componentIdx )
@@ -218,6 +233,7 @@ namespace Ogre
         mGeometryBuffer( 0 ),
         mTriangleBuffer( 0 ),
         mSampleCount( 0u ),
+        mHasLastCameraState( false ),
         mEnabled( false ),
         mInitialized( false )
     {
@@ -412,13 +428,13 @@ namespace Ogre
         frame->cameraFront[1] = cameraFront.y;
         frame->cameraFront[2] = cameraFront.z;
 
-        frame->skyZenith[0] = 0.16f;
-        frame->skyZenith[1] = 0.35f;
-        frame->skyZenith[2] = 0.70f;
+        frame->skyZenith[0] = 0.52f;
+        frame->skyZenith[1] = 0.58f;
+        frame->skyZenith[2] = 0.68f;
         frame->skyZenith[3] = 1.0f;
-        frame->skyHorizon[0] = 0.70f;
-        frame->skyHorizon[1] = 0.78f;
-        frame->skyHorizon[2] = 0.88f;
+        frame->skyHorizon[0] = 1.0f;
+        frame->skyHorizon[1] = 0.88f;
+        frame->skyHorizon[2] = 0.52f;
         frame->skyHorizon[3] = 1.0f;
 
         Vector2 projectionAB = mCamera->getProjectionParamsAB();
@@ -428,7 +444,7 @@ namespace Ogre
         frame->width = static_cast<float>( mRenderWindow->getWidth() );
         frame->height = static_cast<float>( mRenderWindow->getHeight() );
         frame->sampleIndex = mSampleCount;
-        frame->maxBounces = 4u;
+        frame->maxBounces = 2u;
         frame->numLights = numLights;
         frame->flags = 0u;
 
@@ -540,6 +556,8 @@ namespace Ogre
             dst[i].emissive_flags[1] = emissive.y;
             dst[i].emissive_flags[2] = emissive.z;
             dst[i].emissive_flags[3] = static_cast<float>( datablock->getTransparencyMode() );
+            if( datablock->getTexture( PBSM_REFLECTION ) && !diffuseTexture )
+                dst[i].emissive_flags[3] += 16.0f;
             dst[i].diffuseTextureIdx_slice_hasTexture[0] = static_cast<float>( diffuseTextureIdx );
             dst[i].diffuseTextureIdx_slice_hasTexture[1] =
                 diffuseTexture ? static_cast<float>( diffuseTexture->getInternalSliceStart() ) : 0.0f;
@@ -787,10 +805,18 @@ namespace Ogre
         if( !mEnabled || !mInitialized )
             return;
 
-        const bool resetNeeded = mScene.needsBlasRebuild() || mScene.needsTlasRebuild() ||
-                                 mScene.needsMaterialUpload();
+        const Matrix4 currentViewMatrix = mCamera->getViewMatrix( true );
+        const Matrix4 currentProjectionMatrix = mCamera->getProjectionMatrixWithRSDepth();
+        const bool cameraChanged = !mHasLastCameraState ||
+                                   matricesDiffer( mLastViewMatrix, currentViewMatrix ) ||
+                                   matricesDiffer( mLastProjectionMatrix, currentProjectionMatrix );
+        const bool resetNeeded = cameraChanged || mScene.needsBlasRebuild() ||
+                                 mScene.needsTlasRebuild() || mScene.needsMaterialUpload();
         if( resetNeeded )
             resetAccumulation();
+        mLastViewMatrix = currentViewMatrix;
+        mLastProjectionMatrix = currentProjectionMatrix;
+        mHasLastCameraState = true;
 
         updateAccelerationStructure();
         const uint32 numLights = uploadLights( sceneManager );

@@ -2919,9 +2919,9 @@ namespace Ogre
     
     void MetalRenderSystem::updateInstanceAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure )
     {
-        mAccelerationStructureInstanceBuffer = [mActiveDevice->mDevice newBufferWithLength:sizeof(MTLAccelerationStructureInstanceDescriptor) * instanceMeshIndex.size() options:options];
+        mAccelerationStructureInstanceBuffer = [mActiveDevice->mDevice newBufferWithLength:sizeof(MTLAccelerationStructureUserIDInstanceDescriptor) * instanceMeshIndex.size() options:options];
         
-        MTLAccelerationStructureInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
+        MTLAccelerationStructureUserIDInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureUserIDInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
         
         // Fill out instance descriptors.
         for (NSUInteger instanceIndex = 0; instanceIndex < instanceMeshIndex.size(); instanceIndex++) {
@@ -2930,6 +2930,7 @@ namespace Ogre
             
             // Map the instance to its acceleration structure.
             instanceDescriptors[instanceIndex].accelerationStructureIndex = (uint32_t)geometryIndex;
+            instanceDescriptors[instanceIndex].userID = (uint32_t)instanceIndex;
             
             // Mark the instance as opaque if it doesn't have an intersection function so that the
             // ray intersector doesn't attempt to execute a function that doesn't exist.
@@ -2965,6 +2966,7 @@ namespace Ogre
         accelDescriptor.instancedAccelerationStructures = mPrimitiveAccelerationStructures;
         accelDescriptor.instanceCount = instanceMeshIndex.size();
         accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
+        accelDescriptor.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeUserID;
         accelDescriptor.usage = MTLAccelerationStructureUsageRefit;
         
         // Finally, create the instance acceleration structure containing all of the instances
@@ -2987,6 +2989,8 @@ namespace Ogre
         while( vaoIt != vaoEnd )
         {
             VertexArrayObject *vao = *vaoIt;
+            const size_t primitiveStart = vao->getPrimitiveStart();
+            const size_t primitiveCount = vao->getPrimitiveCount();
             size_t vertexStart = 0u;
             size_t numVertices = vao->getBaseVertexBuffer()->getNumElements();
             size_t numTriangles = 0;
@@ -2994,11 +2998,11 @@ namespace Ogre
             switch( vao->getOperationType() )
             {
             case OT_TRIANGLE_LIST:
-                numTriangles = (vao->getIndexBuffer()->getNumElements() / 3);
+                numTriangles = primitiveCount / 3u;
                 break;
             case OT_TRIANGLE_STRIP:
             case OT_TRIANGLE_FAN:
-                numTriangles = (vao->getIndexBuffer()->getNumElements() - 2);
+                numTriangles = primitiveCount > 2u ? primitiveCount - 2u : 0u;
                 break;
             default:
                 break;
@@ -3008,7 +3012,8 @@ namespace Ogre
             IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
             MetalBufferInterface *bufferInterface = static_cast<MetalBufferInterface *>( indexBuffer->getBufferInterface() );
             id<MTLBuffer> vboName = bufferInterface->getVboName();
-            size_t indexBufferOffset = indexBuffer->_getInternalBufferStart() * indexBuffer->getBytesPerElement();
+            size_t indexBufferOffset =
+                (indexBuffer->_getInternalBufferStart() + primitiveStart) * indexBuffer->getBytesPerElement();
             
             VertexBufferDownloadHelper downloadHelper;
             {
@@ -3080,7 +3085,6 @@ namespace Ogre
 #endif
 
             // Create a primitive acceleration structure for each piece of geometry in the scene.
-            uint32 primitiveCount = vao->getPrimitiveCount();
 //            for (NSUInteger i = 0; i < primitiveCount; i++) {
                 
             MTLAccelerationStructureTriangleGeometryDescriptor *geometryDescriptor = [MTLAccelerationStructureTriangleGeometryDescriptor descriptor];

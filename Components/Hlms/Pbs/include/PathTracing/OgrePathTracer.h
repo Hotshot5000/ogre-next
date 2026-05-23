@@ -61,7 +61,10 @@ namespace Ogre
         FastArray<TextureGpu *> mDiffuseTextures;
         ResourceTransitionArray mResourceTransitions;
 
+        Matrix4              mLastViewMatrix;
+        Matrix4              mLastProjectionMatrix;
         uint32               mSampleCount;
+        bool                 mHasLastCameraState;
         bool                 mEnabled;
         bool                 mInitialized;
 

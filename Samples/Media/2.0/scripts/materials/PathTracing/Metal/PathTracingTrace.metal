@@ -79,6 +79,7 @@ struct SurfaceMaterial
     uint diffuseTextureSlice;
     float4 diffuseUvOffsetScale;
     bool hasDiffuseTexture;
+    bool manualSrgbDecode;
 };
 
 static SurfaceMaterial load_surface_material( uint instanceId,
@@ -93,12 +94,14 @@ static SurfaceMaterial load_surface_material( uint instanceId,
     surface.baseColour = saturate( material.baseColour_roughness.xyz );
     surface.roughness = clamp( material.baseColour_roughness.w, 0.02f, 1.0f );
     surface.fresnel = saturate( material.fresnel_transparency.xyz );
-    surface.transparency = saturate( material.fresnel_transparency.w );
+    const uint transparencyMode = surface.flags & 15u;
+    surface.transparency = transparencyMode == 0u ? 1.0f : saturate( material.fresnel_transparency.w );
     surface.emissive = max( material.emissive_flags.xyz, float3( 0.0f ) );
     surface.flags = (uint)( material.emissive_flags.w + 0.5f );
     surface.diffuseTextureIdx = (int)( material.diffuseTextureIdx_slice_hasTexture.x + 0.5f );
     surface.diffuseTextureSlice = (uint)( material.diffuseTextureIdx_slice_hasTexture.y + 0.5f );
     surface.hasDiffuseTexture = material.diffuseTextureIdx_slice_hasTexture.z > 0.5f;
+    surface.manualSrgbDecode = material.diffuseTextureIdx_slice_hasTexture.w > 0.5f;
     surface.diffuseUvOffsetScale = material.diffuseUvOffsetScale;
     return surface;
 }
@@ -127,6 +130,13 @@ static float3 load_triangle_normal( const PathTracerTriangle triangle, float3 fa
     const float3 normal = normalize( float3( triangle.uv2_normalX_normalY.zw,
                                              triangle.normalZ_flags.x ) );
     return all( isfinite( normal ) ) ? normal : fallbackNormal;
+}
+
+static float3 srgb_to_linear( float3 color )
+{
+    return select( color / 12.92f,
+                   pow( ( color + 0.055f ) / 1.055f, float3( 2.4f ) ),
+                   color > float3( 0.04045f ) );
 }
 
 static float3 sample_diffuse_texture( const SurfaceMaterial material,
@@ -338,7 +348,8 @@ kernel void main_metal
 
         if( hit.type != intersection_type::triangle )
         {
-            radiance += throughput * sample_sky( pathRay.direction, *frame );
+            const float skyScale = bounce == 0u ? 1.0f : 0.08f;
+            radiance += throughput * sample_sky( pathRay.direction, *frame ) * skyScale;
             break;
         }
 
@@ -362,8 +373,11 @@ kernel void main_metal
         const float nDotV = saturate( dot( geometricNormal, -pathRay.direction ) );
         const float3 fresnelColor = material.fresnel +
                                     ( 1.0f - material.fresnel ) * pow( saturate( 1.0f - nDotV ), 5.0f );
-        const float specularProbability = clamp( dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) ),
-                                                 0.02f, 0.95f );
+        const bool reflectionOnlyFallback = ( material.flags & 16u ) != 0u;
+        const float specularCap = reflectionOnlyFallback ? 0.06f : 0.25f;
+        const float specularProbability = clamp( dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) ) *
+                                                 ( 1.0f - material.roughness * 0.75f ),
+                                                 0.02f, specularCap );
         float3 nextDirection;
         float3 bounceWeight;
         if( rand01( seed ) < specularProbability )
@@ -381,7 +395,7 @@ kernel void main_metal
             bounceWeight = baseColor / max( 1.0f - specularProbability, 0.05f );
         }
 
-        throughput *= min( bounceWeight, float3( 8.0f ) );
+        throughput *= min( bounceWeight, float3( 1.0f ) );
         pathRay.origin = offset_ray( hitPosition, geometricNormal );
         pathRay.direction = nextDirection;
         pathRay.min_distance = 0.005f;
