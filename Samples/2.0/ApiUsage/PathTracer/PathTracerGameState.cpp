@@ -205,31 +205,31 @@ namespace Demo
 
         mGraphicsSystem->createAtmosphere( light );
 
-        light = sceneManager->createLight();
-        lightNode = rootNode->createChildSceneNode();
-        lightNode->attachObject( light );
-        light->setDiffuseColour( 0.8f, 0.4f, 0.2f );
-        light->setSpecularColour( 0.8f, 0.4f, 0.2f );
-        light->setPowerScale( Ogre::Math::PI );
-        light->setType( Ogre::Light::LT_SPOTLIGHT );
-        lightNode->setPosition( -10.0f, 10.0f, 10.0f );
-        light->setDirection( Ogre::Vector3( 1, -1, -1 ).normalisedCopy() );
-        light->setAttenuationBasedOnRadius( 10.0f, 0.01f );
-
-        mLightNodes[1] = lightNode;
-
-        light = sceneManager->createLight();
-        lightNode = rootNode->createChildSceneNode();
-        lightNode->attachObject( light );
-        light->setDiffuseColour( 0.2f, 0.4f, 0.8f );
-        light->setSpecularColour( 0.2f, 0.4f, 0.8f );
-        light->setPowerScale( Ogre::Math::PI );
-        light->setType( Ogre::Light::LT_SPOTLIGHT );
-        lightNode->setPosition( 10.0f, 10.0f, -10.0f );
-        light->setDirection( Ogre::Vector3( -1, -1, 1 ).normalisedCopy() );
-        light->setAttenuationBasedOnRadius( 10.0f, 0.01f );
-
-        mLightNodes[2] = lightNode;
+//        light = sceneManager->createLight();
+//        lightNode = rootNode->createChildSceneNode();
+//        lightNode->attachObject( light );
+//        light->setDiffuseColour( 0.8f, 0.4f, 0.2f );
+//        light->setSpecularColour( 0.8f, 0.4f, 0.2f );
+//        light->setPowerScale( Ogre::Math::PI );
+//        light->setType( Ogre::Light::LT_SPOTLIGHT );
+//        lightNode->setPosition( -10.0f, 10.0f, 10.0f );
+//        light->setDirection( Ogre::Vector3( 1, -1, -1 ).normalisedCopy() );
+//        light->setAttenuationBasedOnRadius( 10.0f, 0.01f );
+//
+//        mLightNodes[1] = lightNode;
+//
+//        light = sceneManager->createLight();
+//        lightNode = rootNode->createChildSceneNode();
+//        lightNode->attachObject( light );
+//        light->setDiffuseColour( 0.2f, 0.4f, 0.8f );
+//        light->setSpecularColour( 0.2f, 0.4f, 0.8f );
+//        light->setPowerScale( Ogre::Math::PI );
+//        light->setType( Ogre::Light::LT_SPOTLIGHT );
+//        lightNode->setPosition( 10.0f, 10.0f, -10.0f );
+//        light->setDirection( Ogre::Vector3( -1, -1, 1 ).normalisedCopy() );
+//        light->setAttenuationBasedOnRadius( 10.0f, 0.01f );
+//
+//        mLightNodes[2] = lightNode;
 
         mCameraController = new CameraController( mGraphicsSystem, false );
         mCameraController->mCameraBaseSpeed = 1.0f;

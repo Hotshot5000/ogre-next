@@ -270,9 +270,12 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
 
     const float3 mappedNormal = normalize( tangent * tangentSample.x + bitangent * tangentSample.y +
                                            geometricNormal * tangentSample.z );
-    if( !all( isfinite( mappedNormal ) ) )
+    if( !all( isfinite( mappedNormal ) ) || dot( mappedNormal, geometricNormal ) <= 0.0f )
         return geometricNormal;
-    return normalize( mix( geometricNormal, mappedNormal, material.normalMapWeight ) );
+
+    const float3 blendedNormal = normalize( mix( geometricNormal, mappedNormal,
+                                                material.normalMapWeight ) );
+    return dot( blendedNormal, geometricNormal ) > 0.0f ? blendedNormal : geometricNormal;
 }
 
 static float3 sample_reflection_texture( const SurfaceMaterial material,
@@ -393,7 +396,10 @@ static float evaluate_light_visibility( float3 surfacePosition,
                                         float3 surfaceNormal,
                                         float3 lightDirection,
                                         float maxDistance,
-                                        instance_acceleration_structure accelerationStructure )
+                                        uint currentInstanceId,
+                                        instance_acceleration_structure accelerationStructure,
+                                        device const PathTracerMaterial *materials,
+                                        device const PathTracerGeometry *geometryRecords )
 {
     ray shadowRay;
     shadowRay.origin = offset_ray( surfacePosition, dot( surfaceNormal, lightDirection ) < 0.0f ? -surfaceNormal : surfaceNormal );
@@ -402,21 +408,65 @@ static float evaluate_light_visibility( float3 surfacePosition,
     shadowRay.max_distance = maxDistance;
 
     intersector<triangle_data, instancing> shadowIntersector;
-    shadowIntersector.accept_any_intersection( true );
-    typename intersector<triangle_data, instancing>::result_type shadowHit =
-        shadowIntersector.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
+    float visibility = 1.0f;
 
-    return shadowHit.type == intersection_type::triangle ? 0.0f : 1.0f;
+    for( uint step = 0u; step < 8u; ++step )
+    {
+        typename intersector<triangle_data, instancing>::result_type shadowHit =
+            shadowIntersector.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
+
+        if( shadowHit.type != intersection_type::triangle )
+            return visibility;
+
+        if( shadowHit.instance_id == currentInstanceId && shadowHit.distance <= 0.02f )
+        {
+            const float consumedDistance = shadowHit.distance + 0.02f;
+            if( consumedDistance >= shadowRay.max_distance )
+                return visibility;
+
+            shadowRay.origin += shadowRay.direction * consumedDistance;
+            shadowRay.max_distance -= consumedDistance;
+            shadowRay.min_distance = 0.005f;
+            continue;
+        }
+
+        const SurfaceMaterial blocker = load_surface_material( shadowHit.instance_id,
+                                                               materials, geometryRecords );
+        if( !is_transparent_surface( blocker ) )
+            return 0.0f;
+
+        const float transmission = saturate( 1.0f - blocker.transparency );
+        if( transmission <= 0.02f )
+            return 0.0f;
+
+        visibility *= transmission;
+        if( visibility <= 0.02f )
+            return 0.0f;
+
+        const float consumedDistance = shadowHit.distance + 0.01f;
+        if( consumedDistance >= shadowRay.max_distance )
+            return visibility;
+
+        shadowRay.origin += shadowRay.direction * consumedDistance;
+        shadowRay.max_distance -= consumedDistance;
+        shadowRay.min_distance = 0.005f;
+    }
+
+    return visibility;
 }
 
 static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                                                 float3 surfaceNormal,
+                                                float3 shadowNormal,
                                                 float3 viewDirection,
                                                 float3 fresnelColor,
                                                 float roughness,
+                                                uint currentInstanceId,
                                                 constant PathTracerLight *lights,
                                                 uint numLights,
-                                                instance_acceleration_structure accelerationStructure )
+                                                instance_acceleration_structure accelerationStructure,
+                                                device const PathTracerMaterial *materials,
+                                                device const PathTracerGeometry *geometryRecords )
 {
     DirectLighting result;
     result.diffuse = float3( 0.0f );
@@ -463,15 +513,24 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
             continue;
         }
 
-        const float nDotL = saturate( dot( surfaceNormal, lightDirection ) );
-        if( nDotL <= 0.0f )
+        const float visibility = evaluate_light_visibility( surfacePosition, shadowNormal, lightDirection,
+                                                            maxDistance, currentInstanceId,
+                                                            accelerationStructure, materials,
+                                                            geometryRecords );
+        const float geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
+        if( geometricNDotL <= 0.0f )
             continue;
 
-        const float visibility = evaluate_light_visibility( surfacePosition, surfaceNormal, lightDirection,
-                                                            maxDistance, accelerationStructure );
+        // Avoid normal-map/tangent discontinuities completely removing a light on surfaces
+        // that geometrically face it. Reflections and path bounces still use surfaceNormal.
+        const float shadingNDotL = saturate( dot( surfaceNormal, lightDirection ) );
+        const float nDotL = max( shadingNDotL, geometricNDotL * 0.5f );
+
         const float lightScale = attenuation * visibility;
         const float3 halfVector = normalize( lightDirection + viewDirection );
-        const float nDotV = saturate( dot( surfaceNormal, viewDirection ) );
+        const float geometricNDotV = saturate( dot( shadowNormal, viewDirection ) );
+        const float nDotV = max( saturate( dot( surfaceNormal, viewDirection ) ),
+                                 geometricNDotV * 0.5f );
         const float nDotH = saturate( dot( surfaceNormal, halfVector ) );
         const float vDotH = saturate( dot( viewDirection, halfVector ) );
         const float3 fresnel = fresnel_schlick( fresnelColor, vDotH );
@@ -507,16 +566,17 @@ kernel void main_metal
     instance_acceleration_structure accelerationStructure,
     intersection_function_table<triangle_data, instancing> intersectionFunctionTable,
 
-    ushort3 gl_GlobalInvocationID [[thread_position_in_grid]]
+    uint3 gl_GlobalInvocationID [[thread_position_in_grid]]
 )
 {
-    if( gl_GlobalInvocationID.x >= frame->width || gl_GlobalInvocationID.y >= frame->height )
+    const uint2 outputSize = uint2( radianceTexture.get_width(), radianceTexture.get_height() );
+    if( gl_GlobalInvocationID.x >= outputSize.x || gl_GlobalInvocationID.y >= outputSize.y )
         return;
 
     const uint2 pixelPos = uint2( gl_GlobalInvocationID.xy );
     uint seed = wang_hash( pixelPos.x + pixelPos.y * 1664525u + frame->sampleIndex * 1013904223u );
     const float2 jitter = float2( rand01( seed ), rand01( seed ) );
-    const float2 uv = ( float2( pixelPos ) + jitter ) / float2( frame->width, frame->height );
+    const float2 uv = ( float2( pixelPos ) + jitter ) / float2( outputSize );
 
     float3 rayDirection = mix( mix( frame->cameraCorner0.xyz, frame->cameraCorner2.xyz, uv.x ),
                                mix( frame->cameraCorner1.xyz, frame->cameraCorner3.xyz, uv.x ),
@@ -581,10 +641,12 @@ kernel void main_metal
         const float3 materialFresnel = material.fresnel * material.specularWeight;
         const float3 fresnelColor = fresnel_schlick( materialFresnel, nDotV );
         const DirectLighting directLighting = evaluate_direct_lighting( hitPosition, shadingNormal,
+                                                                        geometricNormal,
                                                                         viewDirection, materialFresnel,
-                                                                        roughness, lights,
-                                                                        frame->numLights,
-                                                                        accelerationStructure );
+                                                                        roughness, hit.instance_id,
+                                                                        lights, frame->numLights,
+                                                                        accelerationStructure,
+                                                                        materials, geometryRecords );
         const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
         if( is_transparent_surface( material ) )
         {

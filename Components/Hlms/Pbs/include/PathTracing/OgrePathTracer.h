@@ -80,6 +80,7 @@ namespace Ogre
         void uploadMaterialBuffer();
         void uploadGeometryBuffer();
         void bindJobResources();
+        void updateTraceJobThreadGroups();
 
     public:
         PathTracer( TextureGpu *renderWindow, RenderSystem *renderSystem,

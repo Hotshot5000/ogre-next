@@ -230,19 +230,22 @@ namespace Ogre
                 dst->specular[i] = static_cast<float>( specularColour[i] );
             }
 
-            Vector4 light4dVec;
             if( light->getType() == Light::LT_DIRECTIONAL )
             {
-                light4dVec = -light->getDerivedDirectionUpdated();
-                light4dVec.w = 0.0f;
+                const Vector3 lightDirection = -light->getDerivedDirectionUpdated();
+                dst->position[0] = static_cast<float>( lightDirection.x );
+                dst->position[1] = static_cast<float>( lightDirection.y );
+                dst->position[2] = static_cast<float>( lightDirection.z );
+                dst->position[3] = 0.0f;
             }
             else
             {
-                light4dVec = light->getParentNode()->_getDerivedPositionUpdated();
-                light4dVec.w = 1.0f;
+                const Vector3 lightPosition = light->getParentNode()->_getDerivedPositionUpdated();
+                dst->position[0] = static_cast<float>( lightPosition.x );
+                dst->position[1] = static_cast<float>( lightPosition.y );
+                dst->position[2] = static_cast<float>( lightPosition.z );
+                dst->position[3] = 1.0f;
             }
-            for( size_t i = 0u; i < 4u; ++i )
-                dst->position[i] = static_cast<float>( light4dVec[i] );
 
             dst->attenuation[0] = static_cast<float>( light->getAttenuationRange() );
             dst->attenuation[1] = static_cast<float>( light->getAttenuationLinear() );
@@ -318,6 +321,8 @@ namespace Ogre
             return;
         }
         mTraceJob->setNumSamplerUnits( 16u );
+        mTraceJob->setNumThreadGroupsBasedOn( HlmsComputeJob::ThreadGroupsBasedOnNothing, 0u, 1u,
+                                              1u, 1u );
 
         CompositorNode *pathTracerNode = mWorkspace->findNode( "PathTracerRenderingNode" );
         if( !pathTracerNode )
@@ -492,8 +497,9 @@ namespace Ogre
         projectionAB.y /= mCamera->getFarClipDistance();
         frame->projectionParams[0] = projectionAB.x;
         frame->projectionParams[1] = projectionAB.y;
-        frame->width = static_cast<float>( mRenderWindow->getWidth() );
-        frame->height = static_cast<float>( mRenderWindow->getHeight() );
+        // Match the compute shader's bounds and UV normalization to the UAV that drives dispatch.
+        frame->width = static_cast<float>( mRadianceTexture->getWidth() );
+        frame->height = static_cast<float>( mRadianceTexture->getHeight() );
         frame->sampleIndex = mSampleCount;
         frame->maxBounces = 4u;
         frame->numLights = numLights;
@@ -524,16 +530,14 @@ namespace Ogre
                 for( size_t k = 0u; k < ARRAY_PACKED_REALS && j + k < totalObjs &&
                                    numCollectedLights < maxNumLights; ++k )
                 {
-                    if( objData.mVisibilityFlags[k] & VisibilityFlags::LAYER_VISIBILITY )
+                    Light *light = static_cast<Light *>( objData.mOwner[k] );
+                    if( light->isVisible() &&
+                        ( light->getType() == Light::LT_DIRECTIONAL ||
+                          light->getType() == Light::LT_POINT ||
+                          light->getType() == Light::LT_SPOTLIGHT ) )
                     {
-                        Light *light = static_cast<Light *>( objData.mOwner[k] );
-                        if( light->getType() == Light::LT_DIRECTIONAL ||
-                            light->getType() == Light::LT_POINT ||
-                            light->getType() == Light::LT_SPOTLIGHT )
-                        {
-                            addLight( lightData + numCollectedLights, light );
-                            ++numCollectedLights;
-                        }
+                        addLight( lightData + numCollectedLights, light );
+                        ++numCollectedLights;
                     }
                 }
                 objData.advancePack();
@@ -894,6 +898,21 @@ namespace Ogre
         mTriangleBuffer->upload( triangleStaging.data(), 0u, triangleBytesNeeded );
     }
     //-------------------------------------------------------------------------
+    void PathTracer::updateTraceJobThreadGroups()
+    {
+        if( !mTraceJob || !mRadianceTexture )
+            return;
+
+        const uint32 *threadsPerGroup = mTraceJob->getThreadsPerGroup();
+        const uint32 threadsX = std::max( threadsPerGroup[0], 1u );
+        const uint32 threadsY = std::max( threadsPerGroup[1], 1u );
+        const uint32 width = std::max<uint32>( mRadianceTexture->getWidth(), 1u );
+        const uint32 height = std::max<uint32>( mRadianceTexture->getHeight(), 1u );
+
+        mTraceJob->setNumThreadGroups( ( width + threadsX - 1u ) / threadsX,
+                                       ( height + threadsY - 1u ) / threadsY, 1u );
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::bindJobResources()
     {
         mTraceJob->setConstBuffer( 0, mFrameConstBuffer );
@@ -987,6 +1006,8 @@ namespace Ogre
         radianceSlot.texture = mRadianceTexture;
         radianceSlot.access = ResourceAccess::Write;
         mTraceJob->_setUavTexture( 1, radianceSlot );
+
+        updateTraceJobThreadGroups();
 
         mTraceJob->analyzeBarriers( mResourceTransitions );
         mRenderSystem->executeResourceTransition( mResourceTransitions );
