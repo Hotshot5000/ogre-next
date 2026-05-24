@@ -868,6 +868,10 @@ namespace Ogre
 
         virtual void executeResourceTransition( const ResourceTransitionArray &rstCollection ) {}
 
+        virtual Real clampPathTracerUpscaleInputScale( Real scale ) { return Real( 1 ); }
+
+        virtual void setPathTracerUpscaleInputResolution( uint32 width, uint32 height ) {}
+
         virtual bool denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
                                               TextureGpu *motionTexture, TextureGpu *normalTexture,
                                               TextureGpu *diffuseAlbedoTexture,

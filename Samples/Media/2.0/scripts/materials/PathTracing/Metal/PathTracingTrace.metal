@@ -598,7 +598,7 @@ kernel void main_metal
     uint3 gl_GlobalInvocationID [[thread_position_in_grid]]
 )
 {
-    const uint2 outputSize = uint2( radianceTexture.get_width(), radianceTexture.get_height() );
+    const uint2 outputSize = uint2( uint( frame->width ), uint( frame->height ) );
     if( gl_GlobalInvocationID.x >= outputSize.x || gl_GlobalInvocationID.y >= outputSize.y )
         return;
 

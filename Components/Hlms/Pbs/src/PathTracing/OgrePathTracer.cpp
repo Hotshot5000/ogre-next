@@ -290,6 +290,9 @@ namespace Ogre
         mSampleCount( 0u ),
         mMaxBounces( DefaultBounces ),
         mSamplesPerPixel( DefaultSamplesPerPixel ),
+        mUpscaleInputScale( 1.0f ),
+        mInternalWidth( 1u ),
+        mInternalHeight( 1u ),
         mHasLastCameraState( false ),
         mEnabled( false ),
         mInitialized( false )
@@ -345,6 +348,7 @@ namespace Ogre
                 "PathTracer disabled: compositor UAV textures are missing." );
             return;
         }
+        updateInternalResolution();
 
         mFrameConstBuffer = mVaoManager->createConstBuffer( sizeof( PathTracerFrameGpu ),
                                                             BT_DYNAMIC_PERSISTENT, 0, false );
@@ -441,6 +445,21 @@ namespace Ogre
         resetAccumulation();
     }
     //-------------------------------------------------------------------------
+    void PathTracer::setUpscaleInputScale( Real inputScale )
+    {
+        inputScale = std::max<Real>( Real( 0.01 ), std::min<Real>( inputScale, Real( 1 ) ) );
+        if( mRenderSystem )
+            inputScale = mRenderSystem->clampPathTracerUpscaleInputScale( inputScale );
+        inputScale = std::max<Real>( Real( 0.01 ), std::min<Real>( inputScale, Real( 1 ) ) );
+
+        if( Math::Abs( mUpscaleInputScale - inputScale ) <= Real( 1e-4 ) )
+            return;
+
+        mUpscaleInputScale = inputScale;
+        updateInternalResolution();
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::updateAccelerationStructure()
     {
         if( !mMeshCache )
@@ -527,9 +546,9 @@ namespace Ogre
         projectionAB.y /= mCamera->getFarClipDistance();
         frame->projectionParams[0] = projectionAB.x;
         frame->projectionParams[1] = projectionAB.y;
-        // Match the compute shader's bounds and UV normalization to the UAV that drives dispatch.
-        frame->width = static_cast<float>( mRadianceTexture->getWidth() );
-        frame->height = static_cast<float>( mRadianceTexture->getHeight() );
+        updateInternalResolution();
+        frame->width = static_cast<float>( mInternalWidth );
+        frame->height = static_cast<float>( mInternalHeight );
         frame->sampleIndex = mSampleCount;
         frame->maxBounces = mMaxBounces;
         frame->numLights = numLights;
@@ -952,19 +971,36 @@ namespace Ogre
         mTriangleBuffer->upload( triangleStaging.data(), 0u, triangleBytesNeeded );
     }
     //-------------------------------------------------------------------------
+    void PathTracer::updateInternalResolution()
+    {
+        if( !mRadianceTexture )
+        {
+            mInternalWidth = 1u;
+            mInternalHeight = 1u;
+            return;
+        }
+
+        const Real width = static_cast<Real>( std::max<uint32>( mRadianceTexture->getWidth(), 1u ) );
+        const Real height = static_cast<Real>( std::max<uint32>( mRadianceTexture->getHeight(), 1u ) );
+        mInternalWidth = std::max<uint32>( 1u, static_cast<uint32>( width * mUpscaleInputScale + 0.5f ) );
+        mInternalHeight = std::max<uint32>( 1u, static_cast<uint32>( height * mUpscaleInputScale + 0.5f ) );
+        mInternalWidth = std::min<uint32>( mInternalWidth, mRadianceTexture->getWidth() );
+        mInternalHeight = std::min<uint32>( mInternalHeight, mRadianceTexture->getHeight() );
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::updateTraceJobThreadGroups()
     {
-        if( !mTraceJob || !mRadianceTexture )
+        if( !mTraceJob )
             return;
+
+        updateInternalResolution();
 
         const uint32 *threadsPerGroup = mTraceJob->getThreadsPerGroup();
         const uint32 threadsX = std::max( threadsPerGroup[0], 1u );
         const uint32 threadsY = std::max( threadsPerGroup[1], 1u );
-        const uint32 width = std::max<uint32>( mRadianceTexture->getWidth(), 1u );
-        const uint32 height = std::max<uint32>( mRadianceTexture->getHeight(), 1u );
 
-        mTraceJob->setNumThreadGroups( ( width + threadsX - 1u ) / threadsX,
-                                       ( height + threadsY - 1u ) / threadsY, 1u );
+        mTraceJob->setNumThreadGroups( ( mInternalWidth + threadsX - 1u ) / threadsX,
+                                       ( mInternalHeight + threadsY - 1u ) / threadsY, 1u );
     }
     //-------------------------------------------------------------------------
     void PathTracer::bindJobResources()
@@ -1061,6 +1097,8 @@ namespace Ogre
         mTraceJob->_setUavTexture( 1, radianceSlot );
 
         updateTraceJobThreadGroups();
+        if( mRenderSystem )
+            mRenderSystem->setPathTracerUpscaleInputResolution( mInternalWidth, mInternalHeight );
 
         mTraceJob->analyzeBarriers( mResourceTransitions );
         mRenderSystem->executeResourceTransition( mResourceTransitions );
@@ -1102,6 +1140,9 @@ namespace Ogre
     {
         if( !mEnabled )
             return;
+
+        if( mRenderSystem )
+            mRenderSystem->setPathTracerUpscaleInputResolution( mInternalWidth, mInternalHeight );
 
         mSampleCount += mSamplesPerPixel;
     }

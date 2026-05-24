@@ -86,6 +86,9 @@ namespace Ogre
         uint32               mSampleCount;
         uint32               mMaxBounces;
         uint32               mSamplesPerPixel;
+        Real                 mUpscaleInputScale;
+        uint32               mInternalWidth;
+        uint32               mInternalHeight;
         bool                 mHasLastCameraState;
         bool                 mEnabled;
         bool                 mInitialized;
@@ -98,6 +101,7 @@ namespace Ogre
         void uploadMaterialBuffer();
         void uploadGeometryBuffer();
         void bindJobResources();
+        void updateInternalResolution();
         void updateTraceJobThreadGroups();
 
     public:
@@ -120,6 +124,11 @@ namespace Ogre
 
         void setSamplesPerPixel( uint32 samplesPerPixel );
         uint32 getSamplesPerPixel() const { return mSamplesPerPixel; }
+
+        void setUpscaleInputScale( Real inputScale );
+        Real getUpscaleInputScale() const { return mUpscaleInputScale; }
+        uint32 getInternalWidth() const { return mInternalWidth; }
+        uint32 getInternalHeight() const { return mInternalHeight; }
 
         void update( SceneManager *sceneManager );
         void render();

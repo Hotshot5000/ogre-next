@@ -113,8 +113,20 @@ namespace Ogre
         mAccelerationStructureInstanceBuffer( 0 ),
         mIntersectionFunctionTable( 0 ),
         mPathTracerDenoiserScaler( 0 ),
-        mPathTracerDenoiserWidth( 0u ),
-        mPathTracerDenoiserHeight( 0u ),
+        mPathTracerDenoiserInputWidth( 0u ),
+        mPathTracerDenoiserInputHeight( 0u ),
+        mPathTracerDenoiserOutputWidth( 0u ),
+        mPathTracerDenoiserOutputHeight( 0u ),
+        mPathTracerUpscaleInputWidth( 0u ),
+        mPathTracerUpscaleInputHeight( 0u ),
+        mPathTracerDenoiserColourTexture( 0 ),
+        mPathTracerDenoiserDepthTexture( 0 ),
+        mPathTracerDenoiserMotionTexture( 0 ),
+        mPathTracerDenoiserNormalTexture( 0 ),
+        mPathTracerDenoiserDiffuseAlbedoTexture( 0 ),
+        mPathTracerDenoiserSpecularAlbedoTexture( 0 ),
+        mPathTracerDenoiserRoughnessTexture( 0 ),
+        mPathTracerDenoiserSpecularHitDistanceTexture( 0 ),
         mDevice( this ),
         mMainGpuSyncSemaphore( 0 ),
         mMainSemaphoreAlreadyWaited( false ),
@@ -132,6 +144,14 @@ namespace Ogre
     MetalRenderSystem::~MetalRenderSystem()
     {
         mPathTracerDenoiserScaler = 0;
+        mPathTracerDenoiserColourTexture = 0;
+        mPathTracerDenoiserDepthTexture = 0;
+        mPathTracerDenoiserMotionTexture = 0;
+        mPathTracerDenoiserNormalTexture = 0;
+        mPathTracerDenoiserDiffuseAlbedoTexture = 0;
+        mPathTracerDenoiserSpecularAlbedoTexture = 0;
+        mPathTracerDenoiserRoughnessTexture = 0;
+        mPathTracerDenoiserSpecularHitDistanceTexture = 0;
         shutdown();
     }
     //-------------------------------------------------------------------------
@@ -2605,6 +2625,38 @@ namespace Ogre
         }
     }
     //-------------------------------------------------------------------------
+    Real MetalRenderSystem::clampPathTracerUpscaleInputScale( Real scale )
+    {
+#if OGRE_METAL_HAS_METALFX
+        if( mActiveDevice )
+        {
+            if( @available( macOS 14.0, iOS 17.0, tvOS 17.0, * ) )
+            {
+                if( [MTLFXTemporalDenoisedScalerDescriptor supportsDevice:mActiveDevice->mDevice] )
+                {
+                    const Real minUpscale = static_cast<Real>(
+                        [MTLFXTemporalDenoisedScalerDescriptor
+                            supportedInputContentMinScaleForDevice:mActiveDevice->mDevice] );
+                    const Real maxUpscale = static_cast<Real>(
+                        [MTLFXTemporalDenoisedScalerDescriptor
+                            supportedInputContentMaxScaleForDevice:mActiveDevice->mDevice] );
+                    const Real minInputScale = Real( 1 ) / std::max<Real>( maxUpscale, Real( 1 ) );
+                    const Real maxInputScale = Real( 1 ) / std::max<Real>( minUpscale, Real( 1 ) );
+                    return std::max<Real>( minInputScale,
+                                           std::min<Real>( scale, std::min<Real>( maxInputScale, Real( 1 ) ) ) );
+                }
+            }
+        }
+#endif
+        return Real( 1 );
+    }
+    //-------------------------------------------------------------------------
+    void MetalRenderSystem::setPathTracerUpscaleInputResolution( uint32 width, uint32 height )
+    {
+        mPathTracerUpscaleInputWidth = width;
+        mPathTracerUpscaleInputHeight = height;
+    }
+    //-------------------------------------------------------------------------
     bool MetalRenderSystem::denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
                                                      TextureGpu *motionTexture, TextureGpu *normalTexture,
                                                      TextureGpu *diffuseAlbedoTexture,
@@ -2663,19 +2715,29 @@ namespace Ogre
                 static_cast<MetalTextureGpu *>( specularHitDistanceTexture );
             MetalTextureGpu *output = static_cast<MetalTextureGpu *>( outputTexture );
 
-            const uint32 width = std::max<uint32>( colourTexture->getWidth(), 1u );
-            const uint32 height = std::max<uint32>( colourTexture->getHeight(), 1u );
+            const uint32 outputWidth = std::max<uint32>( outputTexture->getWidth(), 1u );
+            const uint32 outputHeight = std::max<uint32>( outputTexture->getHeight(), 1u );
+            const uint32 colourWidth = std::max<uint32>( colourTexture->getWidth(), 1u );
+            const uint32 colourHeight = std::max<uint32>( colourTexture->getHeight(), 1u );
+            const uint32 inputWidth = std::max<uint32>(
+                1u, std::min<uint32>( mPathTracerUpscaleInputWidth ? mPathTracerUpscaleInputWidth : colourWidth,
+                                       colourWidth ) );
+            const uint32 inputHeight = std::max<uint32>(
+                1u, std::min<uint32>( mPathTracerUpscaleInputHeight ? mPathTracerUpscaleInputHeight : colourHeight,
+                                       colourHeight ) );
             bool resetDenoiserHistory = resetHistory;
-            if( !mPathTracerDenoiserScaler || mPathTracerDenoiserWidth != width ||
-                mPathTracerDenoiserHeight != height )
+            if( !mPathTracerDenoiserScaler || mPathTracerDenoiserInputWidth != inputWidth ||
+                mPathTracerDenoiserInputHeight != inputHeight ||
+                mPathTracerDenoiserOutputWidth != outputWidth ||
+                mPathTracerDenoiserOutputHeight != outputHeight )
             {
                 resetDenoiserHistory = true;
                 MTLFXTemporalDenoisedScalerDescriptor *desc =
                     [[MTLFXTemporalDenoisedScalerDescriptor alloc] init];
-                desc.inputWidth = width;
-                desc.inputHeight = height;
-                desc.outputWidth = width;
-                desc.outputHeight = height;
+                desc.inputWidth = inputWidth;
+                desc.inputHeight = inputHeight;
+                desc.outputWidth = outputWidth;
+                desc.outputHeight = outputHeight;
                 desc.colorTextureFormat = MetalMappings::get( colourTexture->getPixelFormat(), mActiveDevice );
                 desc.outputTextureFormat = MetalMappings::get( outputTexture->getPixelFormat(), mActiveDevice );
                 desc.depthTextureFormat = MetalMappings::get( depthTexture->getPixelFormat(), mActiveDevice );
@@ -2694,8 +2756,18 @@ namespace Ogre
                 desc.requiresSynchronousInitialization = false;
 
                 mPathTracerDenoiserScaler = [desc newTemporalDenoisedScalerWithDevice:mActiveDevice->mDevice];
-                mPathTracerDenoiserWidth = width;
-                mPathTracerDenoiserHeight = height;
+                mPathTracerDenoiserInputWidth = inputWidth;
+                mPathTracerDenoiserInputHeight = inputHeight;
+                mPathTracerDenoiserOutputWidth = outputWidth;
+                mPathTracerDenoiserOutputHeight = outputHeight;
+                mPathTracerDenoiserColourTexture = 0;
+                mPathTracerDenoiserDepthTexture = 0;
+                mPathTracerDenoiserMotionTexture = 0;
+                mPathTracerDenoiserNormalTexture = 0;
+                mPathTracerDenoiserDiffuseAlbedoTexture = 0;
+                mPathTracerDenoiserSpecularAlbedoTexture = 0;
+                mPathTracerDenoiserRoughnessTexture = 0;
+                mPathTracerDenoiserSpecularHitDistanceTexture = 0;
             }
 
             id<MTLFXTemporalDenoisedScaler> scaler =
@@ -2703,15 +2775,108 @@ namespace Ogre
             if( !scaler )
                 return copyColourToOutput();
 
-            mActiveDevice->endAllEncoders();
-            scaler.colorTexture = colour->getFinalTextureName();
-            scaler.depthTexture = depth->getFinalTextureName();
-            scaler.motionTexture = motion->getFinalTextureName();
-            scaler.normalTexture = normal->getFinalTextureName();
-            scaler.diffuseAlbedoTexture = diffuseAlbedo->getFinalTextureName();
-            scaler.specularAlbedoTexture = specularAlbedo->getFinalTextureName();
-            scaler.roughnessTexture = roughness->getFinalTextureName();
-            scaler.specularHitDistanceTexture = specularHitDistance->getFinalTextureName();
+            id<MTLTexture> colourInputTexture = colour->getFinalTextureName();
+            id<MTLTexture> depthInputTexture = depth->getFinalTextureName();
+            id<MTLTexture> motionInputTexture = motion->getFinalTextureName();
+            id<MTLTexture> normalInputTexture = normal->getFinalTextureName();
+            id<MTLTexture> diffuseAlbedoInputTexture = diffuseAlbedo->getFinalTextureName();
+            id<MTLTexture> specularAlbedoInputTexture = specularAlbedo->getFinalTextureName();
+            id<MTLTexture> roughnessInputTexture = roughness->getFinalTextureName();
+            id<MTLTexture> specularHitDistanceInputTexture = specularHitDistance->getFinalTextureName();
+
+            if( inputWidth != colourWidth || inputHeight != colourHeight )
+            {
+                auto createInputTexture = ^id<MTLTexture>( MTLPixelFormat pixelFormat,
+                                                           MTLTextureUsage usage ) {
+                    MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor
+                        texture2DDescriptorWithPixelFormat:pixelFormat
+                                                     width:inputWidth
+                                                    height:inputHeight
+                                                 mipmapped:NO];
+                    textureDesc.storageMode = MTLStorageModePrivate;
+                    textureDesc.usage = usage;
+                    return [mActiveDevice->mDevice newTextureWithDescriptor:textureDesc];
+                };
+
+                if( !mPathTracerDenoiserColourTexture )
+                {
+                    mPathTracerDenoiserColourTexture = createInputTexture( scaler.colorTextureFormat,
+                                                                           scaler.colorTextureUsage );
+                    mPathTracerDenoiserDepthTexture = createInputTexture( scaler.depthTextureFormat,
+                                                                          scaler.depthTextureUsage );
+                    mPathTracerDenoiserMotionTexture = createInputTexture( scaler.motionTextureFormat,
+                                                                           scaler.motionTextureUsage );
+                    mPathTracerDenoiserNormalTexture = createInputTexture( scaler.normalTextureFormat,
+                                                                           scaler.normalTextureUsage );
+                    mPathTracerDenoiserDiffuseAlbedoTexture =
+                        createInputTexture( scaler.diffuseAlbedoTextureFormat,
+                                            scaler.diffuseAlbedoTextureUsage );
+                    mPathTracerDenoiserSpecularAlbedoTexture =
+                        createInputTexture( scaler.specularAlbedoTextureFormat,
+                                            scaler.specularAlbedoTextureUsage );
+                    mPathTracerDenoiserRoughnessTexture = createInputTexture( scaler.roughnessTextureFormat,
+                                                                              scaler.roughnessTextureUsage );
+                    mPathTracerDenoiserSpecularHitDistanceTexture =
+                        createInputTexture( scaler.specularHitDistanceTextureFormat,
+                                            scaler.specularHitDistanceTextureUsage );
+                }
+
+                colourInputTexture = (id<MTLTexture>)mPathTracerDenoiserColourTexture;
+                depthInputTexture = (id<MTLTexture>)mPathTracerDenoiserDepthTexture;
+                motionInputTexture = (id<MTLTexture>)mPathTracerDenoiserMotionTexture;
+                normalInputTexture = (id<MTLTexture>)mPathTracerDenoiserNormalTexture;
+                diffuseAlbedoInputTexture = (id<MTLTexture>)mPathTracerDenoiserDiffuseAlbedoTexture;
+                specularAlbedoInputTexture = (id<MTLTexture>)mPathTracerDenoiserSpecularAlbedoTexture;
+                roughnessInputTexture = (id<MTLTexture>)mPathTracerDenoiserRoughnessTexture;
+                specularHitDistanceInputTexture =
+                    (id<MTLTexture>)mPathTracerDenoiserSpecularHitDistanceTexture;
+
+                if( !colourInputTexture || !depthInputTexture || !motionInputTexture || !normalInputTexture ||
+                    !diffuseAlbedoInputTexture || !specularAlbedoInputTexture || !roughnessInputTexture ||
+                    !specularHitDistanceInputTexture )
+                {
+                    return copyColourToOutput();
+                }
+
+                mActiveDevice->endAllEncoders();
+                id<MTLBlitCommandEncoder> blitEncoder =
+                    [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
+                const MTLSize inputCopySize = MTLSizeMake( inputWidth, inputHeight, 1u );
+                auto copyInputTexture = ^( id<MTLTexture> srcTexture, id<MTLTexture> dstTexture ) {
+                    [blitEncoder copyFromTexture:srcTexture
+                                     sourceSlice:0
+                                     sourceLevel:0
+                                    sourceOrigin:MTLOriginMake( 0u, 0u, 0u )
+                                      sourceSize:inputCopySize
+                                       toTexture:dstTexture
+                                destinationSlice:0
+                                destinationLevel:0
+                               destinationOrigin:MTLOriginMake( 0u, 0u, 0u )];
+                };
+                copyInputTexture( colour->getFinalTextureName(), colourInputTexture );
+                copyInputTexture( depth->getFinalTextureName(), depthInputTexture );
+                copyInputTexture( motion->getFinalTextureName(), motionInputTexture );
+                copyInputTexture( normal->getFinalTextureName(), normalInputTexture );
+                copyInputTexture( diffuseAlbedo->getFinalTextureName(), diffuseAlbedoInputTexture );
+                copyInputTexture( specularAlbedo->getFinalTextureName(), specularAlbedoInputTexture );
+                copyInputTexture( roughness->getFinalTextureName(), roughnessInputTexture );
+                copyInputTexture( specularHitDistance->getFinalTextureName(),
+                                  specularHitDistanceInputTexture );
+                [blitEncoder endEncoding];
+            }
+            else
+            {
+                mActiveDevice->endAllEncoders();
+            }
+
+            scaler.colorTexture = colourInputTexture;
+            scaler.depthTexture = depthInputTexture;
+            scaler.motionTexture = motionInputTexture;
+            scaler.normalTexture = normalInputTexture;
+            scaler.diffuseAlbedoTexture = diffuseAlbedoInputTexture;
+            scaler.specularAlbedoTexture = specularAlbedoInputTexture;
+            scaler.roughnessTexture = roughnessInputTexture;
+            scaler.specularHitDistanceTexture = specularHitDistanceInputTexture;
             scaler.outputTexture = output->getFinalTextureName();
             scaler.worldToViewMatrix = toMetalFxMatrix( worldToView );
             scaler.viewToClipMatrix = toMetalFxMatrix( viewToClip );

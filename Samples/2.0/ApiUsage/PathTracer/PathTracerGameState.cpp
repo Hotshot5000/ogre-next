@@ -29,6 +29,11 @@
 
 using namespace Demo;
 
+namespace
+{
+    const Ogre::Real cPathTracerUpscaleScales[] = { 1.0f, 0.77f, 0.67f, 0.5f };
+}
+
 namespace Demo
 {
     PathTracerGameState::PathTracerGameState( const Ogre::String &helpDescription ) :
@@ -37,7 +42,8 @@ namespace Demo
         mAnimateObjects( true ),
         mNumSpheres( 0u ),
         mTransparencyMode( Ogre::HlmsPbsDatablock::Transparent ),
-        mTransparencyValue( 1.0f )
+        mTransparencyValue( 1.0f ),
+        mUpscaleScaleIdx( 0u )
     {
         mDisplayHelpMode = 2;
         mNumDisplayHelpModes = 3;
@@ -281,8 +287,17 @@ namespace Demo
                                                                 Ogre::PathTracer::DefaultSamplesPerPixel );
         outText += " / ";
         outText += Ogre::StringConverter::toString( Ogre::PathTracer::MaxSamplesPerPixel );
+        outText += "\nPath tracer input scale: ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getUpscaleInputScale() : 1.0f,
+                                                    2u );
+        outText += " [";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getInternalWidth() : 0u );
+        outText += "x";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getInternalHeight() : 0u );
+        outText += "]";
         outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress , or . to decrease/increase samples per pixel.";
+        outText += "\nPress U to cycle MetalFX input scale.";
         outText += "\nPress F2 to toggle animation. ";
         outText += mAnimateObjects ? "[On]" : "[Off]";
         outText += "\nPress F3 to show/hide animated objects. ";
@@ -386,6 +401,12 @@ namespace Demo
             const Ogre::uint32 currentSamplesPerPixel = mPathTracer->getSamplesPerPixel();
             if( currentSamplesPerPixel < Ogre::PathTracer::MaxSamplesPerPixel )
                 mPathTracer->setSamplesPerPixel( currentSamplesPerPixel + 1u );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_U )
+        {
+            const size_t numScales = sizeof( cPathTracerUpscaleScales ) / sizeof( cPathTracerUpscaleScales[0] );
+            mUpscaleScaleIdx = ( mUpscaleScaleIdx + 1u ) % numScales;
+            mPathTracer->setUpscaleInputScale( cPathTracerUpscaleScales[mUpscaleScaleIdx] );
         }
         else if( arg.keysym.scancode == SDL_SCANCODE_KP_PLUS )
         {

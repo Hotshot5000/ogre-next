@@ -42,6 +42,7 @@ namespace Demo
         size_t mNumSpheres;
         Ogre::uint8 mTransparencyMode;
         float mTransparencyValue;
+        size_t mUpscaleScaleIdx;
 
         void setTransparencyToMaterials();
 
