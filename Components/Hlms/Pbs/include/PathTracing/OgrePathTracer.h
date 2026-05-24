@@ -40,6 +40,14 @@ namespace Ogre
 
     class _OgreHlmsPbsExport PathTracer
     {
+    public:
+        enum BounceLimits
+        {
+            MinBounces = 1u,
+            MaxBounces = 16u,
+            DefaultBounces = 4u
+        };
+
     private:
         TextureGpu          *mRenderWindow;
         RenderSystem        *mRenderSystem;
@@ -68,6 +76,7 @@ namespace Ogre
         Matrix4              mLastViewMatrix;
         Matrix4              mLastProjectionMatrix;
         uint32               mSampleCount;
+        uint32               mMaxBounces;
         bool                 mHasLastCameraState;
         bool                 mEnabled;
         bool                 mInitialized;
@@ -96,6 +105,9 @@ namespace Ogre
 
         void resetAccumulation();
         uint32 getSampleCount() const { return mSampleCount; }
+
+        void setMaxBounces( uint32 maxBounces );
+        uint32 getMaxBounces() const { return mMaxBounces; }
 
         void update( SceneManager *sceneManager );
         void render();

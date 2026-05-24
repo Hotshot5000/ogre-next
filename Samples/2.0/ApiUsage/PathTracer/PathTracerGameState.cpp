@@ -271,6 +271,12 @@ namespace Demo
         TutorialGameState::generateDebugText( timeSinceLast, outText );
         outText += "\nPath tracer samples: ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getSampleCount() : 0u );
+        outText += "\nPath tracer bounces: ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getMaxBounces() :
+                                                                Ogre::PathTracer::DefaultBounces );
+        outText += " / ";
+        outText += Ogre::StringConverter::toString( Ogre::PathTracer::MaxBounces );
+        outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress F2 to toggle animation. ";
         outText += mAnimateObjects ? "[On]" : "[Off]";
         outText += "\nPress F3 to show/hide animated objects. ";
@@ -350,6 +356,18 @@ namespace Demo
                                     : Ogre::HlmsPbsDatablock::Fade;
             if( mTransparencyValue != 1.0f )
                 setTransparencyToMaterials();
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_LEFTBRACKET )
+        {
+            const Ogre::uint32 currentBounces = mPathTracer->getMaxBounces();
+            if( currentBounces > Ogre::PathTracer::MinBounces )
+                mPathTracer->setMaxBounces( currentBounces - 1u );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_RIGHTBRACKET )
+        {
+            const Ogre::uint32 currentBounces = mPathTracer->getMaxBounces();
+            if( currentBounces < Ogre::PathTracer::MaxBounces )
+                mPathTracer->setMaxBounces( currentBounces + 1u );
         }
         else if( arg.keysym.scancode == SDL_SCANCODE_KP_PLUS )
         {

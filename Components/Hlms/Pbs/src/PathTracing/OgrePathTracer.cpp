@@ -286,6 +286,7 @@ namespace Ogre
         mGeometryBuffer( 0 ),
         mTriangleBuffer( 0 ),
         mSampleCount( 0u ),
+        mMaxBounces( DefaultBounces ),
         mHasLastCameraState( false ),
         mEnabled( false ),
         mInitialized( false )
@@ -413,6 +414,17 @@ namespace Ogre
         mSampleCount = 0u;
     }
     //-------------------------------------------------------------------------
+    void PathTracer::setMaxBounces( uint32 maxBounces )
+    {
+        maxBounces = std::max( static_cast<uint32>( MinBounces ),
+                                std::min( maxBounces, static_cast<uint32>( MaxBounces ) ) );
+        if( mMaxBounces == maxBounces )
+            return;
+
+        mMaxBounces = maxBounces;
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::updateAccelerationStructure()
     {
         if( !mMeshCache )
@@ -501,7 +513,7 @@ namespace Ogre
         frame->width = static_cast<float>( mRadianceTexture->getWidth() );
         frame->height = static_cast<float>( mRadianceTexture->getHeight() );
         frame->sampleIndex = mSampleCount;
-        frame->maxBounces = 4u;
+        frame->maxBounces = mMaxBounces;
         frame->numLights = numLights;
         frame->flags = 0u;
 
