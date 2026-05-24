@@ -303,6 +303,9 @@ namespace Ogre
     //-------------------------------------------------------------------------
     PathTracer::~PathTracer()
     {
+        setEnabled( false );
+        if( mRenderSystem )
+            mRenderSystem->setPathTracerFrameGenerationEnabled( false );
         destroyResources();
     }
     //-------------------------------------------------------------------------

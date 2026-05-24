@@ -182,6 +182,11 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void MetalRenderSystem::shutdown()
     {
+        mPathTracerFrameGenerationEnabled = false;
+        mPathTracerFrameGenerationHasHistory = false;
+        mPathTracerFrameGenerationOutputAvailable = false;
+        mPathTracerFrameGenerationResetPending = false;
+
         if( mActiveDevice )
             mActiveDevice->endAllEncoders();
 

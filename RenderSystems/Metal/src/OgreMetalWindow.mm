@@ -67,6 +67,8 @@ THE SOFTWARE.
     Ogre::MetalWindow *metalWindow = [self getMetalWindow:notification];
     if( metalWindow != nil )
     {
+        metalWindow->_notifyWindowWillClose();
+
         auto foundRange = Ogre::WindowEventUtilities::_msListeners.equal_range( metalWindow );
         for( auto it = foundRange.first; it != foundRange.second; ++it )
         {
@@ -225,6 +227,8 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void MetalWindow::swapBuffers()
     {
+        @autoreleasepool
+        {
         if( !mDevice->mFrameAborted )
         {
             // Schedule a present once rendering to the framebuffer is complete
@@ -254,7 +258,7 @@ namespace Ogre
                     [mDevice->mCurrentCommandBuffer presentDrawable:mCurrentDrawable
                                                              atTime:presentationTime];
 
-                if( presentGeneratedFrame )
+                if( presentGeneratedFrame && !mClosed && mMetalLayer )
                 {
                     mDevice->commitAndNextCommandBuffer();
                     id<CAMetalDrawable> generatedDrawable = [mMetalLayer nextDrawable];
@@ -266,6 +270,8 @@ namespace Ogre
                         else
                             [mDevice->mCurrentCommandBuffer presentDrawable:generatedDrawable
                                                                      atTime:presentationTime + ( 1.0 / 120.0 )];
+
+                        mDevice->commitAndNextCommandBuffer();
                     }
                 }
             }
@@ -273,6 +279,7 @@ namespace Ogre
 
         if( !mManualRelease )
             mCurrentDrawable = 0;
+        }
     }
     //-------------------------------------------------------------------------
     void MetalWindow::windowMovedOrResized( void )
@@ -305,6 +312,8 @@ namespace Ogre
             texWindow->_setBackbuffer( 0 );
         }
     }
+    //-------------------------------------------------------------------------
+    void MetalWindow::_notifyWindowWillClose() { mClosed = true; }
     //-------------------------------------------------------------------------
     void MetalWindow::setWantsToDownload( bool bWantsToDownload )
     {

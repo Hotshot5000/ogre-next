@@ -74,6 +74,7 @@ namespace Ogre
         bool canDownloadData() const override;
 
         bool nextDrawable();
+        void _notifyWindowWillClose();
 
         virtual void create( bool fullScreen, const NameValuePairList *miscParams );
         void         destroy() override;
