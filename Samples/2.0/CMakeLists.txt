@@ -101,6 +101,18 @@ endif()
 if( OGRE_BUILD_SAMPLES2 AND NOT OGRE_BUILD_SAMPLES2_SKIP )
 	set( OGRE_SAMPLES_LIBRARIES "OgreSamplesCommon" "${OGRE_NEXT}Overlay" )
 
+	if( APPLE AND NOT OGRE_BUILD_PLATFORM_APPLE_IOS )
+		set( OGRE_SAMPLES_LIBRARIES ${OGRE_SAMPLES_LIBRARIES}
+			 "-framework AppKit"
+                         "-framework AudioToolbox"
+                         "-framework Carbon"
+                         "-framework CoreAudio"
+			 "-framework CoreFoundation"
+			 "-framework CoreVideo"
+                         "-framework ForceFeedback"
+			 "-framework IOKit" )
+	endif()
+
 	if( OGRE_STATIC OR WINDOWS_STORE OR WINDOWS_PHONE )
 		if( OGRE_BUILD_RENDERSYSTEM_GL3PLUS )
 			set( OGRE_SAMPLES_LIBRARIES ${OGRE_SAMPLES_LIBRARIES} "RenderSystem_GL3Plus" )
