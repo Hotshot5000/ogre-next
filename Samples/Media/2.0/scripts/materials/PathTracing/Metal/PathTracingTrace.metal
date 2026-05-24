@@ -31,6 +31,13 @@ constexpr constant float kTransparentReflectProbabilityMin = 0.01f;
 constexpr constant float kTransparentReflectProbabilityMax = 0.55f;
 constexpr constant float kSpecularProbabilityMin = 0.005f;
 constexpr constant float kSpecularProbabilityMax = 0.08f;
+constexpr constant float kDirectDiffuseScale = 1.15f;
+constexpr constant float kDirectSpecularScale = 1.05f;
+constexpr constant float kTransparentSkyDiffuseScale = 0.02f;
+constexpr constant float kTransparentDiffuseScale = 0.25f;
+constexpr constant float kOpaqueSkyDiffuseScale = 0.055f;
+constexpr constant float kReflectionTextureScale = 0.20f;
+constexpr constant float kDiffuseBounceScale = 0.88f;
 
 struct PathTracerFrame
 {
@@ -548,12 +555,12 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
         const float vDotH = saturate( dot( viewDirection, halfVector ) );
         const float3 fresnel = fresnel_schlick( fresnelColor, vDotH );
         const float diffuseEnergy = 1.0f - saturate( dot( fresnel, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
-        result.diffuse += light.diffuse.xyz * lightScale * nDotL * diffuseEnergy;
+        result.diffuse += light.diffuse.xyz * lightScale * nDotL * diffuseEnergy * kDirectDiffuseScale;
 
         const float specularTerm = min( ggx_distribution( nDotH, roughness ) *
                                         smith_ggx_visibility( nDotV, nDotL, roughness ) * nDotL,
                                         kMaxSpecularTerm );
-        result.specular += light.specular.xyz * lightScale * specularTerm * fresnel;
+        result.specular += light.specular.xyz * lightScale * specularTerm * fresnel * kDirectSpecularScale;
     }
 
     return result;
@@ -669,9 +676,9 @@ kernel void main_metal
             radiance += throughput * directLighting.specular;
             if( opacity > 0.001f )
             {
-                const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * 0.025f;
+                const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * kTransparentSkyDiffuseScale;
                 radiance += throughput * ( baseColor * kInvPi ) *
-                            ( directLighting.diffuse + skyDiffuse ) * opacity * 0.25f;
+                            ( directLighting.diffuse + skyDiffuse ) * opacity * kTransparentDiffuseScale;
             }
 
             const float reflectProbability = clamp( fresnel_schlick_luminance( materialFresnel, bounceNDotV ) *
@@ -719,14 +726,14 @@ kernel void main_metal
             continue;
         }
 
-        const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * 0.08f;
+        const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * kOpaqueSkyDiffuseScale;
         radiance += throughput * ( baseColor * kInvPi ) * ( directLighting.diffuse + skyDiffuse );
         radiance += throughput * directLighting.specular * opacity;
         if( material.hasReflectionTexture )
         {
             const float3 reflectionDirection = reflect( pathRay.direction, shadingNormal );
             const float reflectionWeight = saturate( specularLuminance ) *
-                                           ( 1.0f - roughness * 0.95f ) * 0.20f;
+                                           ( 1.0f - roughness * 0.95f ) * kReflectionTextureScale;
             radiance += throughput * sample_reflection_texture( material, reflectionDirection,
                                                                 reflectionTextures, diffuseSampler ) *
                         fresnelColor * reflectionWeight * opacity;
@@ -734,7 +741,7 @@ kernel void main_metal
 
         const float diffuseLuminance = dot( baseColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
         const float diffuseBsdfWeight = diffuseLuminance * ( 1.0f - specularLuminance );
-        const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * 0.20f;
+        const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * kReflectionTextureScale;
         const float bsdfWeightSum = max( diffuseBsdfWeight + specularBsdfWeight, kEpsilon );
         const float specularProbability = clamp( specularBsdfWeight / bsdfWeightSum,
                                                   kSpecularProbabilityMin,
@@ -757,7 +764,7 @@ kernel void main_metal
             const float diffuseSampleY = rand01( seed );
             const float3 localDirection = cosine_sample_hemisphere( float2( diffuseSampleX, diffuseSampleY ) );
             nextDirection = tangent_to_world( localDirection, bounceNormal );
-            bounceWeight = baseColor * ( 1.0f - specularLuminance ) * 0.82f /
+            bounceWeight = baseColor * ( 1.0f - specularLuminance ) * kDiffuseBounceScale /
                            max( 1.0f - specularProbability, kEpsilon );
         }
 
