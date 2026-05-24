@@ -298,6 +298,8 @@ namespace Demo
         outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress , or . to decrease/increase samples per pixel.";
         outText += "\nPress U to cycle MetalFX input scale.";
+        outText += "\nPress F6 to toggle MetalFX frame generation. ";
+        outText += mPathTracer && mPathTracer->getFrameGenerationEnabled() ? "[On]" : "[Off]";
         outText += "\nPress F2 to toggle animation. ";
         outText += mAnimateObjects ? "[On]" : "[Off]";
         outText += "\nPress F3 to show/hide animated objects. ";
@@ -377,6 +379,10 @@ namespace Demo
                                     : Ogre::HlmsPbsDatablock::Fade;
             if( mTransparencyValue != 1.0f )
                 setTransparencyToMaterials();
+        }
+        else if( mPathTracer && arg.keysym.sym == SDLK_F6 )
+        {
+            mPathTracer->setFrameGenerationEnabled( !mPathTracer->getFrameGenerationEnabled() );
         }
         else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_LEFTBRACKET )
         {

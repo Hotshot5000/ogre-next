@@ -145,6 +145,15 @@ namespace Ogre
         id     mPathTracerDenoiserSpecularAlbedoTexture;
         id     mPathTracerDenoiserRoughnessTexture;
         id     mPathTracerDenoiserSpecularHitDistanceTexture;
+        id     mPathTracerFrameInterpolator;
+        id     mPathTracerFrameGenCurrentColourTexture;
+        id     mPathTracerFrameGenPreviousColourTexture;
+        uint32 mPathTracerFrameGenInputWidth;
+        uint32 mPathTracerFrameGenInputHeight;
+        uint32 mPathTracerFrameGenOutputWidth;
+        uint32 mPathTracerFrameGenOutputHeight;
+        bool   mPathTracerFrameGenerationEnabled;
+        bool   mPathTracerFrameGenerationHasHistory;
 
         MetalDevice          mDevice;
         dispatch_semaphore_t mMainGpuSyncSemaphore;
@@ -348,6 +357,8 @@ namespace Ogre
 
         Real clampPathTracerUpscaleInputScale( Real scale ) override;
         void setPathTracerUpscaleInputResolution( uint32 width, uint32 height ) override;
+        void setPathTracerFrameGenerationEnabled( bool enabled ) override;
+        bool getPathTracerFrameGenerationEnabled() const override;
 
         bool denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
                                       TextureGpu *motionTexture, TextureGpu *normalTexture,
@@ -356,7 +367,8 @@ namespace Ogre
                                       TextureGpu *roughnessTexture,
                                       TextureGpu *specularHitDistanceTexture,
                                       TextureGpu *outputTexture, const Matrix4 &viewToClip,
-                                      const Matrix4 &worldToView, bool resetHistory ) override;
+                                      const Matrix4 &worldToView, Camera *camera,
+                                      bool resetHistory ) override;
 
         MetalProgramFactory *getMetalProgramFactory() { return mMetalProgramFactory; }
 

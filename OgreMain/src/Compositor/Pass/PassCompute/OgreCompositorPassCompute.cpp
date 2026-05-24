@@ -305,7 +305,7 @@ namespace Ogre
                 mParentNode->getDefinedTexture( "pathTracerRoughnessTexture" ),
                 mParentNode->getDefinedTexture( "pathTracerSpecularHitDistanceTexture" ),
                 mParentNode->getDefinedTexture( "denoisedRadianceTexture" ),
-                mCamera->getProjectionMatrixWithRSDepth(), mCamera->getViewMatrix( true ), false );
+                mCamera->getProjectionMatrixWithRSDepth(), mCamera->getViewMatrix( true ), mCamera, false );
         }
 
         notifyPassPosExecuteListeners();

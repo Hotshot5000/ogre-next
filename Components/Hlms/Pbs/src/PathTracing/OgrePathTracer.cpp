@@ -293,6 +293,7 @@ namespace Ogre
         mUpscaleInputScale( 1.0f ),
         mInternalWidth( 1u ),
         mInternalHeight( 1u ),
+        mFrameGenerationEnabled( false ),
         mHasLastCameraState( false ),
         mEnabled( false ),
         mInitialized( false )
@@ -414,6 +415,8 @@ namespace Ogre
 
         mEnabled = enabled;
         mScene.setEnabled( enabled );
+        if( mRenderSystem )
+            mRenderSystem->setPathTracerFrameGenerationEnabled( mFrameGenerationEnabled && enabled );
         resetAccumulation();
     }
     //-------------------------------------------------------------------------
@@ -457,6 +460,17 @@ namespace Ogre
 
         mUpscaleInputScale = inputScale;
         updateInternalResolution();
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
+    void PathTracer::setFrameGenerationEnabled( bool enabled )
+    {
+        if( mFrameGenerationEnabled == enabled )
+            return;
+
+        mFrameGenerationEnabled = enabled;
+        if( mRenderSystem )
+            mRenderSystem->setPathTracerFrameGenerationEnabled( enabled );
         resetAccumulation();
     }
     //-------------------------------------------------------------------------

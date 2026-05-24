@@ -89,6 +89,7 @@ namespace Ogre
         Real                 mUpscaleInputScale;
         uint32               mInternalWidth;
         uint32               mInternalHeight;
+        bool                 mFrameGenerationEnabled;
         bool                 mHasLastCameraState;
         bool                 mEnabled;
         bool                 mInitialized;
@@ -129,6 +130,9 @@ namespace Ogre
         Real getUpscaleInputScale() const { return mUpscaleInputScale; }
         uint32 getInternalWidth() const { return mInternalWidth; }
         uint32 getInternalHeight() const { return mInternalHeight; }
+
+        void setFrameGenerationEnabled( bool enabled );
+        bool getFrameGenerationEnabled() const { return mFrameGenerationEnabled; }
 
         void update( SceneManager *sceneManager );
         void render();

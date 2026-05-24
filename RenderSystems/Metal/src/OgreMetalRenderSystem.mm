@@ -37,6 +37,7 @@ Copyright (c) 2000-2016 Torus Knot Software Ltd
 #include "OgreMetalGpuProgramManager.h"
 #include "OgreMetalHardwareBufferManager.h"
 #include "OgreMetalHardwareIndexBuffer.h"
+#include "OgreCamera.h"
 #include "OgreMetalHardwareVertexBuffer.h"
 #include "OgreMetalHlmsPso.h"
 #include "OgreMetalMappings.h"
@@ -127,6 +128,15 @@ namespace Ogre
         mPathTracerDenoiserSpecularAlbedoTexture( 0 ),
         mPathTracerDenoiserRoughnessTexture( 0 ),
         mPathTracerDenoiserSpecularHitDistanceTexture( 0 ),
+        mPathTracerFrameInterpolator( 0 ),
+        mPathTracerFrameGenCurrentColourTexture( 0 ),
+        mPathTracerFrameGenPreviousColourTexture( 0 ),
+        mPathTracerFrameGenInputWidth( 0u ),
+        mPathTracerFrameGenInputHeight( 0u ),
+        mPathTracerFrameGenOutputWidth( 0u ),
+        mPathTracerFrameGenOutputHeight( 0u ),
+        mPathTracerFrameGenerationEnabled( false ),
+        mPathTracerFrameGenerationHasHistory( false ),
         mDevice( this ),
         mMainGpuSyncSemaphore( 0 ),
         mMainSemaphoreAlreadyWaited( false ),
@@ -152,6 +162,9 @@ namespace Ogre
         mPathTracerDenoiserSpecularAlbedoTexture = 0;
         mPathTracerDenoiserRoughnessTexture = 0;
         mPathTracerDenoiserSpecularHitDistanceTexture = 0;
+        mPathTracerFrameInterpolator = 0;
+        mPathTracerFrameGenCurrentColourTexture = 0;
+        mPathTracerFrameGenPreviousColourTexture = 0;
         shutdown();
     }
     //-------------------------------------------------------------------------
@@ -2657,6 +2670,20 @@ namespace Ogre
         mPathTracerUpscaleInputHeight = height;
     }
     //-------------------------------------------------------------------------
+    void MetalRenderSystem::setPathTracerFrameGenerationEnabled( bool enabled )
+    {
+        if( mPathTracerFrameGenerationEnabled == enabled )
+            return;
+
+        mPathTracerFrameGenerationEnabled = enabled;
+        mPathTracerFrameGenerationHasHistory = false;
+    }
+    //-------------------------------------------------------------------------
+    bool MetalRenderSystem::getPathTracerFrameGenerationEnabled() const
+    {
+        return mPathTracerFrameGenerationEnabled;
+    }
+    //-------------------------------------------------------------------------
     bool MetalRenderSystem::denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
                                                      TextureGpu *motionTexture, TextureGpu *normalTexture,
                                                      TextureGpu *diffuseAlbedoTexture,
@@ -2664,7 +2691,8 @@ namespace Ogre
                                                      TextureGpu *roughnessTexture,
                                                      TextureGpu *specularHitDistanceTexture,
                                                      TextureGpu *outputTexture, const Matrix4 &viewToClip,
-                                                     const Matrix4 &worldToView, bool resetHistory )
+                                                     const Matrix4 &worldToView, Camera *camera,
+                                                     bool resetHistory )
     {
         if( !mActiveDevice || !colourTexture || !outputTexture )
             return false;
@@ -2869,6 +2897,73 @@ namespace Ogre
                 mActiveDevice->endAllEncoders();
             }
 
+            id<MTLTexture> finalOutputTexture = output->getFinalTextureName();
+            id<MTLTexture> scalerOutputTexture = finalOutputTexture;
+            bool useFrameGeneration = false;
+
+            if( mPathTracerFrameGenerationEnabled && camera &&
+                [MTLFXFrameInterpolatorDescriptor supportsDevice:mActiveDevice->mDevice] )
+            {
+                if( !mPathTracerFrameInterpolator || mPathTracerFrameGenInputWidth != inputWidth ||
+                    mPathTracerFrameGenInputHeight != inputHeight ||
+                    mPathTracerFrameGenOutputWidth != outputWidth ||
+                    mPathTracerFrameGenOutputHeight != outputHeight )
+                {
+                    MTLFXFrameInterpolatorDescriptor *frameDesc =
+                        [[MTLFXFrameInterpolatorDescriptor alloc] init];
+                    frameDesc.inputWidth = inputWidth;
+                    frameDesc.inputHeight = inputHeight;
+                    frameDesc.outputWidth = outputWidth;
+                    frameDesc.outputHeight = outputHeight;
+                    frameDesc.colorTextureFormat = MetalMappings::get( outputTexture->getPixelFormat(),
+                                                                       mActiveDevice );
+                    frameDesc.depthTextureFormat = MetalMappings::get( depthTexture->getPixelFormat(),
+                                                                       mActiveDevice );
+                    frameDesc.motionTextureFormat = MetalMappings::get( motionTexture->getPixelFormat(),
+                                                                        mActiveDevice );
+                    frameDesc.outputTextureFormat = MetalMappings::get( outputTexture->getPixelFormat(),
+                                                                        mActiveDevice );
+                    frameDesc.scaler = (id<MTLFXFrameInterpolatableScaler>)scaler;
+
+                    mPathTracerFrameInterpolator =
+                        [frameDesc newFrameInterpolatorWithDevice:mActiveDevice->mDevice];
+                    mPathTracerFrameGenInputWidth = inputWidth;
+                    mPathTracerFrameGenInputHeight = inputHeight;
+                    mPathTracerFrameGenOutputWidth = outputWidth;
+                    mPathTracerFrameGenOutputHeight = outputHeight;
+                    mPathTracerFrameGenCurrentColourTexture = 0;
+                    mPathTracerFrameGenPreviousColourTexture = 0;
+                    mPathTracerFrameGenerationHasHistory = false;
+                }
+
+                id<MTLFXFrameInterpolator> frameInterpolator =
+                    (id<MTLFXFrameInterpolator>)mPathTracerFrameInterpolator;
+                if( frameInterpolator )
+                {
+                    auto createFrameGenColourTexture = ^id<MTLTexture>() {
+                        MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor
+                            texture2DDescriptorWithPixelFormat:frameInterpolator.colorTextureFormat
+                                                         width:outputWidth
+                                                        height:outputHeight
+                                                     mipmapped:NO];
+                        textureDesc.storageMode = MTLStorageModePrivate;
+                        textureDesc.usage = frameInterpolator.colorTextureUsage |
+                                            frameInterpolator.outputTextureUsage |
+                                            MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+                        return [mActiveDevice->mDevice newTextureWithDescriptor:textureDesc];
+                    };
+
+                    if( !mPathTracerFrameGenCurrentColourTexture )
+                    {
+                        mPathTracerFrameGenCurrentColourTexture = createFrameGenColourTexture();
+                        mPathTracerFrameGenPreviousColourTexture = createFrameGenColourTexture();
+                    }
+
+                    scalerOutputTexture = (id<MTLTexture>)mPathTracerFrameGenCurrentColourTexture;
+                    useFrameGeneration = scalerOutputTexture && mPathTracerFrameGenPreviousColourTexture;
+                }
+            }
+
             scaler.colorTexture = colourInputTexture;
             scaler.depthTexture = depthInputTexture;
             scaler.motionTexture = motionInputTexture;
@@ -2877,7 +2972,7 @@ namespace Ogre
             scaler.specularAlbedoTexture = specularAlbedoInputTexture;
             scaler.roughnessTexture = roughnessInputTexture;
             scaler.specularHitDistanceTexture = specularHitDistanceInputTexture;
-            scaler.outputTexture = output->getFinalTextureName();
+            scaler.outputTexture = scalerOutputTexture;
             scaler.worldToViewMatrix = toMetalFxMatrix( worldToView );
             scaler.viewToClipMatrix = toMetalFxMatrix( viewToClip );
             scaler.motionVectorScaleX = 1.0f;
@@ -2885,6 +2980,73 @@ namespace Ogre
             scaler.depthReversed = true;
             scaler.shouldResetHistory = resetDenoiserHistory;
             [scaler encodeToCommandBuffer:mActiveDevice->mCurrentCommandBuffer];
+
+            if( useFrameGeneration )
+            {
+                id<MTLFXFrameInterpolator> frameInterpolator =
+                    (id<MTLFXFrameInterpolator>)mPathTracerFrameInterpolator;
+                id<MTLTexture> previousColourTexture =
+                    (id<MTLTexture>)mPathTracerFrameGenPreviousColourTexture;
+
+                if( frameInterpolator && previousColourTexture && finalOutputTexture )
+                {
+                    if( mPathTracerFrameGenerationHasHistory && !resetDenoiserHistory )
+                    {
+                        frameInterpolator.prevColorTexture = previousColourTexture;
+                        frameInterpolator.colorTexture = scalerOutputTexture;
+                        frameInterpolator.depthTexture = depthInputTexture;
+                        frameInterpolator.motionTexture = motionInputTexture;
+                        frameInterpolator.outputTexture = finalOutputTexture;
+                        frameInterpolator.motionVectorScaleX = 1.0f;
+                        frameInterpolator.motionVectorScaleY = 1.0f;
+                        frameInterpolator.depthReversed = true;
+                        frameInterpolator.shouldResetHistory = false;
+                        frameInterpolator.deltaTime = 1.0f / 60.0f;
+                        frameInterpolator.nearPlane = static_cast<float>( camera->getNearClipDistance() );
+                        frameInterpolator.farPlane = static_cast<float>( camera->getFarClipDistance() );
+                        frameInterpolator.fieldOfView = static_cast<float>( camera->getFOVy().valueDegrees() );
+                        frameInterpolator.aspectRatio = static_cast<float>( outputWidth ) /
+                                                        static_cast<float>( outputHeight );
+                        [frameInterpolator encodeToCommandBuffer:mActiveDevice->mCurrentCommandBuffer];
+                    }
+                    else
+                    {
+                        id<MTLBlitCommandEncoder> blitEncoder =
+                            [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
+                        const MTLSize copySize = MTLSizeMake( outputWidth, outputHeight, 1u );
+                        [blitEncoder copyFromTexture:scalerOutputTexture
+                                         sourceSlice:0
+                                         sourceLevel:0
+                                        sourceOrigin:MTLOriginMake( 0u, 0u, 0u )
+                                          sourceSize:copySize
+                                           toTexture:finalOutputTexture
+                                    destinationSlice:0
+                                    destinationLevel:0
+                                   destinationOrigin:MTLOriginMake( 0u, 0u, 0u )];
+                        [blitEncoder endEncoding];
+                    }
+
+                    id<MTLBlitCommandEncoder> historyBlitEncoder =
+                        [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
+                    const MTLSize historyCopySize = MTLSizeMake( outputWidth, outputHeight, 1u );
+                    [historyBlitEncoder copyFromTexture:scalerOutputTexture
+                                            sourceSlice:0
+                                            sourceLevel:0
+                                           sourceOrigin:MTLOriginMake( 0u, 0u, 0u )
+                                             sourceSize:historyCopySize
+                                              toTexture:previousColourTexture
+                                       destinationSlice:0
+                                       destinationLevel:0
+                                      destinationOrigin:MTLOriginMake( 0u, 0u, 0u )];
+                    [historyBlitEncoder endEncoding];
+                    mPathTracerFrameGenerationHasHistory = true;
+                }
+            }
+            else
+            {
+                mPathTracerFrameGenerationHasHistory = false;
+            }
+
             return true;
         }
 #endif
