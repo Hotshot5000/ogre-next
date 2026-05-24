@@ -83,7 +83,7 @@ namespace Ogre
         Matrix4              mLastViewMatrix;
         Matrix4              mLastProjectionMatrix;
         Matrix4              mPreviousViewProjectionMatrix;
-        uint32               mSampleCount;
+        uint32               mAccumulatedSamples;
         uint32               mMaxBounces;
         uint32               mSamplesPerPixel;
         Real                 mUpscaleInputScale;
@@ -118,7 +118,7 @@ namespace Ogre
         const PathTracerScene &getScene() const { return mScene; }
 
         void resetAccumulation();
-        uint32 getSampleCount() const { return mSampleCount; }
+        uint32 getAccumulatedSamples() const { return mAccumulatedSamples; }
 
         void setMaxBounces( uint32 maxBounces );
         uint32 getMaxBounces() const { return mMaxBounces; }

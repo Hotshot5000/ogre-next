@@ -287,7 +287,7 @@ namespace Ogre
         mMaterialBuffer( 0 ),
         mGeometryBuffer( 0 ),
         mTriangleBuffer( 0 ),
-        mSampleCount( 0u ),
+        mAccumulatedSamples( 0u ),
         mMaxBounces( DefaultBounces ),
         mSamplesPerPixel( DefaultSamplesPerPixel ),
         mUpscaleInputScale( 1.0f ),
@@ -425,7 +425,7 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void PathTracer::resetAccumulation()
     {
-        mSampleCount = 0u;
+        mAccumulatedSamples = 0u;
     }
     //-------------------------------------------------------------------------
     void PathTracer::setMaxBounces( uint32 maxBounces )
@@ -566,7 +566,7 @@ namespace Ogre
         updateInternalResolution();
         frame->width = static_cast<float>( mInternalWidth );
         frame->height = static_cast<float>( mInternalHeight );
-        frame->sampleIndex = mSampleCount;
+        frame->sampleIndex = mAccumulatedSamples;
         frame->maxBounces = mMaxBounces;
         frame->numLights = numLights;
         frame->samplesPerPixel = mSamplesPerPixel;
@@ -1161,6 +1161,6 @@ namespace Ogre
         if( mRenderSystem )
             mRenderSystem->setPathTracerUpscaleInputResolution( mInternalWidth, mInternalHeight );
 
-        mSampleCount += mSamplesPerPixel;
+        mAccumulatedSamples += mSamplesPerPixel;
     }
 }

@@ -308,14 +308,14 @@ namespace Demo
         Ogre::uint32 visibilityMask = mGraphicsSystem->getSceneManager()->getVisibilityMask();
 
         TutorialGameState::generateDebugText( timeSinceLast, outText );
-        outText += "\nPath tracer samples: ";
-        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getSampleCount() : 0u );
+        outText += "\nPath tracer accumulated samples: ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getAccumulatedSamples() : 0u );
         outText += "\nPath tracer bounces: ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getMaxBounces() :
                                                                 Ogre::PathTracer::DefaultBounces );
         outText += " / ";
         outText += Ogre::StringConverter::toString( Ogre::PathTracer::MaxBounces );
-        outText += "\nPath tracer samples per pixel: ";
+        outText += "\nPath tracer samples per pixel per frame: ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getSamplesPerPixel() :
                                                                 Ogre::PathTracer::DefaultSamplesPerPixel );
         outText += " / ";
@@ -331,7 +331,7 @@ namespace Demo
         outText += "\nPath tracer avg display fps: ";
         outText += Ogre::StringConverter::toString( mDisplayFps );
         outText += "\nPress [ or ] to decrease/increase path bounces.";
-        outText += "\nPress , or . to decrease/increase samples per pixel.";
+        outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
         outText += "\nPress F6 to toggle MetalFX frame generation. ";
         outText += mPathTracer && mPathTracer->getFrameGenerationEnabled() ? "[On]" : "[Off]";
