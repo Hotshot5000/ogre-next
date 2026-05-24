@@ -162,6 +162,7 @@ namespace Ogre
         bool   mPathTracerFrameGenerationHasHistory;
         bool   mPathTracerFrameGenerationOutputAvailable;
         bool   mPathTracerFrameGenerationResetPending;
+        uint64 mPathTracerGeneratedFrameCount;
 
         MetalDevice          mDevice;
         dispatch_semaphore_t mMainGpuSyncSemaphore;
@@ -367,6 +368,7 @@ namespace Ogre
         void setPathTracerUpscaleInputResolution( uint32 width, uint32 height ) override;
         void setPathTracerFrameGenerationEnabled( bool enabled ) override;
         bool getPathTracerFrameGenerationEnabled() const override;
+        uint64 getPathTracerGeneratedFrameCount() const override { return mPathTracerGeneratedFrameCount; }
         bool generatePathTracerFrameGenerationOutputFrom( id<MTLTexture> currentColourTexture );
         bool copyPathTracerFrameGenerationOutputTo( id<MTLTexture> dstTexture );
 

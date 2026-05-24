@@ -145,6 +145,7 @@ namespace Ogre
         mPathTracerFrameGenerationHasHistory( false ),
         mPathTracerFrameGenerationOutputAvailable( false ),
         mPathTracerFrameGenerationResetPending( false ),
+        mPathTracerGeneratedFrameCount( 0u ),
         mDevice( this ),
         mMainGpuSyncSemaphore( 0 ),
         mMainSemaphoreAlreadyWaited( false ),
@@ -2801,6 +2802,7 @@ namespace Ogre
                    destinationOrigin:MTLOriginMake( 0u, 0u, 0u )];
         [blitEncoder endEncoding];
         mPathTracerFrameGenerationOutputAvailable = false;
+        ++mPathTracerGeneratedFrameCount;
         return true;
     }
     //-------------------------------------------------------------------------

@@ -13,8 +13,10 @@
 
 #include "OgreHlmsPbsDatablock.h"
 
+#include "OgreFrameStats.h"
 #include "OgreHlmsManager.h"
 #include "OgreHlmsPbs.h"
+#include "OgreRenderSystem.h"
 #include "OgreRoot.h"
 
 #include "../LocalCubemaps/LocalCubemapScene.h"
@@ -43,7 +45,11 @@ namespace Demo
         mNumSpheres( 0u ),
         mTransparencyMode( Ogre::HlmsPbsDatablock::Transparent ),
         mTransparencyValue( 1.0f ),
-        mUpscaleScaleIdx( 0u )
+        mUpscaleScaleIdx( 0u ),
+        mLastGeneratedFrameCount( 0u ),
+        mDisplayFpsRealFrames( 0u ),
+        mDisplayFpsGeneratedFrames( 0u ),
+        mDisplayFps( 0.0f )
     {
         mDisplayHelpMode = 2;
         mNumDisplayHelpModes = 3;
@@ -267,6 +273,33 @@ namespace Demo
         {
             mPathTracer->update( mGraphicsSystem->getSceneManager() );
             mPathTracer->render();
+
+            Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
+            const Ogre::uint64 generatedFrameCount =
+                renderSystem ? renderSystem->getPathTracerGeneratedFrameCount() : 0u;
+            if( generatedFrameCount < mLastGeneratedFrameCount )
+                mLastGeneratedFrameCount = generatedFrameCount;
+
+            const Ogre::uint64 generatedFrameDelta64 = generatedFrameCount - mLastGeneratedFrameCount;
+            const Ogre::uint32 generatedFrameDelta = generatedFrameDelta64 > Ogre::uint64( 0xffffffffu )
+                                                         ? 0xffffffffu
+                                                         : Ogre::uint32( generatedFrameDelta64 );
+            mLastGeneratedFrameCount = generatedFrameCount;
+
+            ++mDisplayFpsRealFrames;
+            mDisplayFpsGeneratedFrames += generatedFrameDelta;
+
+            if( mDisplayFpsRealFrames >= 30u )
+            {
+                const Ogre::FrameStats *frameStats = mGraphicsSystem->getRoot()->getFrameStats();
+                const Ogre::Real realAvgFps = frameStats ? frameStats->getAvgFps() : 0.0f;
+                const Ogre::Real displayFrameRatio =
+                    Ogre::Real( mDisplayFpsRealFrames + mDisplayFpsGeneratedFrames ) /
+                    Ogre::Real( mDisplayFpsRealFrames );
+                mDisplayFps = realAvgFps * displayFrameRatio;
+                mDisplayFpsRealFrames = 0u;
+                mDisplayFpsGeneratedFrames = 0u;
+            }
         }
     }
     //-----------------------------------------------------------------------------------
@@ -295,6 +328,8 @@ namespace Demo
         outText += "x";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getInternalHeight() : 0u );
         outText += "]";
+        outText += "\nPath tracer avg display fps: ";
+        outText += Ogre::StringConverter::toString( mDisplayFps );
         outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress , or . to decrease/increase samples per pixel.";
         outText += "\nPress U to cycle MetalFX input scale.";
