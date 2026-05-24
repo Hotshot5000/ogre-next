@@ -45,6 +45,7 @@ Copyright (c) 2000-2016 Torus Knot Software Ltd
 #include "OgreMetalProgramFactory.h"
 #include "OgreMetalRenderPassDescriptor.h"
 #include "OgreMetalTextureGpu.h"
+#include "OgreResourceGroupManager.h"
 #include "OgreMetalTextureGpuManager.h"
 #include "OgreMetalWindow.h"
 #include "OgreViewport.h"
@@ -132,6 +133,11 @@ namespace Ogre
         mPathTracerFrameGenCurrentColourTexture( 0 ),
         mPathTracerFrameGenPreviousColourTexture( 0 ),
         mPathTracerFrameGenOutputTexture( 0 ),
+        mPathTracerFrameGenSourceTexture( 0 ),
+        mPathTracerFrameGenPresentedTexture( 0 ),
+        mPathTracerFrameGenCompositeLibrary( 0 ),
+        mPathTracerFrameGenCompositePso( 0 ),
+        mPathTracerFrameGenCompositeSampler( 0 ),
         mPathTracerFrameGenDepthTexture( 0 ),
         mPathTracerFrameGenMotionTexture( 0 ),
         mPathTracerFrameGenInputWidth( 0u ),
@@ -186,6 +192,8 @@ namespace Ogre
         mPathTracerFrameGenerationHasHistory = false;
         mPathTracerFrameGenerationOutputAvailable = false;
         mPathTracerFrameGenerationResetPending = false;
+        mPathTracerFrameGenSourceTexture = 0;
+        mPathTracerFrameGenPresentedTexture = 0;
 
         if( mActiveDevice )
             mActiveDevice->endAllEncoders();
@@ -2703,6 +2711,12 @@ namespace Ogre
         return mPathTracerFrameGenerationEnabled;
     }
     //-------------------------------------------------------------------------
+    void MetalRenderSystem::setPathTracerFrameGenerationSourceTexture( TextureGpu *texture )
+    {
+        mPathTracerFrameGenSourceTexture =
+            texture ? static_cast<MetalTextureGpu *>( texture )->getFinalTextureName() : 0;
+    }
+    //-------------------------------------------------------------------------
     bool MetalRenderSystem::generatePathTracerFrameGenerationOutputFrom( id<MTLTexture> currentColourTexture )
     {
 #if OGRE_METAL_HAS_METALFX
@@ -2714,7 +2728,12 @@ namespace Ogre
         id<MTLTexture> depthTexture = (id<MTLTexture>)mPathTracerFrameGenDepthTexture;
         id<MTLTexture> motionTexture = (id<MTLTexture>)mPathTracerFrameGenMotionTexture;
 
-        if( !mPathTracerFrameGenerationEnabled || !frameInterpolator || !currentColourTexture ||
+        id<MTLTexture> sourceColourTexture = mPathTracerFrameGenSourceTexture ?
+                                                (id<MTLTexture>)mPathTracerFrameGenSourceTexture :
+                                                currentColourTexture;
+        mPathTracerFrameGenPresentedTexture = currentColourTexture;
+
+        if( !mPathTracerFrameGenerationEnabled || !frameInterpolator || !sourceColourTexture ||
             !previousColourTexture || !currentColourCopyTexture || !generatedOutputTexture ||
             !depthTexture || !motionTexture )
         {
@@ -2724,12 +2743,12 @@ namespace Ogre
         mActiveDevice->endAllEncoders();
         id<MTLBlitCommandEncoder> blitEncoder =
             [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
-        const MTLSize copySize = MTLSizeMake( std::min( currentColourTexture.width,
+        const MTLSize copySize = MTLSizeMake( std::min( sourceColourTexture.width,
                                                        currentColourCopyTexture.width ),
-                                             std::min( currentColourTexture.height,
+                                             std::min( sourceColourTexture.height,
                                                        currentColourCopyTexture.height ),
                                              1u );
-        [blitEncoder copyFromTexture:currentColourTexture
+        [blitEncoder copyFromTexture:sourceColourTexture
                          sourceSlice:0
                          sourceLevel:0
                         sourceOrigin:MTLOriginMake( 0u, 0u, 0u )
@@ -2790,6 +2809,101 @@ namespace Ogre
         id<MTLTexture> srcTexture = (id<MTLTexture>)mPathTracerFrameGenOutputTexture;
         if( !mPathTracerFrameGenerationOutputAvailable || !srcTexture || !dstTexture )
             return false;
+
+        id<MTLTexture> currentSceneTexture = (id<MTLTexture>)mPathTracerFrameGenCurrentColourTexture;
+        id<MTLTexture> currentPresentedTexture = (id<MTLTexture>)mPathTracerFrameGenPresentedTexture;
+
+        if( currentSceneTexture && currentPresentedTexture &&
+            currentSceneTexture.width == currentPresentedTexture.width &&
+            currentSceneTexture.height == currentPresentedTexture.height )
+        {
+            if( !mPathTracerFrameGenCompositeLibrary )
+            {
+                String shaderSource;
+                try
+                {
+                    DataStreamPtr stream = ResourceGroupManager::getSingleton().openResource(
+                        "PathTracingFrameGenerationComposite.metal" );
+                    shaderSource = stream->getAsString();
+                }
+                catch( Exception &e )
+                {
+                    LogManager::getSingleton().logMessage(
+                        "MetalFX frame generation composite shader could not be loaded: " +
+                        e.getFullDescription(), LML_CRITICAL );
+                }
+
+                if( !shaderSource.empty() )
+                {
+                    NSError *error = nil;
+                    mPathTracerFrameGenCompositeLibrary = [mActiveDevice->mDevice
+                        newLibraryWithSource:@( shaderSource.c_str() )
+                                      options:nil
+                                        error:&error];
+                    if( !mPathTracerFrameGenCompositeLibrary || error )
+                    {
+                        String errorDesc;
+                        if( error )
+                            errorDesc = error.localizedDescription.UTF8String;
+                        LogManager::getSingleton().logMessage(
+                            "MetalFX frame generation composite shader compile error:\n" + errorDesc,
+                            LML_CRITICAL );
+                        mPathTracerFrameGenCompositeLibrary = 0;
+                    }
+                }
+            }
+
+            if( mPathTracerFrameGenCompositeLibrary && !mPathTracerFrameGenCompositePso )
+            {
+                MTLRenderPipelineDescriptor *pipelineDesc = [[MTLRenderPipelineDescriptor alloc] init];
+                pipelineDesc.vertexFunction =
+                    [mPathTracerFrameGenCompositeLibrary newFunctionWithName:@"framegen_composite_vs"];
+                pipelineDesc.fragmentFunction =
+                    [mPathTracerFrameGenCompositeLibrary newFunctionWithName:@"framegen_composite_ps"];
+                pipelineDesc.colorAttachments[0].pixelFormat = dstTexture.pixelFormat;
+
+                NSError *error = nil;
+                mPathTracerFrameGenCompositePso =
+                    [mActiveDevice->mDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+                if( !mPathTracerFrameGenCompositePso || error )
+                    mPathTracerFrameGenCompositePso = 0;
+            }
+
+            if( !mPathTracerFrameGenCompositeSampler )
+            {
+                MTLSamplerDescriptor *samplerDesc = [[MTLSamplerDescriptor alloc] init];
+                samplerDesc.minFilter = MTLSamplerMinMagFilterNearest;
+                samplerDesc.magFilter = MTLSamplerMinMagFilterNearest;
+                samplerDesc.mipFilter = MTLSamplerMipFilterNotMipmapped;
+                samplerDesc.sAddressMode = MTLSamplerAddressModeClampToEdge;
+                samplerDesc.tAddressMode = MTLSamplerAddressModeClampToEdge;
+                mPathTracerFrameGenCompositeSampler =
+                    [mActiveDevice->mDevice newSamplerStateWithDescriptor:samplerDesc];
+            }
+
+            if( mPathTracerFrameGenCompositePso && mPathTracerFrameGenCompositeSampler )
+            {
+                mActiveDevice->endAllEncoders();
+                MTLRenderPassDescriptor *passDesc = [MTLRenderPassDescriptor renderPassDescriptor];
+                passDesc.colorAttachments[0].texture = dstTexture;
+                passDesc.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+                passDesc.colorAttachments[0].storeAction = MTLStoreActionStore;
+
+                id<MTLRenderCommandEncoder> encoder =
+                    [mActiveDevice->mCurrentCommandBuffer renderCommandEncoderWithDescriptor:passDesc];
+                [encoder setRenderPipelineState:mPathTracerFrameGenCompositePso];
+                [encoder setFragmentTexture:srcTexture atIndex:0];
+                [encoder setFragmentTexture:currentSceneTexture atIndex:1];
+                [encoder setFragmentTexture:currentPresentedTexture atIndex:2];
+                [encoder setFragmentSamplerState:mPathTracerFrameGenCompositeSampler atIndex:0];
+                [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+                [encoder endEncoding];
+
+                mPathTracerFrameGenerationOutputAvailable = false;
+                ++mPathTracerGeneratedFrameCount;
+                return true;
+            }
+        }
 
         mActiveDevice->endAllEncoders();
         id<MTLBlitCommandEncoder> blitEncoder =

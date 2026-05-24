@@ -314,6 +314,9 @@ namespace Ogre
 
         sceneManager->_renderSingleObject( mFsRect, mFsRect, false, false );
 
+        if( mDefinition->mMaterialName == "PathTracing/Resolve" )
+            renderSystem->setPathTracerFrameGenerationSourceTexture( mAnyTargetTexture );
+
         if( mDefinition->mCameraCubemapReorient )
         {
             // Restore orientation

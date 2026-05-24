@@ -5,6 +5,7 @@ compositor_node PathTracerRenderingNode
     texture accumulationTexture target_width target_height PFG_RGBA32_FLOAT depth_pool 0 uav keep_content
     texture radianceTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav
     texture denoisedRadianceTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav keep_content
+    texture pathTracerResolvedTexture target_width target_height PFG_BGRA8_UNORM_SRGB depth_pool 0
     texture pathTracerDepthTexture target_width target_height PFG_R32_FLOAT depth_pool 0 uav
     texture pathTracerMotionTexture target_width target_height PFG_RG16_FLOAT depth_pool 0 uav
     texture pathTracerNormalTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav
@@ -31,6 +32,15 @@ compositor_node PathTracerRenderingNode
         }
     }
 
+    target pathTracerResolvedTexture
+    {
+        pass render_quad
+        {
+            material PathTracing/Resolve
+            input 0 denoisedRadianceTexture
+        }
+    }
+
     target rt_renderwindow
     {
         pass clear
@@ -40,8 +50,8 @@ compositor_node PathTracerRenderingNode
 
         pass render_quad
         {
-            material PathTracing/Resolve
-            input 0 denoisedRadianceTexture
+            material PathTracing/Copy
+            input 0 pathTracerResolvedTexture
         }
 
         pass render_scene

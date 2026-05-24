@@ -9,6 +9,17 @@ fragment_program PathTracingResolve_ps unified
     delegate PathTracingResolve_ps_Metal
 }
 
+fragment_program PathTracingCopy_ps_Metal metal
+{
+    source PathTracingCopy_ps.metal
+    shader_reflection_pair_hint Ogre/Compositor/Quad_vs
+}
+
+fragment_program PathTracingCopy_ps unified
+{
+    delegate PathTracingCopy_ps_Metal
+}
+
 material PathTracing/Resolve
 {
     technique
@@ -32,6 +43,34 @@ material PathTracing/Resolve
             {
                 tex_address_mode clamp
                 filtering bilinear
+            }
+        }
+    }
+}
+
+material PathTracing/Copy
+{
+    technique
+    {
+        pass
+        {
+            depth_check off
+            depth_write off
+            scene_blend one zero
+            cull_hardware none
+
+            vertex_program_ref Ogre/Compositor/Quad_vs
+            {
+            }
+
+            fragment_program_ref PathTracingCopy_ps
+            {
+            }
+
+            texture_unit sceneTexture
+            {
+                tex_address_mode clamp
+                filtering point point none
             }
         }
     }

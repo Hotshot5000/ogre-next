@@ -149,6 +149,11 @@ namespace Ogre
         id     mPathTracerFrameGenCurrentColourTexture;
         id     mPathTracerFrameGenPreviousColourTexture;
         id     mPathTracerFrameGenOutputTexture;
+        id     mPathTracerFrameGenSourceTexture;
+        id     mPathTracerFrameGenPresentedTexture;
+        id     mPathTracerFrameGenCompositeLibrary;
+        id     mPathTracerFrameGenCompositePso;
+        id     mPathTracerFrameGenCompositeSampler;
         id     mPathTracerFrameGenDepthTexture;
         id     mPathTracerFrameGenMotionTexture;
         uint32 mPathTracerFrameGenInputWidth;
@@ -368,6 +373,7 @@ namespace Ogre
         void setPathTracerUpscaleInputResolution( uint32 width, uint32 height ) override;
         void setPathTracerFrameGenerationEnabled( bool enabled ) override;
         bool getPathTracerFrameGenerationEnabled() const override;
+        void setPathTracerFrameGenerationSourceTexture( TextureGpu *texture ) override;
         uint64 getPathTracerGeneratedFrameCount() const override { return mPathTracerGeneratedFrameCount; }
         bool generatePathTracerFrameGenerationOutputFrom( id<MTLTexture> currentColourTexture );
         bool copyPathTracerFrameGenerationOutputTo( id<MTLTexture> dstTexture );
