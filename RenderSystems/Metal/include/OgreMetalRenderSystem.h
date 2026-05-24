@@ -148,12 +148,20 @@ namespace Ogre
         id     mPathTracerFrameInterpolator;
         id     mPathTracerFrameGenCurrentColourTexture;
         id     mPathTracerFrameGenPreviousColourTexture;
+        id     mPathTracerFrameGenOutputTexture;
+        id     mPathTracerFrameGenDepthTexture;
+        id     mPathTracerFrameGenMotionTexture;
         uint32 mPathTracerFrameGenInputWidth;
         uint32 mPathTracerFrameGenInputHeight;
         uint32 mPathTracerFrameGenOutputWidth;
         uint32 mPathTracerFrameGenOutputHeight;
+        Real   mPathTracerFrameGenNearPlane;
+        Real   mPathTracerFrameGenFarPlane;
+        Real   mPathTracerFrameGenFovY;
         bool   mPathTracerFrameGenerationEnabled;
         bool   mPathTracerFrameGenerationHasHistory;
+        bool   mPathTracerFrameGenerationOutputAvailable;
+        bool   mPathTracerFrameGenerationResetPending;
 
         MetalDevice          mDevice;
         dispatch_semaphore_t mMainGpuSyncSemaphore;
@@ -359,6 +367,8 @@ namespace Ogre
         void setPathTracerUpscaleInputResolution( uint32 width, uint32 height ) override;
         void setPathTracerFrameGenerationEnabled( bool enabled ) override;
         bool getPathTracerFrameGenerationEnabled() const override;
+        bool generatePathTracerFrameGenerationOutputFrom( id<MTLTexture> currentColourTexture );
+        bool copyPathTracerFrameGenerationOutputTo( id<MTLTexture> dstTexture );
 
         bool denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
                                       TextureGpu *motionTexture, TextureGpu *normalTexture,

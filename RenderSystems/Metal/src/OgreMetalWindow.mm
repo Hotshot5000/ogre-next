@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "OgreDepthBuffer.h"
 #include "OgreMetalDevice.h"
 #include "OgreMetalMappings.h"
+#include "OgreMetalRenderSystem.h"
 #include "OgreMetalTextureGpuManager.h"
 #include "OgreMetalTextureGpuWindow.h"
 #include "OgrePixelFormatGpuUtils.h"
@@ -236,14 +237,37 @@ namespace Ogre
                 [commandBuffer waitUntilScheduled];
                 [mCurrentDrawable present];
             }
-            else if( presentationTime < 0 )
-            {
-                [mDevice->mCurrentCommandBuffer presentDrawable:mCurrentDrawable];
-            }
             else
             {
-                [mDevice->mCurrentCommandBuffer presentDrawable:mCurrentDrawable
-                                                         atTime:presentationTime];
+                MetalRenderSystem *renderSystem = mDevice->mRenderSystem;
+                const bool tryPresentGeneratedFrame =
+                    renderSystem && renderSystem->getPathTracerFrameGenerationEnabled();
+
+                bool presentGeneratedFrame = false;
+                if( tryPresentGeneratedFrame )
+                    presentGeneratedFrame = renderSystem->generatePathTracerFrameGenerationOutputFrom(
+                        mCurrentDrawable.texture );
+
+                if( presentationTime < 0 )
+                    [mDevice->mCurrentCommandBuffer presentDrawable:mCurrentDrawable];
+                else
+                    [mDevice->mCurrentCommandBuffer presentDrawable:mCurrentDrawable
+                                                             atTime:presentationTime];
+
+                if( presentGeneratedFrame )
+                {
+                    mDevice->commitAndNextCommandBuffer();
+                    id<CAMetalDrawable> generatedDrawable = [mMetalLayer nextDrawable];
+                    if( generatedDrawable &&
+                        renderSystem->copyPathTracerFrameGenerationOutputTo( generatedDrawable.texture ) )
+                    {
+                        if( presentationTime < 0 )
+                            [mDevice->mCurrentCommandBuffer presentDrawable:generatedDrawable];
+                        else
+                            [mDevice->mCurrentCommandBuffer presentDrawable:generatedDrawable
+                                                                     atTime:presentationTime + ( 1.0 / 120.0 )];
+                    }
+                }
             }
         }
 
@@ -302,6 +326,10 @@ namespace Ogre
             {
                 if( mMetalView.layerSizeDidUpdate )
                     checkLayerSizeChanges();
+
+                MetalRenderSystem *renderSystem = mDevice->mRenderSystem;
+                if( renderSystem && renderSystem->getPathTracerFrameGenerationEnabled() )
+                    mMetalLayer.framebufferOnly = NO;
 
                 // do not retain current drawable beyond the frame.
                 // There should be no strong references to this object outside of this view class
