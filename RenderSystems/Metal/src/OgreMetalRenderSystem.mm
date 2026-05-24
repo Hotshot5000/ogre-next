@@ -59,11 +59,33 @@ Copyright (c) 2000-2016 Torus Knot Software Ltd
 #import <simd/simd.h>
 #import <Foundation/NSEnumerator.h>
 #import <Metal/Metal.h>
+#if __has_include(<MetalFX/MetalFX.h>)
+#    import <MetalFX/MetalFX.h>
+#    define OGRE_METAL_HAS_METALFX 1
+#else
+#    define OGRE_METAL_HAS_METALFX 0
+#endif
 
 #include <sstream>
 
 namespace Ogre
 {
+#if OGRE_METAL_HAS_METALFX
+    namespace
+    {
+        static matrix_float4x4 toMetalFxMatrix( const Matrix4 &m )
+        {
+            matrix_float4x4 ret;
+            for( size_t row = 0u; row < 4u; ++row )
+            {
+                for( size_t col = 0u; col < 4u; ++col )
+                    ret.columns[col][row] = static_cast<float>( m[row][col] );
+            }
+            return ret;
+        }
+    }
+#endif
+
     //-------------------------------------------------------------------------
     MetalRenderSystem::MetalRenderSystem() :
         RenderSystem(),
@@ -90,6 +112,9 @@ namespace Ogre
         mAccelerationStructureVertexBuffers( 0 ),
         mAccelerationStructureInstanceBuffer( 0 ),
         mIntersectionFunctionTable( 0 ),
+        mPathTracerDenoiserScaler( 0 ),
+        mPathTracerDenoiserWidth( 0u ),
+        mPathTracerDenoiserHeight( 0u ),
         mDevice( this ),
         mMainGpuSyncSemaphore( 0 ),
         mMainSemaphoreAlreadyWaited( false ),
@@ -104,7 +129,11 @@ namespace Ogre
         initConfigOptions();
     }
     //-------------------------------------------------------------------------
-    MetalRenderSystem::~MetalRenderSystem() { shutdown(); }
+    MetalRenderSystem::~MetalRenderSystem()
+    {
+        mPathTracerDenoiserScaler = 0;
+        shutdown();
+    }
     //-------------------------------------------------------------------------
     void MetalRenderSystem::shutdown()
     {
@@ -2574,6 +2603,127 @@ namespace Ogre
                 }
             } while( updatePassIterationRenderState() );
         }
+    }
+    //-------------------------------------------------------------------------
+    bool MetalRenderSystem::denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
+                                                     TextureGpu *motionTexture, TextureGpu *normalTexture,
+                                                     TextureGpu *diffuseAlbedoTexture,
+                                                     TextureGpu *specularAlbedoTexture,
+                                                     TextureGpu *roughnessTexture,
+                                                     TextureGpu *specularHitDistanceTexture,
+                                                     TextureGpu *outputTexture, const Matrix4 &viewToClip,
+                                                     const Matrix4 &worldToView, bool resetHistory )
+    {
+        if( !mActiveDevice || !colourTexture || !outputTexture )
+            return false;
+
+        MetalTextureGpu *colourForCopy = static_cast<MetalTextureGpu *>( colourTexture );
+        MetalTextureGpu *outputForCopy = static_cast<MetalTextureGpu *>( outputTexture );
+        auto copyColourToOutput = [&]() -> bool {
+            id<MTLTexture> srcTexture = colourForCopy->getFinalTextureName();
+            id<MTLTexture> dstTexture = outputForCopy->getFinalTextureName();
+            if( !srcTexture || !dstTexture )
+                return false;
+
+            const MTLSize copySize = MTLSizeMake( std::min( srcTexture.width, dstTexture.width ),
+                                                 std::min( srcTexture.height, dstTexture.height ), 1u );
+            mActiveDevice->endAllEncoders();
+            id<MTLBlitCommandEncoder> blitEncoder =
+                [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
+            [blitEncoder copyFromTexture:srcTexture
+                             sourceSlice:0
+                             sourceLevel:0
+                            sourceOrigin:MTLOriginMake( 0u, 0u, 0u )
+                              sourceSize:copySize
+                               toTexture:dstTexture
+                        destinationSlice:0
+                        destinationLevel:0
+                       destinationOrigin:MTLOriginMake( 0u, 0u, 0u )];
+            [blitEncoder endEncoding];
+            return true;
+        };
+
+#if OGRE_METAL_HAS_METALFX
+        if( !depthTexture || !motionTexture || !normalTexture || !diffuseAlbedoTexture ||
+            !specularAlbedoTexture || !roughnessTexture || !specularHitDistanceTexture )
+        {
+            return copyColourToOutput();
+        }
+
+        if( @available( macOS 14.0, iOS 17.0, tvOS 17.0, * ) )
+        {
+            MetalTextureGpu *colour = static_cast<MetalTextureGpu *>( colourTexture );
+            MetalTextureGpu *depth = static_cast<MetalTextureGpu *>( depthTexture );
+            MetalTextureGpu *motion = static_cast<MetalTextureGpu *>( motionTexture );
+            MetalTextureGpu *normal = static_cast<MetalTextureGpu *>( normalTexture );
+            MetalTextureGpu *diffuseAlbedo = static_cast<MetalTextureGpu *>( diffuseAlbedoTexture );
+            MetalTextureGpu *specularAlbedo = static_cast<MetalTextureGpu *>( specularAlbedoTexture );
+            MetalTextureGpu *roughness = static_cast<MetalTextureGpu *>( roughnessTexture );
+            MetalTextureGpu *specularHitDistance =
+                static_cast<MetalTextureGpu *>( specularHitDistanceTexture );
+            MetalTextureGpu *output = static_cast<MetalTextureGpu *>( outputTexture );
+
+            const uint32 width = std::max<uint32>( colourTexture->getWidth(), 1u );
+            const uint32 height = std::max<uint32>( colourTexture->getHeight(), 1u );
+            bool resetDenoiserHistory = resetHistory;
+            if( !mPathTracerDenoiserScaler || mPathTracerDenoiserWidth != width ||
+                mPathTracerDenoiserHeight != height )
+            {
+                resetDenoiserHistory = true;
+                MTLFXTemporalDenoisedScalerDescriptor *desc =
+                    [[MTLFXTemporalDenoisedScalerDescriptor alloc] init];
+                desc.inputWidth = width;
+                desc.inputHeight = height;
+                desc.outputWidth = width;
+                desc.outputHeight = height;
+                desc.colorTextureFormat = MetalMappings::get( colourTexture->getPixelFormat(), mActiveDevice );
+                desc.outputTextureFormat = MetalMappings::get( outputTexture->getPixelFormat(), mActiveDevice );
+                desc.depthTextureFormat = MetalMappings::get( depthTexture->getPixelFormat(), mActiveDevice );
+                desc.motionTextureFormat = MetalMappings::get( motionTexture->getPixelFormat(), mActiveDevice );
+                desc.normalTextureFormat = MetalMappings::get( normalTexture->getPixelFormat(), mActiveDevice );
+                desc.diffuseAlbedoTextureFormat =
+                    MetalMappings::get( diffuseAlbedoTexture->getPixelFormat(), mActiveDevice );
+                desc.specularAlbedoTextureFormat =
+                    MetalMappings::get( specularAlbedoTexture->getPixelFormat(), mActiveDevice );
+                desc.roughnessTextureFormat =
+                    MetalMappings::get( roughnessTexture->getPixelFormat(), mActiveDevice );
+                desc.specularHitDistanceTextureFormat =
+                    MetalMappings::get( specularHitDistanceTexture->getPixelFormat(), mActiveDevice );
+                desc.autoExposureEnabled = true;
+                desc.specularHitDistanceTextureEnabled = true;
+                desc.requiresSynchronousInitialization = false;
+
+                mPathTracerDenoiserScaler = [desc newTemporalDenoisedScalerWithDevice:mActiveDevice->mDevice];
+                mPathTracerDenoiserWidth = width;
+                mPathTracerDenoiserHeight = height;
+            }
+
+            id<MTLFXTemporalDenoisedScaler> scaler =
+                (id<MTLFXTemporalDenoisedScaler>)mPathTracerDenoiserScaler;
+            if( !scaler )
+                return copyColourToOutput();
+
+            mActiveDevice->endAllEncoders();
+            scaler.colorTexture = colour->getFinalTextureName();
+            scaler.depthTexture = depth->getFinalTextureName();
+            scaler.motionTexture = motion->getFinalTextureName();
+            scaler.normalTexture = normal->getFinalTextureName();
+            scaler.diffuseAlbedoTexture = diffuseAlbedo->getFinalTextureName();
+            scaler.specularAlbedoTexture = specularAlbedo->getFinalTextureName();
+            scaler.roughnessTexture = roughness->getFinalTextureName();
+            scaler.specularHitDistanceTexture = specularHitDistance->getFinalTextureName();
+            scaler.outputTexture = output->getFinalTextureName();
+            scaler.worldToViewMatrix = toMetalFxMatrix( worldToView );
+            scaler.viewToClipMatrix = toMetalFxMatrix( viewToClip );
+            scaler.motionVectorScaleX = 1.0f;
+            scaler.motionVectorScaleY = 1.0f;
+            scaler.depthReversed = true;
+            scaler.shouldResetHistory = resetDenoiserHistory;
+            [scaler encodeToCommandBuffer:mActiveDevice->mCurrentCommandBuffer];
+            return true;
+        }
+#endif
+        return copyColourToOutput();
     }
     //-------------------------------------------------------------------------
     void MetalRenderSystem::bindGpuProgramParameters( GpuProgramType gptype,

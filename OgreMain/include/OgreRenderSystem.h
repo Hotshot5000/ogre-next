@@ -868,6 +868,18 @@ namespace Ogre
 
         virtual void executeResourceTransition( const ResourceTransitionArray &rstCollection ) {}
 
+        virtual bool denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
+                                              TextureGpu *motionTexture, TextureGpu *normalTexture,
+                                              TextureGpu *diffuseAlbedoTexture,
+                                              TextureGpu *specularAlbedoTexture,
+                                              TextureGpu *roughnessTexture,
+                                              TextureGpu *specularHitDistanceTexture,
+                                              TextureGpu *outputTexture, const Matrix4 &viewToClip,
+                                              const Matrix4 &worldToView, bool resetHistory )
+        {
+            return false;
+        }
+
         virtual void _hlmsPipelineStateObjectCreated( HlmsPso *newPso ) {}
         virtual void _hlmsPipelineStateObjectDestroyed( HlmsPso *pso ) {}
         virtual void _hlmsMacroblockCreated( HlmsMacroblock *newBlock ) {}

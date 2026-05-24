@@ -130,6 +130,10 @@ namespace Ogre
         
         id<MTLIntersectionFunctionTable> mIntersectionFunctionTable;
 
+        id     mPathTracerDenoiserScaler;
+        uint32 mPathTracerDenoiserWidth;
+        uint32 mPathTracerDenoiserHeight;
+
         MetalDevice          mDevice;
         dispatch_semaphore_t mMainGpuSyncSemaphore;
         bool                 mMainSemaphoreAlreadyWaited;
@@ -329,6 +333,15 @@ namespace Ogre
         void flushCommands() override;
 
         MetalDevice *getActiveDevice() { return mActiveDevice; }
+
+        bool denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
+                                      TextureGpu *motionTexture, TextureGpu *normalTexture,
+                                      TextureGpu *diffuseAlbedoTexture,
+                                      TextureGpu *specularAlbedoTexture,
+                                      TextureGpu *roughnessTexture,
+                                      TextureGpu *specularHitDistanceTexture,
+                                      TextureGpu *outputTexture, const Matrix4 &viewToClip,
+                                      const Matrix4 &worldToView, bool resetHistory ) override;
 
         MetalProgramFactory *getMetalProgramFactory() { return mMetalProgramFactory; }
 

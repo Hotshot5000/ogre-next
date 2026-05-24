@@ -12,7 +12,7 @@ using namespace raytracing;
 #define RAY_MASK_SECONDARY     GEOMETRY_MASK_GEOMETRY
 #define RAY_MASK_SHADOW        GEOMETRY_MASK_GEOMETRY
 
-constexpr constant uint kTextureArraySlots = 8u;
+constexpr constant uint kTextureArraySlots = 6u;
 constexpr constant uint kReflectionTextureSlots = 4u;
 constexpr constant uint kMaxSupportedLights = 16u;
 constexpr constant uint kMaxTransparentShadowSteps = 8u;
@@ -44,6 +44,8 @@ struct PathTracerFrame
     float4x4 invProjectionMat;
     float4x4 invViewMat;
     float4x4 invViewProjMat;
+    float4x4 viewProjMat;
+    float4x4 prevViewProjMat;
     float4 cameraCorner0;
     float4 cameraCorner1;
     float4 cameraCorner2;
@@ -570,17 +572,24 @@ kernel void main_metal
 (
     texture2d<float, access::read_write> accumulationTexture [[texture(UAV_SLOT_START)]],
     texture2d<float, access::write> radianceTexture [[texture(UAV_SLOT_START + 1)]],
+    texture2d<float, access::write> depthTexture [[texture(UAV_SLOT_START + 2)]],
+    texture2d<float, access::write> motionTexture [[texture(UAV_SLOT_START + 3)]],
+    texture2d<float, access::write> normalTexture [[texture(UAV_SLOT_START + 4)]],
+    texture2d<float, access::write> diffuseAlbedoTexture [[texture(UAV_SLOT_START + 5)]],
+    texture2d<float, access::write> specularAlbedoTexture [[texture(UAV_SLOT_START + 6)]],
+    texture2d<float, access::write> roughnessTextureOut [[texture(UAV_SLOT_START + 7)]],
+    texture2d<float, access::write> specularHitDistanceTexture [[texture(UAV_SLOT_START + 8)]],
 
     constant PathTracerFrame *frame [[buffer(0)]],
     constant PathTracerLight *lights [[buffer(1)]],
     device const PathTracerMaterial *materials [[buffer(TEX_SLOT_START + 0)]],
     device const PathTracerGeometry *geometryRecords [[buffer(TEX_SLOT_START + 1)]],
     device const PathTracerTriangle *triangleRecords [[buffer(TEX_SLOT_START + 2)]],
-    array<texture2d_array<float>, kTextureArraySlots> diffuseTextures [[texture(10)]],
-    array<texture2d_array<float>, kTextureArraySlots> roughnessTextures [[texture(18)]],
-    array<texture2d_array<float>, kTextureArraySlots> normalTextures [[texture(26)]],
-    array<texture2d_array<float>, kTextureArraySlots> emissiveTextures [[texture(34)]],
-    array<texturecube<float>, kReflectionTextureSlots> reflectionTextures [[texture(42)]],
+    array<texture2d_array<float>, kTextureArraySlots> diffuseTextures [[texture(17)]],
+    array<texture2d_array<float>, kTextureArraySlots> roughnessTextures [[texture(23)]],
+    array<texture2d_array<float>, kTextureArraySlots> normalTextures [[texture(29)]],
+    array<texture2d_array<float>, kTextureArraySlots> emissiveTextures [[texture(35)]],
+    array<texturecube<float>, kReflectionTextureSlots> reflectionTextures [[texture(41)]],
     sampler diffuseSampler [[sampler(10)]],
 
     instance_acceleration_structure accelerationStructure,
@@ -596,6 +605,14 @@ kernel void main_metal
     const uint2 pixelPos = uint2( gl_GlobalInvocationID.xy );
     const uint samplesPerPixel = max( frame->samplesPerPixel, 1u );
     float3 radianceSum = float3( 0.0f );
+    float guideDepth = 1.0f;
+    float2 guideMotion = float2( 0.0f );
+    float3 guideNormal = float3( 0.0f, 1.0f, 0.0f );
+    float3 guideDiffuseAlbedo = float3( 0.0f );
+    float3 guideSpecularAlbedo = float3( 0.0f );
+    float guideRoughness = 1.0f;
+    float guideSpecularHitDistance = 0.0f;
+    bool wroteGuide = false;
 
     for( uint sampleIdx = 0u; sampleIdx < samplesPerPixel; ++sampleIdx )
     {
@@ -676,6 +693,22 @@ kernel void main_metal
                                                                             accelerationStructure,
                                                                             materials, geometryRecords );
             const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
+            if( bounce == 0u && sampleIdx == 0u )
+            {
+                const float4 currentClip = frame->viewProjMat * float4( hitPosition, 1.0f );
+                const float4 previousClip = frame->prevViewProjMat * float4( hitPosition, 1.0f );
+                const float2 currentNdc = currentClip.xy / max( currentClip.w, kMinFiniteDenominator );
+                const float2 previousNdc = previousClip.xy / max( previousClip.w, kMinFiniteDenominator );
+                guideDepth = saturate( currentClip.z / max( currentClip.w, kMinFiniteDenominator ) );
+                guideMotion = ( previousNdc - currentNdc ) * float2( 0.5f * frame->width,
+                                                                     -0.5f * frame->height );
+                guideNormal = normalize( shadingNormal );
+                guideDiffuseAlbedo = saturate( baseColor );
+                guideSpecularAlbedo = saturate( materialFresnel );
+                guideRoughness = roughness;
+                guideSpecularHitDistance = hit.distance;
+                wroteGuide = true;
+            }
             if( is_transparent_surface( material ) )
             {
                 const float transmission = saturate( 1.0f - opacity );
@@ -800,5 +833,20 @@ kernel void main_metal
 
     const float sampleCount = max( accumulated.w, 1.0f );
     const float invSampleCount = 1.0f / sampleCount;
-    radianceTexture.write( float4( accumulated.xyz * invSampleCount, sampleCount ), pixelPos );
+    const float4 resolvedRadiance = float4( accumulated.xyz * invSampleCount, sampleCount );
+    radianceTexture.write( resolvedRadiance, pixelPos );
+
+    if( !wroteGuide )
+    {
+        guideDepth = 1.0f;
+        guideMotion = float2( 0.0f );
+        guideSpecularHitDistance = 0.0f;
+    }
+    depthTexture.write( float4( guideDepth, 0.0f, 0.0f, 0.0f ), pixelPos );
+    motionTexture.write( float4( guideMotion, 0.0f, 0.0f ), pixelPos );
+    normalTexture.write( float4( guideNormal, 1.0f ), pixelPos );
+    diffuseAlbedoTexture.write( float4( guideDiffuseAlbedo, 1.0f ), pixelPos );
+    specularAlbedoTexture.write( float4( guideSpecularAlbedo, 1.0f ), pixelPos );
+    roughnessTextureOut.write( float4( guideRoughness, 0.0f, 0.0f, 0.0f ), pixelPos );
+    specularHitDistanceTexture.write( float4( guideSpecularHitDistance, 0.0f, 0.0f, 0.0f ), pixelPos );
 }

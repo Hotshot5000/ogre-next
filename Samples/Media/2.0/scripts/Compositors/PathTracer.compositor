@@ -4,6 +4,14 @@ compositor_node PathTracerRenderingNode
 
     texture accumulationTexture target_width target_height PFG_RGBA32_FLOAT depth_pool 0 uav keep_content
     texture radianceTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav
+    texture denoisedRadianceTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav keep_content
+    texture pathTracerDepthTexture target_width target_height PFG_R32_FLOAT depth_pool 0 uav
+    texture pathTracerMotionTexture target_width target_height PFG_RG16_FLOAT depth_pool 0 uav
+    texture pathTracerNormalTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav
+    texture pathTracerDiffuseAlbedoTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav
+    texture pathTracerSpecularAlbedoTexture target_width target_height PFG_RGBA16_FLOAT depth_pool 0 uav
+    texture pathTracerRoughnessTexture target_width target_height PFG_R16_FLOAT depth_pool 0 uav
+    texture pathTracerSpecularHitDistanceTexture target_width target_height PFG_R16_FLOAT depth_pool 0 uav
 
     target
     {
@@ -13,6 +21,13 @@ compositor_node PathTracerRenderingNode
 
             uav 0 accumulationTexture read write
             uav 1 radianceTexture write
+            uav 2 pathTracerDepthTexture write
+            uav 3 pathTracerMotionTexture write
+            uav 4 pathTracerNormalTexture write
+            uav 5 pathTracerDiffuseAlbedoTexture write
+            uav 6 pathTracerSpecularAlbedoTexture write
+            uav 7 pathTracerRoughnessTexture write
+            uav 8 pathTracerSpecularHitDistanceTexture write
         }
     }
 
@@ -26,7 +41,7 @@ compositor_node PathTracerRenderingNode
         pass render_quad
         {
             material PathTracing/Resolve
-            input 0 radianceTexture
+            input 0 denoisedRadianceTexture
         }
 
         pass render_scene

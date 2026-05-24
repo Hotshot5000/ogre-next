@@ -293,6 +293,21 @@ namespace Ogre
         HlmsCompute *hlmsCompute = static_cast<HlmsCompute *>( mComputeJob->getCreator() );
         hlmsCompute->dispatch( mComputeJob, sceneManager, mCamera );
 
+        if( mComputeJob->getName() == IdString( "PathTracing/TraceJob" ) && mCamera )
+        {
+            renderSystem->denoisePathTracerOutput(
+                mParentNode->getDefinedTexture( "radianceTexture" ),
+                mParentNode->getDefinedTexture( "pathTracerDepthTexture" ),
+                mParentNode->getDefinedTexture( "pathTracerMotionTexture" ),
+                mParentNode->getDefinedTexture( "pathTracerNormalTexture" ),
+                mParentNode->getDefinedTexture( "pathTracerDiffuseAlbedoTexture" ),
+                mParentNode->getDefinedTexture( "pathTracerSpecularAlbedoTexture" ),
+                mParentNode->getDefinedTexture( "pathTracerRoughnessTexture" ),
+                mParentNode->getDefinedTexture( "pathTracerSpecularHitDistanceTexture" ),
+                mParentNode->getDefinedTexture( "denoisedRadianceTexture" ),
+                mCamera->getProjectionMatrixWithRSDepth(), mCamera->getViewMatrix( true ), false );
+        }
+
         notifyPassPosExecuteListeners();
 
         profilingEnd();

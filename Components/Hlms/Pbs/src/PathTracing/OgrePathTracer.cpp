@@ -64,6 +64,8 @@ namespace Ogre
             float invProjectionMat[16];
             float invViewMat[16];
             float invViewProjMat[16];
+            float viewProjMat[16];
+            float prevViewProjMat[16];
             float cameraCorner[16];
             float cameraPos[4];
             float cameraRight[4];
@@ -103,9 +105,9 @@ namespace Ogre
             float reflectionTextureIdx_slice_hasTexture[4];
         };
 
-        const size_t MaxPathTracerMaterialTextures = 8u;
+        const size_t MaxPathTracerMaterialTextures = 6u;
         const size_t MaxPathTracerReflectionTextures = 4u;
-        const size_t PathTracerDiffuseTextureSlotStart = 10u;
+        const size_t PathTracerDiffuseTextureSlotStart = 17u;
         const size_t PathTracerRoughnessTextureSlotStart =
             PathTracerDiffuseTextureSlotStart + MaxPathTracerMaterialTextures;
         const size_t PathTracerNormalTextureSlotStart =
@@ -323,6 +325,7 @@ namespace Ogre
             return;
         }
         mTraceJob->setNumSamplerUnits( 16u );
+        mTraceJob->setSamplerblock( 10u, HlmsSamplerblock() );
         mTraceJob->setNumThreadGroupsBasedOn( HlmsComputeJob::ThreadGroupsBasedOnNothing, 0u, 1u,
                                               1u, 1u );
 
@@ -477,6 +480,8 @@ namespace Ogre
         copyMatrix( frame->invProjectionMat, invProjMat );
         copyMatrix( frame->invViewMat, invViewMat );
         copyMatrix( frame->invViewProjMat, invViewProj );
+        copyMatrix( frame->viewProjMat, viewProj );
+        copyMatrix( frame->prevViewProjMat, mPreviousViewProjectionMatrix );
 
         const Vector3 cameraPos = mCamera->getDerivedPosition();
         const Vector3 *corners = mCamera->getWorldSpaceCorners();
@@ -1025,9 +1030,8 @@ namespace Ogre
                     DescriptorSetTexture2::TextureSlot textureSlot(
                         DescriptorSetTexture2::TextureSlot::makeEmpty() );
                     textureSlot.texture = i < textures.size() ? textures[i] : fallbackMaterialTexture;
-                    const bool setSampler = arrayIdx == 0u && i == 0u;
                     mTraceJob->setTexture( static_cast<uint8>( textureSlotStarts[arrayIdx] + i ),
-                                           textureSlot, 0, setSampler );
+                                           textureSlot, 0, false );
                 }
             }
         }
@@ -1076,6 +1080,8 @@ namespace Ogre
                                  mScene.needsTlasRebuild() || mScene.needsMaterialUpload();
         if( resetNeeded )
             resetAccumulation();
+        mPreviousViewProjectionMatrix = resetNeeded ? currentProjectionMatrix * currentViewMatrix :
+                                                      mLastProjectionMatrix * mLastViewMatrix;
         mLastViewMatrix = currentViewMatrix;
         mLastProjectionMatrix = currentProjectionMatrix;
         mHasLastCameraState = true;
