@@ -48,6 +48,13 @@ namespace Ogre
             DefaultBounces = 4u
         };
 
+        enum SamplingLimits
+        {
+            MinSamplesPerPixel = 1u,
+            MaxSamplesPerPixel = 16u,
+            DefaultSamplesPerPixel = 1u
+        };
+
     private:
         TextureGpu          *mRenderWindow;
         RenderSystem        *mRenderSystem;
@@ -77,6 +84,7 @@ namespace Ogre
         Matrix4              mLastProjectionMatrix;
         uint32               mSampleCount;
         uint32               mMaxBounces;
+        uint32               mSamplesPerPixel;
         bool                 mHasLastCameraState;
         bool                 mEnabled;
         bool                 mInitialized;
@@ -108,6 +116,9 @@ namespace Ogre
 
         void setMaxBounces( uint32 maxBounces );
         uint32 getMaxBounces() const { return mMaxBounces; }
+
+        void setSamplesPerPixel( uint32 samplesPerPixel );
+        uint32 getSamplesPerPixel() const { return mSamplesPerPixel; }
 
         void update( SceneManager *sceneManager );
         void render();

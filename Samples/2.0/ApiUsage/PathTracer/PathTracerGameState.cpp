@@ -276,7 +276,13 @@ namespace Demo
                                                                 Ogre::PathTracer::DefaultBounces );
         outText += " / ";
         outText += Ogre::StringConverter::toString( Ogre::PathTracer::MaxBounces );
+        outText += "\nPath tracer samples per pixel: ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getSamplesPerPixel() :
+                                                                Ogre::PathTracer::DefaultSamplesPerPixel );
+        outText += " / ";
+        outText += Ogre::StringConverter::toString( Ogre::PathTracer::MaxSamplesPerPixel );
         outText += "\nPress [ or ] to decrease/increase path bounces.";
+        outText += "\nPress , or . to decrease/increase samples per pixel.";
         outText += "\nPress F2 to toggle animation. ";
         outText += mAnimateObjects ? "[On]" : "[Off]";
         outText += "\nPress F3 to show/hide animated objects. ";
@@ -368,6 +374,18 @@ namespace Demo
             const Ogre::uint32 currentBounces = mPathTracer->getMaxBounces();
             if( currentBounces < Ogre::PathTracer::MaxBounces )
                 mPathTracer->setMaxBounces( currentBounces + 1u );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_COMMA )
+        {
+            const Ogre::uint32 currentSamplesPerPixel = mPathTracer->getSamplesPerPixel();
+            if( currentSamplesPerPixel > Ogre::PathTracer::MinSamplesPerPixel )
+                mPathTracer->setSamplesPerPixel( currentSamplesPerPixel - 1u );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_PERIOD )
+        {
+            const Ogre::uint32 currentSamplesPerPixel = mPathTracer->getSamplesPerPixel();
+            if( currentSamplesPerPixel < Ogre::PathTracer::MaxSamplesPerPixel )
+                mPathTracer->setSamplesPerPixel( currentSamplesPerPixel + 1u );
         }
         else if( arg.keysym.scancode == SDL_SCANCODE_KP_PLUS )
         {

@@ -60,7 +60,7 @@ struct PathTracerFrame
     uint sampleIndex;
     uint maxBounces;
     uint numLights;
-    uint flags;
+    uint samplesPerPixel;
 };
 
 struct PathTracerLight
@@ -594,100 +594,167 @@ kernel void main_metal
         return;
 
     const uint2 pixelPos = uint2( gl_GlobalInvocationID.xy );
-    uint seed = wang_hash( pixelPos.x + pixelPos.y * 1664525u + frame->sampleIndex * 1013904223u );
-    const float jitterX = rand01( seed );
-    const float jitterY = rand01( seed );
-    const float2 jitter = float2( jitterX, jitterY );
-    const float2 uv = ( float2( pixelPos ) + jitter ) / float2( outputSize );
+    const uint samplesPerPixel = max( frame->samplesPerPixel, 1u );
+    float3 radianceSum = float3( 0.0f );
 
-    float3 rayDirection = mix( mix( frame->cameraCorner0.xyz, frame->cameraCorner2.xyz, uv.x ),
-                               mix( frame->cameraCorner1.xyz, frame->cameraCorner3.xyz, uv.x ),
-                               uv.y );
-    rayDirection = normalize( rayDirection );
-
-    ray pathRay;
-    pathRay.origin = frame->cameraPos.xyz;
-    pathRay.direction = rayDirection;
-    pathRay.min_distance = kRayMinDistance;
-    pathRay.max_distance = INFINITY;
-
-    intersector<triangle_data, instancing> pathIntersector;
-    float3 throughput = float3( 1.0f );
-    float3 radiance = float3( 0.0f );
-    const uint bounceCount = max( frame->maxBounces, 1u );
-
-    for( uint bounce = 0u; bounce < bounceCount; ++bounce )
+    for( uint sampleIdx = 0u; sampleIdx < samplesPerPixel; ++sampleIdx )
     {
-        typename intersector<triangle_data, instancing>::result_type hit =
-            pathIntersector.intersect( pathRay, accelerationStructure, RAY_MASK_PRIMARY );
+        uint seed = wang_hash( pixelPos.x + pixelPos.y * 1664525u +
+                               ( frame->sampleIndex + sampleIdx ) * 1013904223u );
+        const float jitterX = rand01( seed );
+        const float jitterY = rand01( seed );
+        const float2 jitter = float2( jitterX, jitterY );
+        const float2 uv = ( float2( pixelPos ) + jitter ) / float2( outputSize );
 
-        if( hit.type != intersection_type::triangle )
+        float3 rayDirection = mix( mix( frame->cameraCorner0.xyz, frame->cameraCorner2.xyz, uv.x ),
+                                   mix( frame->cameraCorner1.xyz, frame->cameraCorner3.xyz, uv.x ),
+                                   uv.y );
+        rayDirection = normalize( rayDirection );
+
+        ray pathRay;
+        pathRay.origin = frame->cameraPos.xyz;
+        pathRay.direction = rayDirection;
+        pathRay.min_distance = kRayMinDistance;
+        pathRay.max_distance = INFINITY;
+
+        intersector<triangle_data, instancing> pathIntersector;
+        float3 throughput = float3( 1.0f );
+        float3 radiance = float3( 0.0f );
+        const uint bounceCount = max( frame->maxBounces, 1u );
+
+        for( uint bounce = 0u; bounce < bounceCount; ++bounce )
         {
-            const float skyScale = bounce == 0u ? 1.0f : 0.08f;
-            radiance += throughput * sample_sky( pathRay.direction, *frame ) * skyScale;
-            break;
-        }
+            typename intersector<triangle_data, instancing>::result_type hit =
+                pathIntersector.intersect( pathRay, accelerationStructure, RAY_MASK_PRIMARY );
 
-        const PathTracerTriangle triangle = load_triangle( hit.instance_id, hit.primitive_id,
-                                                           geometryRecords, triangleRecords );
-        const float3 rawNormal = load_triangle_normal( triangle, -pathRay.direction );
-        const bool frontFacing = dot( pathRay.direction, rawNormal ) < 0.0f;
-        const float3 geometricNormal = frontFacing ? rawNormal : -rawNormal;
-        const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
-        const SurfaceMaterial material = load_surface_material( hit.instance_id, materials, geometryRecords );
-
-        const float opacity = material.transparency;
-        const float3 textureColour = sample_diffuse_texture( material, triangle,
-                                                             hit.triangle_barycentric_coord,
-                                                             diffuseTextures, diffuseSampler );
-        const float roughnessTexture = sample_roughness_texture( material, triangle,
-                                                                 hit.triangle_barycentric_coord,
-                                                                 roughnessTextures, diffuseSampler );
-        const float mappedRoughness = material.hasRoughnessTexture ?
-            max( material.roughness, roughnessTexture ) : material.roughness;
-        const float roughness = clamp( mappedRoughness, 0.35f, 1.0f );
-        const float3 shadingNormal = apply_normal_texture( material, triangle,
-                                                           hit.triangle_barycentric_coord,
-                                                           geometricNormal, normalTextures,
-                                                           diffuseSampler );
-        const float3 baseColor = material.baseColour * textureColour * opacity;
-        const float3 emissiveTexture = sample_emissive_texture( material, triangle,
-                                                                hit.triangle_barycentric_coord,
-                                                                emissiveTextures, diffuseSampler );
-        radiance += throughput * material.emissive * emissiveTexture;
-
-        const float3 viewDirection = -pathRay.direction;
-        const float3 bounceNormal = shadingNormal;
-        const float nDotV = saturate( dot( shadingNormal, viewDirection ) );
-        const float bounceNDotV = saturate( dot( bounceNormal, viewDirection ) );
-        const float3 materialFresnel = material.fresnel * material.specularWeight;
-        const float3 fresnelColor = fresnel_schlick( materialFresnel, nDotV );
-        const DirectLighting directLighting = evaluate_direct_lighting( hitPosition, shadingNormal,
-                                                                        geometricNormal,
-                                                                        viewDirection, materialFresnel,
-                                                                        roughness, hit.instance_id,
-                                                                        lights, frame->numLights,
-                                                                        accelerationStructure,
-                                                                        materials, geometryRecords );
-        const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
-        if( is_transparent_surface( material ) )
-        {
-            const float transmission = saturate( 1.0f - opacity );
-            radiance += throughput * directLighting.specular;
-            if( opacity > 0.001f )
+            if( hit.type != intersection_type::triangle )
             {
-                const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * kTransparentSkyDiffuseScale;
-                radiance += throughput * ( baseColor * kInvPi ) *
-                            ( directLighting.diffuse + skyDiffuse ) * opacity * kTransparentDiffuseScale;
+                const float skyScale = bounce == 0u ? 1.0f : 0.08f;
+                radiance += throughput * sample_sky( pathRay.direction, *frame ) * skyScale;
+                break;
             }
 
-            const float reflectProbability = clamp( fresnel_schlick_luminance( materialFresnel, bounceNDotV ) *
-                                                    ( 1.0f - roughness * 0.65f ),
-                                                    kTransparentReflectProbabilityMin,
-                                                    kTransparentReflectProbabilityMax );
+            const PathTracerTriangle triangle = load_triangle( hit.instance_id, hit.primitive_id,
+                                                               geometryRecords, triangleRecords );
+            const float3 rawNormal = load_triangle_normal( triangle, -pathRay.direction );
+            const bool frontFacing = dot( pathRay.direction, rawNormal ) < 0.0f;
+            const float3 geometricNormal = frontFacing ? rawNormal : -rawNormal;
+            const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
+            const SurfaceMaterial material = load_surface_material( hit.instance_id, materials, geometryRecords );
+
+            const float opacity = material.transparency;
+            const float3 textureColour = sample_diffuse_texture( material, triangle,
+                                                                 hit.triangle_barycentric_coord,
+                                                                 diffuseTextures, diffuseSampler );
+            const float roughnessTexture = sample_roughness_texture( material, triangle,
+                                                                     hit.triangle_barycentric_coord,
+                                                                     roughnessTextures, diffuseSampler );
+            const float mappedRoughness = material.hasRoughnessTexture ?
+                max( material.roughness, roughnessTexture ) : material.roughness;
+            const float roughness = clamp( mappedRoughness, 0.35f, 1.0f );
+            const float3 shadingNormal = apply_normal_texture( material, triangle,
+                                                               hit.triangle_barycentric_coord,
+                                                               geometricNormal, normalTextures,
+                                                               diffuseSampler );
+            const float3 baseColor = material.baseColour * textureColour * opacity;
+            const float3 emissiveTexture = sample_emissive_texture( material, triangle,
+                                                                    hit.triangle_barycentric_coord,
+                                                                    emissiveTextures, diffuseSampler );
+            radiance += throughput * material.emissive * emissiveTexture;
+
+            const float3 viewDirection = -pathRay.direction;
+            const float3 bounceNormal = shadingNormal;
+            const float nDotV = saturate( dot( shadingNormal, viewDirection ) );
+            const float bounceNDotV = saturate( dot( bounceNormal, viewDirection ) );
+            const float3 materialFresnel = material.fresnel * material.specularWeight;
+            const float3 fresnelColor = fresnel_schlick( materialFresnel, nDotV );
+            const DirectLighting directLighting = evaluate_direct_lighting( hitPosition, shadingNormal,
+                                                                            geometricNormal,
+                                                                            viewDirection, materialFresnel,
+                                                                            roughness, hit.instance_id,
+                                                                            lights, frame->numLights,
+                                                                            accelerationStructure,
+                                                                            materials, geometryRecords );
+            const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
+            if( is_transparent_surface( material ) )
+            {
+                const float transmission = saturate( 1.0f - opacity );
+                radiance += throughput * directLighting.specular;
+                if( opacity > 0.001f )
+                {
+                    const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * kTransparentSkyDiffuseScale;
+                    radiance += throughput * ( baseColor * kInvPi ) *
+                                ( directLighting.diffuse + skyDiffuse ) * opacity * kTransparentDiffuseScale;
+                }
+
+                const float reflectProbability = clamp( fresnel_schlick_luminance( materialFresnel, bounceNDotV ) *
+                                                        ( 1.0f - roughness * 0.65f ),
+                                                        kTransparentReflectProbabilityMin,
+                                                        kTransparentReflectProbabilityMax );
+                float3 nextDirection;
+                float3 nextWeight;
+                if( rand01( seed ) < reflectProbability )
+                {
+                    const float3 reflectedDirection = reflect( pathRay.direction, bounceNormal );
+                    const float roughSampleX = rand01( seed );
+                    const float roughSampleY = rand01( seed );
+                    const float3 roughDirection = tangent_to_world(
+                        cosine_sample_hemisphere( float2( roughSampleX, roughSampleY ) ), bounceNormal );
+                    nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
+                    nextWeight = fresnelColor / reflectProbability;
+                }
+                else
+                {
+                    const float eta = frontFacing ? ( 1.0f / 1.45f ) : 1.45f;
+                    float3 refractedDirection = refract( pathRay.direction, geometricNormal, eta );
+                    if( dot( refractedDirection, refractedDirection ) <= kMinFiniteDenominator )
+                    {
+                        nextDirection = reflect( pathRay.direction, geometricNormal );
+                        nextWeight = fresnelColor;
+                    }
+                    else
+                    {
+                        nextDirection = normalize( refractedDirection );
+                        const float3 tint = mix( float3( 1.0f ), saturate( material.baseColour ),
+                                                 0.06f * max( transmission, 0.25f ) );
+                        nextWeight = tint * max( transmission, 0.05f ) * 0.25f /
+                                     max( 1.0f - reflectProbability, 0.05f );
+                    }
+                }
+
+                throughput *= min( nextWeight, float3( 1.0f ) );
+                pathRay.origin = offset_ray( hitPosition,
+                                             dot( nextDirection, geometricNormal ) < 0.0f ? -geometricNormal :
+                                                                                            geometricNormal );
+                pathRay.direction = nextDirection;
+                pathRay.min_distance = kRayMinDistance;
+                pathRay.max_distance = INFINITY;
+                continue;
+            }
+
+            const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * kOpaqueSkyDiffuseScale;
+            radiance += throughput * ( baseColor * kInvPi ) * ( directLighting.diffuse + skyDiffuse );
+            radiance += throughput * directLighting.specular * opacity;
+            if( material.hasReflectionTexture )
+            {
+                const float3 reflectionDirection = reflect( pathRay.direction, shadingNormal );
+                const float reflectionWeight = saturate( specularLuminance ) *
+                                               ( 1.0f - roughness * 0.95f ) * kReflectionTextureScale;
+                radiance += throughput * sample_reflection_texture( material, reflectionDirection,
+                                                                    reflectionTextures, diffuseSampler ) *
+                            fresnelColor * reflectionWeight * opacity;
+            }
+
+            const float diffuseLuminance = dot( baseColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
+            const float diffuseBsdfWeight = diffuseLuminance * ( 1.0f - specularLuminance );
+            const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * kReflectionTextureScale;
+            const float bsdfWeightSum = max( diffuseBsdfWeight + specularBsdfWeight, kEpsilon );
+            const float specularProbability = clamp( specularBsdfWeight / bsdfWeightSum,
+                                                      kSpecularProbabilityMin,
+                                                      kSpecularProbabilityMax );
             float3 nextDirection;
-            float3 nextWeight;
-            if( rand01( seed ) < reflectProbability )
+            float3 bounceWeight;
+            if( rand01( seed ) < specularProbability )
             {
                 const float3 reflectedDirection = reflect( pathRay.direction, bounceNormal );
                 const float roughSampleX = rand01( seed );
@@ -695,99 +762,40 @@ kernel void main_metal
                 const float3 roughDirection = tangent_to_world(
                     cosine_sample_hemisphere( float2( roughSampleX, roughSampleY ) ), bounceNormal );
                 nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
-                nextWeight = fresnelColor / reflectProbability;
+                bounceWeight = fresnelColor / max( specularProbability, kEpsilon );
             }
             else
             {
-                const float eta = frontFacing ? ( 1.0f / 1.45f ) : 1.45f;
-                float3 refractedDirection = refract( pathRay.direction, geometricNormal, eta );
-                if( dot( refractedDirection, refractedDirection ) <= kMinFiniteDenominator )
-                {
-                    nextDirection = reflect( pathRay.direction, geometricNormal );
-                    nextWeight = fresnelColor;
-                }
-                else
-                {
-                    nextDirection = normalize( refractedDirection );
-                    const float3 tint = mix( float3( 1.0f ), saturate( material.baseColour ),
-                                             0.06f * max( transmission, 0.25f ) );
-                    nextWeight = tint * max( transmission, 0.05f ) * 0.25f /
-                                 max( 1.0f - reflectProbability, 0.05f );
-                }
+                const float diffuseSampleX = rand01( seed );
+                const float diffuseSampleY = rand01( seed );
+                const float3 localDirection = cosine_sample_hemisphere( float2( diffuseSampleX, diffuseSampleY ) );
+                nextDirection = tangent_to_world( localDirection, bounceNormal );
+                bounceWeight = baseColor * ( 1.0f - specularLuminance ) * kDiffuseBounceScale /
+                               max( 1.0f - specularProbability, kEpsilon );
             }
 
-            throughput *= min( nextWeight, float3( 1.0f ) );
-            pathRay.origin = offset_ray( hitPosition,
-                                         dot( nextDirection, geometricNormal ) < 0.0f ? -geometricNormal :
-                                                                                        geometricNormal );
+            throughput *= min( bounceWeight, float3( 1.0f ) );
+            pathRay.origin = offset_ray( hitPosition, geometricNormal );
             pathRay.direction = nextDirection;
             pathRay.min_distance = kRayMinDistance;
             pathRay.max_distance = INFINITY;
-            continue;
+
+            if( bounce >= 2u )
+            {
+                const float continueProbability = clamp( max( throughput.x, max( throughput.y, throughput.z ) ), 0.05f, 0.95f );
+                if( rand01( seed ) > continueProbability )
+                    break;
+                throughput /= continueProbability;
+            }
         }
 
-        const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * kOpaqueSkyDiffuseScale;
-        radiance += throughput * ( baseColor * kInvPi ) * ( directLighting.diffuse + skyDiffuse );
-        radiance += throughput * directLighting.specular * opacity;
-        if( material.hasReflectionTexture )
-        {
-            const float3 reflectionDirection = reflect( pathRay.direction, shadingNormal );
-            const float reflectionWeight = saturate( specularLuminance ) *
-                                           ( 1.0f - roughness * 0.95f ) * kReflectionTextureScale;
-            radiance += throughput * sample_reflection_texture( material, reflectionDirection,
-                                                                reflectionTextures, diffuseSampler ) *
-                        fresnelColor * reflectionWeight * opacity;
-        }
-
-        const float diffuseLuminance = dot( baseColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
-        const float diffuseBsdfWeight = diffuseLuminance * ( 1.0f - specularLuminance );
-        const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * kReflectionTextureScale;
-        const float bsdfWeightSum = max( diffuseBsdfWeight + specularBsdfWeight, kEpsilon );
-        const float specularProbability = clamp( specularBsdfWeight / bsdfWeightSum,
-                                                  kSpecularProbabilityMin,
-                                                  kSpecularProbabilityMax );
-        float3 nextDirection;
-        float3 bounceWeight;
-        if( rand01( seed ) < specularProbability )
-        {
-            const float3 reflectedDirection = reflect( pathRay.direction, bounceNormal );
-            const float roughSampleX = rand01( seed );
-            const float roughSampleY = rand01( seed );
-            const float3 roughDirection = tangent_to_world(
-                cosine_sample_hemisphere( float2( roughSampleX, roughSampleY ) ), bounceNormal );
-            nextDirection = normalize( mix( reflectedDirection, roughDirection, roughness * roughness ) );
-            bounceWeight = fresnelColor / max( specularProbability, kEpsilon );
-        }
-        else
-        {
-            const float diffuseSampleX = rand01( seed );
-            const float diffuseSampleY = rand01( seed );
-            const float3 localDirection = cosine_sample_hemisphere( float2( diffuseSampleX, diffuseSampleY ) );
-            nextDirection = tangent_to_world( localDirection, bounceNormal );
-            bounceWeight = baseColor * ( 1.0f - specularLuminance ) * kDiffuseBounceScale /
-                           max( 1.0f - specularProbability, kEpsilon );
-        }
-
-        throughput *= min( bounceWeight, float3( 1.0f ) );
-        pathRay.origin = offset_ray( hitPosition, geometricNormal );
-        pathRay.direction = nextDirection;
-        pathRay.min_distance = kRayMinDistance;
-        pathRay.max_distance = INFINITY;
-
-        if( bounce >= 2u )
-        {
-            const float continueProbability = clamp( max( throughput.x, max( throughput.y, throughput.z ) ), 0.05f, 0.95f );
-            if( rand01( seed ) > continueProbability )
-                break;
-            throughput /= continueProbability;
-        }
+        radiance = min( max( radiance, float3( 0.0f ) ), float3( kMaxRadiance ) );
+        radianceSum += radiance;
     }
-
-    radiance = min( max( radiance, float3( 0.0f ) ), float3( kMaxRadiance ) );
 
     const bool resetAccumulation = frame->sampleIndex == 0u;
     const float4 previous = resetAccumulation ? float4( 0.0f ) : accumulationTexture.read( pixelPos );
-    const float4 accumulated = previous + float4( radiance, 1.0f );
+    const float4 accumulated = previous + float4( radianceSum, float( samplesPerPixel ) );
     accumulationTexture.write( accumulated, pixelPos );
 
     const float sampleCount = max( accumulated.w, 1.0f );

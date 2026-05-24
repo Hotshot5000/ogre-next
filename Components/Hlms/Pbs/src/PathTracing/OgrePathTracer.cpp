@@ -77,7 +77,7 @@ namespace Ogre
             uint32 sampleIndex;
             uint32 maxBounces;
             uint32 numLights;
-            uint32 flags;
+            uint32 samplesPerPixel;
         };
 
         struct PathTracerLightGpu
@@ -287,6 +287,7 @@ namespace Ogre
         mTriangleBuffer( 0 ),
         mSampleCount( 0u ),
         mMaxBounces( DefaultBounces ),
+        mSamplesPerPixel( DefaultSamplesPerPixel ),
         mHasLastCameraState( false ),
         mEnabled( false ),
         mInitialized( false )
@@ -425,6 +426,18 @@ namespace Ogre
         resetAccumulation();
     }
     //-------------------------------------------------------------------------
+    void PathTracer::setSamplesPerPixel( uint32 samplesPerPixel )
+    {
+        samplesPerPixel = std::max( static_cast<uint32>( MinSamplesPerPixel ),
+                                    std::min( samplesPerPixel,
+                                              static_cast<uint32>( MaxSamplesPerPixel ) ) );
+        if( mSamplesPerPixel == samplesPerPixel )
+            return;
+
+        mSamplesPerPixel = samplesPerPixel;
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::updateAccelerationStructure()
     {
         if( !mMeshCache )
@@ -515,7 +528,7 @@ namespace Ogre
         frame->sampleIndex = mSampleCount;
         frame->maxBounces = mMaxBounces;
         frame->numLights = numLights;
-        frame->flags = 0u;
+        frame->samplesPerPixel = mSamplesPerPixel;
 
         mFrameConstBuffer->unmap( UO_KEEP_PERSISTENT );
     }
@@ -1084,6 +1097,6 @@ namespace Ogre
         if( !mEnabled )
             return;
 
-        ++mSampleCount;
+        mSampleCount += mSamplesPerPixel;
     }
 }
