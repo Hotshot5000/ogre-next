@@ -64,6 +64,8 @@ struct PathTracerFrame
     uint maxBounces;
     uint numLights;
     uint samplesPerPixel;
+    uint rngFrameIndex;
+    uint3 padding0;
 };
 
 struct PathTracerLight
@@ -653,7 +655,8 @@ kernel void main_metal
     for( uint sampleIdx = 0u; sampleIdx < samplesPerPixel; ++sampleIdx )
     {
         uint seed = wang_hash( pixelPos.x + pixelPos.y * 1664525u +
-                               ( frame->sampleIndex + sampleIdx ) * 1013904223u );
+                               ( frame->sampleIndex + sampleIdx ) * 1013904223u +
+                               frame->rngFrameIndex * 374761393u );
         const float jitterX = rand01( seed );
         const float jitterY = rand01( seed );
         const float2 jitter = float2( jitterX, jitterY );

@@ -84,6 +84,7 @@ namespace Ogre
         Matrix4              mLastProjectionMatrix;
         Matrix4              mPreviousViewProjectionMatrix;
         uint32               mAccumulatedSamples;
+        uint32               mRngFrameIndex;
         uint32               mMaxBounces;
         uint32               mSamplesPerPixel;
         Real                 mUpscaleInputScale;

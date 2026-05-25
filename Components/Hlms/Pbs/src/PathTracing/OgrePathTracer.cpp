@@ -80,6 +80,10 @@ namespace Ogre
             uint32 maxBounces;
             uint32 numLights;
             uint32 samplesPerPixel;
+            uint32 rngFrameIndex;
+            uint32 padding0;
+            uint32 padding1;
+            uint32 padding2;
         };
 
         struct PathTracerLightGpu
@@ -305,6 +309,7 @@ namespace Ogre
         mGeometryBuffer( 0 ),
         mTriangleBuffer( 0 ),
         mAccumulatedSamples( 0u ),
+        mRngFrameIndex( 0u ),
         mMaxBounces( DefaultBounces ),
         mSamplesPerPixel( DefaultSamplesPerPixel ),
         mUpscaleInputScale( 1.0f ),
@@ -587,6 +592,10 @@ namespace Ogre
         frame->maxBounces = mMaxBounces;
         frame->numLights = numLights;
         frame->samplesPerPixel = mSamplesPerPixel;
+        frame->rngFrameIndex = mRngFrameIndex;
+        frame->padding0 = 0u;
+        frame->padding1 = 0u;
+        frame->padding2 = 0u;
 
         mFrameConstBuffer->unmap( UO_KEEP_PERSISTENT );
     }
@@ -1180,6 +1189,7 @@ namespace Ogre
         if( mRenderSystem )
             mRenderSystem->setPathTracerUpscaleInputResolution( mInternalWidth, mInternalHeight );
 
+        ++mRngFrameIndex;
         mAccumulatedSamples += mSamplesPerPixel;
     }
 }
