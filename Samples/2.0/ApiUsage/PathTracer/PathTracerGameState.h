@@ -35,7 +35,7 @@ namespace Demo
         Ogre::HlmsPbsDatablock *mMaterials[4];
 
         Ogre::SceneNode *mSceneNode[16];
-        Ogre::SceneNode *mLightNodes[3];
+        Ogre::SceneNode *mLightNodes[4];
 
         bool mAnimateObjects;
 

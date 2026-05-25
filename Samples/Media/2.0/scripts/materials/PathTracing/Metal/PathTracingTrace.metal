@@ -73,6 +73,8 @@ struct PathTracerLight
     float4 attenuation;
     float4 spotDirection;
     float4 spotParams;
+    float4 areaAxisX;
+    float4 areaAxisY;
 };
 
 struct PathTracerMaterial
@@ -487,6 +489,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                                                 uint currentInstanceId,
                                                 constant PathTracerLight *lights,
                                                 uint numLights,
+                                                thread uint &seed,
                                                 instance_acceleration_structure accelerationStructure,
                                                 device const PathTracerMaterial *materials,
                                                 device const PathTracerGeometry *geometryRecords )
@@ -509,9 +512,20 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
         {
             lightDirection = normalize( light.position.xyz );
         }
-        else if( lightType == 1u || lightType == 2u )
+        else if( lightType == 1u || lightType == 2u || lightType == 4u || lightType == 5u )
         {
-            const float3 toLight = light.position.xyz - surfacePosition;
+            float3 lightPosition = light.position.xyz;
+            float areaPdfW = 1.0f;
+
+            if( lightType == 4u || lightType == 5u )
+            {
+                const float2 xi = float2( rand01( seed ), rand01( seed ) );
+                const float3 axisX = light.areaAxisX.xyz;
+                const float3 axisY = light.areaAxisY.xyz;
+                lightPosition += axisX * ( xi.x * 2.0f - 1.0f ) + axisY * ( xi.y * 2.0f - 1.0f );
+            }
+
+            const float3 toLight = lightPosition - surfacePosition;
             const float lightDistance = length( toLight );
             if( lightDistance <= kRayMinDistance || lightDistance > light.attenuation.x )
                 continue;
@@ -528,6 +542,22 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
 
                 const float spotAtten = saturate( ( spotCosAngle - light.spotParams.y ) * light.spotParams.x );
                 attenuation *= pow( spotAtten, light.spotParams.z );
+            }
+            else if( lightType == 4u || lightType == 5u )
+            {
+                const float3 lightNormal = normalize( cross( light.areaAxisX.xyz, light.areaAxisY.xyz ) );
+                const float cosLight = dot( lightNormal, -lightDirection );
+                if( light.areaAxisY.w < 0.5f && cosLight <= 0.0f )
+                    continue;
+
+                const float absCosLight = abs( cosLight );
+                if( absCosLight <= 1e-4f )
+                    continue;
+
+                const float rectArea = max( light.areaAxisX.w, 1e-4f );
+                areaPdfW = ( lightDistance * lightDistance ) / max( absCosLight * rectArea,
+                                                                     kMinFiniteDenominator );
+                attenuation /= max( areaPdfW, kMinFiniteDenominator );
             }
         }
         else
@@ -689,7 +719,7 @@ kernel void main_metal
                                                                             geometricNormal,
                                                                             viewDirection, materialFresnel,
                                                                             roughness, hit.instance_id,
-                                                                            lights, frame->numLights,
+                                                                            lights, frame->numLights, seed,
                                                                             accelerationStructure,
                                                                             materials, geometryRecords );
             const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );

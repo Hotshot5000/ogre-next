@@ -90,6 +90,8 @@ namespace Ogre
             float attenuation[4];
             float spotDirection[4];
             float spotParams[4];
+            float areaAxisX[4];
+            float areaAxisY[4];
         };
 
         struct PathTracerMaterialGpu
@@ -266,6 +268,21 @@ namespace Ogre
             dst->spotParams[1] = static_cast<float>( cosOuter );
             dst->spotParams[2] = static_cast<float>( light->getSpotlightFalloff() );
             dst->spotParams[3] = static_cast<float>( light->getType() );
+
+            const Vector2 rectHalfSize = light->getDerivedRectSize() * 0.5f;
+            const Quaternion lightOrientation = light->getParentNode()->_getDerivedOrientation();
+            const Vector3 areaAxisX = lightOrientation.xAxis() * rectHalfSize.x;
+            const Vector3 areaAxisY = lightOrientation.yAxis() * rectHalfSize.y;
+            const Real area = std::max<Real>( areaAxisX.crossProduct( areaAxisY ).length() * 4.0f,
+                                              1e-6f );
+            dst->areaAxisX[0] = static_cast<float>( areaAxisX.x );
+            dst->areaAxisX[1] = static_cast<float>( areaAxisX.y );
+            dst->areaAxisX[2] = static_cast<float>( areaAxisX.z );
+            dst->areaAxisX[3] = static_cast<float>( area );
+            dst->areaAxisY[0] = static_cast<float>( areaAxisY.x );
+            dst->areaAxisY[1] = static_cast<float>( areaAxisY.y );
+            dst->areaAxisY[2] = static_cast<float>( areaAxisY.z );
+            dst->areaAxisY[3] = light->getDoubleSided() ? 1.0f : 0.0f;
         }
     }
 
@@ -600,7 +617,9 @@ namespace Ogre
                     if( light->isVisible() &&
                         ( light->getType() == Light::LT_DIRECTIONAL ||
                           light->getType() == Light::LT_POINT ||
-                          light->getType() == Light::LT_SPOTLIGHT ) )
+                          light->getType() == Light::LT_SPOTLIGHT ||
+                          light->getType() == Light::LT_AREA_APPROX ||
+                          light->getType() == Light::LT_AREA_LTC ) )
                     {
                         addLight( lightData + numCollectedLights, light );
                         ++numCollectedLights;
