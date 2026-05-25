@@ -327,10 +327,15 @@ static float3 sample_reflection_texture( const SurfaceMaterial material,
                                                                     normalize( direction ) ).xyz;
 }
 
+static float luminance( float3 color )
+{
+    return dot( color, float3( 0.2126f, 0.7152f, 0.0722f ) );
+}
+
 static float fresnel_schlick_luminance( float3 f0, float cosTheta )
 {
     const float3 f = f0 + ( 1.0f - f0 ) * pow( saturate( 1.0f - cosTheta ), 5.0f );
-    return saturate( dot( f, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
+    return saturate( luminance( f ) );
 }
 
 static bool is_transparent_surface( const SurfaceMaterial material )
@@ -731,7 +736,7 @@ kernel void main_metal
                                                                             lights, frame->numLights, seed,
                                                                             accelerationStructure,
                                                                             materials, geometryRecords );
-            const float specularLuminance = dot( fresnelColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
+            const float specularLuminance = luminance( fresnelColor );
             if( bounce == 0u && sampleIdx == 0u )
             {
                 const float4 currentClip = frame->viewProjMat * float4( hitPosition, 1.0f );
@@ -795,6 +800,16 @@ kernel void main_metal
                 }
 
                 throughput *= min( nextWeight, float3( 1.0f ) );
+                if( bounce >= 2u )
+                {
+                    const float directLuminance = luminance( directLighting.diffuse + directLighting.specular );
+                    const float continueProbability = clamp( max( luminance( throughput ), directLuminance * 0.25f ),
+                                                             0.05f, 0.95f );
+                    if( rand01( seed ) > continueProbability )
+                        break;
+                    throughput /= continueProbability;
+                }
+
                 pathRay.origin = offset_ray( hitPosition,
                                              dot( nextDirection, geometricNormal ) < 0.0f ? -geometricNormal :
                                                                                             geometricNormal );
@@ -817,7 +832,7 @@ kernel void main_metal
                             fresnelColor * reflectionWeight * opacity;
             }
 
-            const float diffuseLuminance = dot( baseColor, float3( 0.2126f, 0.7152f, 0.0722f ) );
+            const float diffuseLuminance = luminance( baseColor );
             const float diffuseBsdfWeight = diffuseLuminance * ( 1.0f - specularLuminance );
             const float specularBsdfWeight = specularLuminance * ( 1.0f - roughness ) * kReflectionTextureScale;
             const float bsdfWeightSum = max( diffuseBsdfWeight + specularBsdfWeight, kEpsilon );
@@ -854,7 +869,9 @@ kernel void main_metal
 
             if( bounce >= 2u )
             {
-                const float continueProbability = clamp( max( throughput.x, max( throughput.y, throughput.z ) ), 0.05f, 0.95f );
+                const float directLuminance = luminance( directLighting.diffuse + directLighting.specular );
+                const float continueProbability = clamp( max( luminance( throughput ), directLuminance * 0.25f ),
+                                                         0.05f, 0.95f );
                 if( rand01( seed ) > continueProbability )
                     break;
                 throughput /= continueProbability;
