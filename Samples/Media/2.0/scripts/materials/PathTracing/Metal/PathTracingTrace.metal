@@ -38,6 +38,7 @@ constexpr constant float kTransparentDiffuseScale = 0.25f;
 constexpr constant float kOpaqueSkyDiffuseScale = 0.055f;
 constexpr constant float kReflectionTextureScale = 0.20f;
 constexpr constant float kDiffuseBounceScale = 0.88f;
+constexpr constant uint kDirectAreaLightSamples = 4u;
 
 struct PathTracerFrame
 {
@@ -503,96 +504,101 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
     {
         constant PathTracerLight &light = lights[lightIdx];
         const uint lightType = (uint)( light.spotParams.w + 0.5f );
+        const bool isAreaLight = lightType == 4u || lightType == 5u;
+        const uint lightSampleCount = isAreaLight ? kDirectAreaLightSamples : 1u;
+        const float invLightSampleCount = 1.0f / float( lightSampleCount );
 
-        float3 lightDirection = float3( 0.0f, 1.0f, 0.0f );
-        float maxDistance = INFINITY;
-        float attenuation = 1.0f;
-
-        if( lightType == 0u )
+        for( uint lightSampleIdx = 0u; lightSampleIdx < lightSampleCount; ++lightSampleIdx )
         {
-            lightDirection = normalize( light.position.xyz );
-        }
-        else if( lightType == 1u || lightType == 2u || lightType == 4u || lightType == 5u )
-        {
-            float3 lightPosition = light.position.xyz;
-            float areaPdfW = 1.0f;
+            float3 lightDirection = float3( 0.0f, 1.0f, 0.0f );
+            float maxDistance = INFINITY;
+            float attenuation = 1.0f;
 
-            if( lightType == 4u || lightType == 5u )
+            if( lightType == 0u )
             {
-                const float2 xi = float2( rand01( seed ), rand01( seed ) );
-                const float3 axisX = light.areaAxisX.xyz;
-                const float3 axisY = light.areaAxisY.xyz;
-                lightPosition += axisX * ( xi.x * 2.0f - 1.0f ) + axisY * ( xi.y * 2.0f - 1.0f );
+                lightDirection = normalize( light.position.xyz );
+            }
+            else if( lightType == 1u || lightType == 2u || isAreaLight )
+            {
+                float3 lightPosition = light.position.xyz;
+
+                if( isAreaLight )
+                {
+                    const float2 xi = float2( rand01( seed ), rand01( seed ) );
+                    const float3 axisX = light.areaAxisX.xyz;
+                    const float3 axisY = light.areaAxisY.xyz;
+                    lightPosition += axisX * ( xi.x * 2.0f - 1.0f ) + axisY * ( xi.y * 2.0f - 1.0f );
+                }
+
+                const float3 toLight = lightPosition - surfacePosition;
+                const float lightDistance = length( toLight );
+                if( lightDistance <= kRayMinDistance || lightDistance > light.attenuation.x )
+                    continue;
+
+                lightDirection = toLight / lightDistance;
+                maxDistance = max( lightDistance - kRayMinDistance, 0.0f );
+                attenuation = 1.0f / ( 0.5f + ( light.attenuation.y + light.attenuation.z * lightDistance ) * lightDistance );
+
+                if( lightType == 2u )
+                {
+                    const float spotCosAngle = dot( -lightDirection, normalize( light.spotDirection.xyz ) );
+                    if( spotCosAngle < light.spotParams.y )
+                        continue;
+
+                    const float spotAtten = saturate( ( spotCosAngle - light.spotParams.y ) * light.spotParams.x );
+                    attenuation *= pow( spotAtten, light.spotParams.z );
+                }
+                else if( isAreaLight )
+                {
+                    const float3 lightNormal = normalize( cross( light.areaAxisX.xyz, light.areaAxisY.xyz ) );
+                    const float cosLight = dot( lightNormal, -lightDirection );
+                    if( light.areaAxisY.w < 0.5f && cosLight <= 0.0f )
+                        continue;
+
+                    const float absCosLight = abs( cosLight );
+                    if( absCosLight <= 1e-4f )
+                        continue;
+
+                    const float rectArea = max( light.areaAxisX.w, 1e-4f );
+                    const float areaPdfW = ( lightDistance * lightDistance ) /
+                                           max( absCosLight * rectArea, kMinFiniteDenominator );
+                    attenuation /= max( areaPdfW, kMinFiniteDenominator );
+                }
+            }
+            else
+            {
+                continue;
             }
 
-            const float3 toLight = lightPosition - surfacePosition;
-            const float lightDistance = length( toLight );
-            if( lightDistance <= kRayMinDistance || lightDistance > light.attenuation.x )
+            const float visibility = evaluate_light_visibility( surfacePosition, shadowNormal,
+                                                                lightDirection, maxDistance,
+                                                                currentInstanceId, accelerationStructure,
+                                                                materials, geometryRecords );
+            const float geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
+            if( geometricNDotL <= 0.0f )
                 continue;
 
-            lightDirection = toLight / lightDistance;
-            maxDistance = max( lightDistance - kRayMinDistance, 0.0f );
-            attenuation = 1.0f / ( 0.5f + ( light.attenuation.y + light.attenuation.z * lightDistance ) * lightDistance );
+            // Avoid normal-map/tangent discontinuities completely removing a light on surfaces
+            // that geometrically face it. Reflections and path bounces still use surfaceNormal.
+            const float shadingNDotL = saturate( dot( surfaceNormal, lightDirection ) );
+            const float nDotL = max( shadingNDotL, geometricNDotL * 0.5f );
 
-            if( lightType == 2u )
-            {
-                const float spotCosAngle = dot( -lightDirection, normalize( light.spotDirection.xyz ) );
-                if( spotCosAngle < light.spotParams.y )
-                    continue;
+            const float lightScale = attenuation * visibility * invLightSampleCount;
+            const float3 halfVector = normalize( lightDirection + viewDirection );
+            const float geometricNDotV = saturate( dot( shadowNormal, viewDirection ) );
+            const float nDotV = max( saturate( dot( surfaceNormal, viewDirection ) ),
+                                     geometricNDotV * 0.5f );
+            const float nDotH = saturate( dot( surfaceNormal, halfVector ) );
+            const float vDotH = saturate( dot( viewDirection, halfVector ) );
+            const float3 fresnel = fresnel_schlick( fresnelColor, vDotH );
+            const float diffuseEnergy = 1.0f - saturate( dot( fresnel, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
+            result.diffuse += light.diffuse.xyz * lightScale * nDotL * diffuseEnergy * kDirectDiffuseScale;
 
-                const float spotAtten = saturate( ( spotCosAngle - light.spotParams.y ) * light.spotParams.x );
-                attenuation *= pow( spotAtten, light.spotParams.z );
-            }
-            else if( lightType == 4u || lightType == 5u )
-            {
-                const float3 lightNormal = normalize( cross( light.areaAxisX.xyz, light.areaAxisY.xyz ) );
-                const float cosLight = dot( lightNormal, -lightDirection );
-                if( light.areaAxisY.w < 0.5f && cosLight <= 0.0f )
-                    continue;
-
-                const float absCosLight = abs( cosLight );
-                if( absCosLight <= 1e-4f )
-                    continue;
-
-                const float rectArea = max( light.areaAxisX.w, 1e-4f );
-                areaPdfW = ( lightDistance * lightDistance ) / max( absCosLight * rectArea,
-                                                                     kMinFiniteDenominator );
-                attenuation /= max( areaPdfW, kMinFiniteDenominator );
-            }
+            const float specularTerm = min( ggx_distribution( nDotH, roughness ) *
+                                            smith_ggx_visibility( nDotV, nDotL, roughness ) * nDotL,
+                                            kMaxSpecularTerm );
+            result.specular += light.specular.xyz * lightScale * specularTerm * fresnel * kDirectSpecularScale;
         }
-        else
-        {
-            continue;
-        }
-
-        const float visibility = evaluate_light_visibility( surfacePosition, shadowNormal, lightDirection,
-                                                            maxDistance, currentInstanceId,
-                                                            accelerationStructure, materials,
-                                                            geometryRecords );
-        const float geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
-        if( geometricNDotL <= 0.0f )
-            continue;
-
-        // Avoid normal-map/tangent discontinuities completely removing a light on surfaces
-        // that geometrically face it. Reflections and path bounces still use surfaceNormal.
-        const float shadingNDotL = saturate( dot( surfaceNormal, lightDirection ) );
-        const float nDotL = max( shadingNDotL, geometricNDotL * 0.5f );
-
-        const float lightScale = attenuation * visibility;
-        const float3 halfVector = normalize( lightDirection + viewDirection );
-        const float geometricNDotV = saturate( dot( shadowNormal, viewDirection ) );
-        const float nDotV = max( saturate( dot( surfaceNormal, viewDirection ) ),
-                                 geometricNDotV * 0.5f );
-        const float nDotH = saturate( dot( surfaceNormal, halfVector ) );
-        const float vDotH = saturate( dot( viewDirection, halfVector ) );
-        const float3 fresnel = fresnel_schlick( fresnelColor, vDotH );
-        const float diffuseEnergy = 1.0f - saturate( dot( fresnel, float3( 0.2126f, 0.7152f, 0.0722f ) ) );
-        result.diffuse += light.diffuse.xyz * lightScale * nDotL * diffuseEnergy * kDirectDiffuseScale;
-
-        const float specularTerm = min( ggx_distribution( nDotH, roughness ) *
-                                        smith_ggx_visibility( nDotV, nDotL, roughness ) * nDotL,
-                                        kMaxSpecularTerm );
-        result.specular += light.specular.xyz * lightScale * specularTerm * fresnel * kDirectSpecularScale;
     }
 
     return result;
