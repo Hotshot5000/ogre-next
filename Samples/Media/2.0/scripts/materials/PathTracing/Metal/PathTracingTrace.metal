@@ -33,9 +33,7 @@ constexpr constant float kSpecularProbabilityMin = 0.005f;
 constexpr constant float kSpecularProbabilityMax = 0.08f;
 constexpr constant float kDirectDiffuseScale = 1.15f;
 constexpr constant float kDirectSpecularScale = 1.05f;
-constexpr constant float kTransparentSkyDiffuseScale = 0.045f;
 constexpr constant float kTransparentDiffuseScale = 0.25f;
-constexpr constant float kOpaqueSkyDiffuseScale = 0.11f;
 constexpr constant float kReflectionTextureScale = 0.20f;
 constexpr constant float kDiffuseBounceScale = 0.88f;
 constexpr constant uint kDirectAreaLightSamples = 4u;
@@ -60,6 +58,9 @@ struct PathTracerFrame
     float2 projectionParams;
     float width;
     float height;
+    float opaqueSkyDiffuseScale;
+    float transparentSkyDiffuseScale;
+    float2 paddingFloat0;
     uint sampleIndex;
     uint maxBounces;
     uint numLights;
@@ -759,7 +760,7 @@ kernel void main_metal
                 radiance += throughput * directLighting.specular;
                 if( opacity > 0.001f )
                 {
-                    const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * kTransparentSkyDiffuseScale;
+                    const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * frame->transparentSkyDiffuseScale;
                     radiance += throughput * ( baseColor * kInvPi ) *
                                 ( directLighting.diffuse + skyDiffuse ) * opacity * kTransparentDiffuseScale;
                 }
@@ -819,7 +820,7 @@ kernel void main_metal
                 continue;
             }
 
-            const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * kOpaqueSkyDiffuseScale;
+            const float3 skyDiffuse = sample_sky( shadingNormal, *frame ) * frame->opaqueSkyDiffuseScale;
             radiance += throughput * ( baseColor * kInvPi ) * ( directLighting.diffuse + skyDiffuse );
             radiance += throughput * directLighting.specular * opacity;
             if( material.hasReflectionTexture )

@@ -31,6 +31,7 @@ THE SOFTWARE.
 
 #include "OgreHlmsPbsPrerequisites.h"
 #include "PathTracing/OgrePathTracerScene.h"
+#include "OgreColourValue.h"
 
 #include "OgreHeaderPrefix.h"
 
@@ -90,6 +91,10 @@ namespace Ogre
         Real                 mUpscaleInputScale;
         uint32               mInternalWidth;
         uint32               mInternalHeight;
+        ColourValue          mSkyZenith;
+        ColourValue          mSkyHorizon;
+        Real                 mOpaqueSkyDiffuseScale;
+        Real                 mTransparentSkyDiffuseScale;
         bool                 mFrameGenerationEnabled;
         bool                 mHasLastCameraState;
         bool                 mEnabled;
@@ -131,6 +136,14 @@ namespace Ogre
         Real getUpscaleInputScale() const { return mUpscaleInputScale; }
         uint32 getInternalWidth() const { return mInternalWidth; }
         uint32 getInternalHeight() const { return mInternalHeight; }
+
+        void setSkyColours( const ColourValue &zenith, const ColourValue &horizon );
+        const ColourValue &getSkyZenith() const { return mSkyZenith; }
+        const ColourValue &getSkyHorizon() const { return mSkyHorizon; }
+
+        void setSkyDiffuseScales( Real opaqueScale, Real transparentScale );
+        Real getOpaqueSkyDiffuseScale() const { return mOpaqueSkyDiffuseScale; }
+        Real getTransparentSkyDiffuseScale() const { return mTransparentSkyDiffuseScale; }
 
         void setFrameGenerationEnabled( bool enabled );
         bool getFrameGenerationEnabled() const { return mFrameGenerationEnabled; }

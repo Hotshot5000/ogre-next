@@ -76,6 +76,10 @@ namespace Ogre
             float projectionParams[2];
             float width;
             float height;
+            float opaqueSkyDiffuseScale;
+            float transparentSkyDiffuseScale;
+            float paddingFloat0;
+            float paddingFloat1;
             uint32 sampleIndex;
             uint32 maxBounces;
             uint32 numLights;
@@ -315,6 +319,10 @@ namespace Ogre
         mUpscaleInputScale( 1.0f ),
         mInternalWidth( 1u ),
         mInternalHeight( 1u ),
+        mSkyZenith( 0.82f, 0.92f, 1.12f, 1.0f ),
+        mSkyHorizon( 1.55f, 1.28f, 0.68f, 1.0f ),
+        mOpaqueSkyDiffuseScale( 0.11f ),
+        mTransparentSkyDiffuseScale( 0.045f ),
         mFrameGenerationEnabled( false ),
         mHasLastCameraState( false ),
         mEnabled( false ),
@@ -488,6 +496,31 @@ namespace Ogre
         resetAccumulation();
     }
     //-------------------------------------------------------------------------
+    void PathTracer::setSkyColours( const ColourValue &zenith, const ColourValue &horizon )
+    {
+        if( mSkyZenith == zenith && mSkyHorizon == horizon )
+            return;
+
+        mSkyZenith = zenith;
+        mSkyHorizon = horizon;
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
+    void PathTracer::setSkyDiffuseScales( Real opaqueScale, Real transparentScale )
+    {
+        opaqueScale = std::max<Real>( Real( 0 ), opaqueScale );
+        transparentScale = std::max<Real>( Real( 0 ), transparentScale );
+        if( Math::Abs( mOpaqueSkyDiffuseScale - opaqueScale ) <= Real( 1e-4 ) &&
+            Math::Abs( mTransparentSkyDiffuseScale - transparentScale ) <= Real( 1e-4 ) )
+        {
+            return;
+        }
+
+        mOpaqueSkyDiffuseScale = opaqueScale;
+        mTransparentSkyDiffuseScale = transparentScale;
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::setFrameGenerationEnabled( bool enabled )
     {
         if( mFrameGenerationEnabled == enabled )
@@ -572,14 +605,14 @@ namespace Ogre
         frame->cameraFront[1] = cameraFront.y;
         frame->cameraFront[2] = cameraFront.z;
 
-        frame->skyZenith[0] = 0.82f;
-        frame->skyZenith[1] = 0.92f;
-        frame->skyZenith[2] = 1.12f;
-        frame->skyZenith[3] = 1.0f;
-        frame->skyHorizon[0] = 1.55f;
-        frame->skyHorizon[1] = 1.28f;
-        frame->skyHorizon[2] = 0.68f;
-        frame->skyHorizon[3] = 1.0f;
+        frame->skyZenith[0] = mSkyZenith.r;
+        frame->skyZenith[1] = mSkyZenith.g;
+        frame->skyZenith[2] = mSkyZenith.b;
+        frame->skyZenith[3] = mSkyZenith.a;
+        frame->skyHorizon[0] = mSkyHorizon.r;
+        frame->skyHorizon[1] = mSkyHorizon.g;
+        frame->skyHorizon[2] = mSkyHorizon.b;
+        frame->skyHorizon[3] = mSkyHorizon.a;
 
         Vector2 projectionAB = mCamera->getProjectionParamsAB();
         projectionAB.y /= mCamera->getFarClipDistance();
@@ -588,6 +621,10 @@ namespace Ogre
         updateInternalResolution();
         frame->width = static_cast<float>( mInternalWidth );
         frame->height = static_cast<float>( mInternalHeight );
+        frame->opaqueSkyDiffuseScale = static_cast<float>( mOpaqueSkyDiffuseScale );
+        frame->transparentSkyDiffuseScale = static_cast<float>( mTransparentSkyDiffuseScale );
+        frame->paddingFloat0 = 0.0f;
+        frame->paddingFloat1 = 0.0f;
         frame->sampleIndex = mAccumulatedSamples;
         frame->maxBounces = mMaxBounces;
         frame->numLights = numLights;
