@@ -889,6 +889,7 @@ namespace Ogre
         {
             return false;
         }
+        virtual bool getPathTracerDenoiserActive() const { return false; }
 
         virtual void _hlmsPipelineStateObjectCreated( HlmsPso *newPso ) {}
         virtual void _hlmsPipelineStateObjectDestroyed( HlmsPso *pso ) {}

@@ -145,6 +145,7 @@ namespace Ogre
         id     mPathTracerDenoiserSpecularAlbedoTexture;
         id     mPathTracerDenoiserRoughnessTexture;
         id     mPathTracerDenoiserSpecularHitDistanceTexture;
+        bool   mPathTracerDenoiserActive;
         id     mPathTracerFrameInterpolator;
         id     mPathTracerFrameGenCurrentColourTexture;
         id     mPathTracerFrameGenPreviousColourTexture;
@@ -387,6 +388,7 @@ namespace Ogre
                                       TextureGpu *outputTexture, const Matrix4 &viewToClip,
                                       const Matrix4 &worldToView, Camera *camera,
                                       bool resetHistory ) override;
+        bool getPathTracerDenoiserActive() const override { return mPathTracerDenoiserActive; }
 
         MetalProgramFactory *getMetalProgramFactory() { return mMetalProgramFactory; }
 

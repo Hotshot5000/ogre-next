@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include "Compositor/OgreCompositorWorkspaceListener.h"
 #include "Compositor/Pass/PassQuad/OgreCompositorPassQuadDef.h"
 #include "OgreCamera.h"
+#include "OgreGpuProgramParams.h"
 #include "OgreMaterialManager.h"
 #include "OgreRectangle2D.h"
 #include "OgreSceneManager.h"
@@ -310,6 +311,13 @@ namespace Ogre
             mFsRect->setDatablock( mDatablock );  // Hlms material
 
         RenderSystem *renderSystem = sceneManager->getDestinationRenderSystem();
+        if( mDefinition->mMaterialName == "PathTracing/Resolve" && mPass )
+        {
+            GpuProgramParametersSharedPtr psParams = mPass->getFragmentProgramParameters();
+            if( !psParams.isNull() )
+                psParams->setNamedConstant( "useFallbackDenoiser",
+                                            renderSystem->getPathTracerDenoiserActive() ? 0.0f : 1.0f );
+        }
         renderSystem->executeRenderPassDescriptorDelayedActions();
 
         sceneManager->_renderSingleObject( mFsRect, mFsRect, false, false );

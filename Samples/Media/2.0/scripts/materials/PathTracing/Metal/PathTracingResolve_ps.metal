@@ -66,12 +66,15 @@ fragment float4 main_metal
 (
     PS_INPUT inPs [[stage_in]],
     texture2d<float> radianceTexture [[texture(0)]],
-    sampler samplerState0 [[sampler(0)]]
+    sampler samplerState0 [[sampler(0)]],
+    constant float &useFallbackDenoiser [[buffer(PARAMETER_SLOT)]]
 )
 {
     const float4 centerSample = radianceTexture.sample( samplerState0, inPs.uv0 );
     const float sampleCount = max( centerSample.w, 1.0f );
-    float3 color = denoiseRadiance( radianceTexture, samplerState0, inPs.uv0, sampleCount );
+    float3 color = max( centerSample.xyz, float3( 0.0f ) );
+    if( useFallbackDenoiser > 0.5f )
+        color = denoiseRadiance( radianceTexture, samplerState0, inPs.uv0, sampleCount );
     color = tonemapReinhard( color );
     color = pow( color, float3( 1.0f / 2.2f ) );
     return float4( color, 1.0f );

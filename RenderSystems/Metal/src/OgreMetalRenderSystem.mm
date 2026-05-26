@@ -129,6 +129,7 @@ namespace Ogre
         mPathTracerDenoiserSpecularAlbedoTexture( 0 ),
         mPathTracerDenoiserRoughnessTexture( 0 ),
         mPathTracerDenoiserSpecularHitDistanceTexture( 0 ),
+        mPathTracerDenoiserActive( false ),
         mPathTracerFrameInterpolator( 0 ),
         mPathTracerFrameGenCurrentColourTexture( 0 ),
         mPathTracerFrameGenPreviousColourTexture( 0 ),
@@ -2935,12 +2936,14 @@ namespace Ogre
                                                      const Matrix4 &worldToView, Camera *camera,
                                                      bool resetHistory )
     {
+        mPathTracerDenoiserActive = false;
         if( !mActiveDevice || !colourTexture || !outputTexture )
             return false;
 
         MetalTextureGpu *colourForCopy = static_cast<MetalTextureGpu *>( colourTexture );
         MetalTextureGpu *outputForCopy = static_cast<MetalTextureGpu *>( outputTexture );
         auto copyColourToOutput = [&]() -> bool {
+            mPathTracerDenoiserActive = false;
             id<MTLTexture> srcTexture = colourForCopy->getFinalTextureName();
             id<MTLTexture> dstTexture = outputForCopy->getFinalTextureName();
             if( !srcTexture || !dstTexture )
@@ -3234,6 +3237,7 @@ namespace Ogre
             scaler.depthReversed = true;
             scaler.shouldResetHistory = resetDenoiserHistory;
             [scaler encodeToCommandBuffer:mActiveDevice->mCurrentCommandBuffer];
+            mPathTracerDenoiserActive = true;
 
             if( !mPathTracerFrameGenerationEnabled )
             {
