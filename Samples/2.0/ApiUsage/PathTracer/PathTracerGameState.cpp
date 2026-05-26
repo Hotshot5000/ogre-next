@@ -243,20 +243,20 @@ namespace Demo
 
         mLightNodes[2] = lightNode;
 
-//        light = sceneManager->createLight();
-//        lightNode = rootNode->createChildSceneNode();
-//        lightNode->attachObject( light );
-//        light->setDiffuseColour( 1.0f, 0.86f, 0.62f );
-//        light->setSpecularColour( 1.0f, 0.86f, 0.62f );
-//        light->setPowerScale( 5.0f );
-//        light->setType( Ogre::Light::LT_AREA_LTC );
-//        light->setRectSize( Ogre::Vector2( 60.0f, 30.0f ) );
-//        light->setDoubleSided( false );
-//        lightNode->setPosition( -5.0f, 7.0f, -7.0f );
-//        light->setDirection( Ogre::Vector3( 0, -1, -1 ).normalisedCopy() );
-//        light->setAttenuationBasedOnRadius( 18.0f, 0.01f );
-//
-//        mLightNodes[3] = lightNode;
+        light = sceneManager->createLight();
+        lightNode = rootNode->createChildSceneNode();
+        lightNode->attachObject( light );
+        light->setDiffuseColour( 1.0f, 0.86f, 0.62f );
+        light->setSpecularColour( 1.0f, 0.86f, 0.62f );
+        light->setPowerScale( 5.0f );
+        light->setType( Ogre::Light::LT_AREA_LTC );
+        light->setRectSize( Ogre::Vector2( 60.0f, 30.0f ) );
+        light->setDoubleSided( false );
+        lightNode->setPosition( -5.0f, 7.0f, -7.0f );
+        light->setDirection( Ogre::Vector3( 0, -1, -1 ).normalisedCopy() );
+        light->setAttenuationBasedOnRadius( 18.0f, 0.01f );
+
+        mLightNodes[3] = lightNode;
 
         mCameraController = new CameraController( mGraphicsSystem, false );
         mCameraController->mCameraBaseSpeed = 1.0f;
