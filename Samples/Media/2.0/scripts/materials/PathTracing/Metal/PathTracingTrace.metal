@@ -496,6 +496,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                                                 float3 fresnelColor,
                                                 float roughness,
                                                 uint currentInstanceId,
+                                                uint bounce,
                                                 constant PathTracerLight *lights,
                                                 uint numLights,
                                                 thread uint &seed,
@@ -507,13 +508,17 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
     result.diffuse = float3( 0.0f );
     result.specular = float3( 0.0f );
     numLights = min( numLights, kMaxSupportedLights );
+    if( numLights == 0u )
+        return result;
 
     for( uint lightIdx = 0u; lightIdx < numLights; ++lightIdx )
     {
         constant PathTracerLight &light = lights[lightIdx];
         const uint lightType = (uint)( light.spotParams.w + 0.5f );
         const bool isAreaLight = lightType == 4u || lightType == 5u;
-        const uint lightSampleCount = isAreaLight ? kDirectAreaLightSamples : 1u;
+        const uint areaLightSampleCount = bounce == 0u ? kDirectAreaLightSamples :
+                                          ( bounce == 1u ? 2u : 1u );
+        const uint lightSampleCount = isAreaLight ? areaLightSampleCount : 1u;
         const float invLightSampleCount = 1.0f / float( lightSampleCount );
 
         for( uint lightSampleIdx = 0u; lightSampleIdx < lightSampleCount; ++lightSampleIdx )
@@ -730,13 +735,25 @@ kernel void main_metal
             const float bounceNDotV = saturate( dot( bounceNormal, viewDirection ) );
             const float3 materialFresnel = material.fresnel * material.specularWeight;
             const float3 fresnelColor = fresnel_schlick( materialFresnel, nDotV );
-            const DirectLighting directLighting = evaluate_direct_lighting( hitPosition, shadingNormal,
-                                                                            geometricNormal,
-                                                                            viewDirection, materialFresnel,
-                                                                            roughness, hit.instance_id,
-                                                                            lights, frame->numLights, seed,
-                                                                            accelerationStructure,
-                                                                            materials, geometryRecords );
+            if( bounce >= 2u )
+            {
+                const float continueProbability = clamp( luminance( throughput ), 0.05f, 0.95f );
+                if( rand01( seed ) > continueProbability )
+                    break;
+                throughput /= continueProbability;
+            }
+            DirectLighting directLighting;
+            directLighting.diffuse = float3( 0.0f );
+            directLighting.specular = float3( 0.0f );
+            if( bounce < 2u )
+            {
+                directLighting = evaluate_direct_lighting( hitPosition, shadingNormal, geometricNormal,
+                                                           viewDirection, materialFresnel,
+                                                           roughness, hit.instance_id, bounce,
+                                                           lights, frame->numLights, seed,
+                                                           accelerationStructure,
+                                                           materials, geometryRecords );
+            }
             const float specularLuminance = luminance( fresnelColor );
             if( bounce == 0u && sampleIdx == 0u )
             {
@@ -801,15 +818,6 @@ kernel void main_metal
                 }
 
                 throughput *= min( nextWeight, float3( 1.0f ) );
-                if( bounce >= 2u )
-                {
-                    const float directLuminance = luminance( directLighting.diffuse + directLighting.specular );
-                    const float continueProbability = clamp( max( luminance( throughput ), directLuminance * 0.25f ),
-                                                             0.05f, 0.95f );
-                    if( rand01( seed ) > continueProbability )
-                        break;
-                    throughput /= continueProbability;
-                }
 
                 pathRay.origin = offset_ray( hitPosition,
                                              dot( nextDirection, geometricNormal ) < 0.0f ? -geometricNormal :
@@ -868,15 +876,6 @@ kernel void main_metal
             pathRay.min_distance = kRayMinDistance;
             pathRay.max_distance = INFINITY;
 
-            if( bounce >= 2u )
-            {
-                const float directLuminance = luminance( directLighting.diffuse + directLighting.specular );
-                const float continueProbability = clamp( max( luminance( throughput ), directLuminance * 0.25f ),
-                                                         0.05f, 0.95f );
-                if( rand01( seed ) > continueProbability )
-                    break;
-                throughput /= continueProbability;
-            }
         }
 
         radiance = min( max( radiance, float3( 0.0f ) ), float3( kMaxRadiance ) );
