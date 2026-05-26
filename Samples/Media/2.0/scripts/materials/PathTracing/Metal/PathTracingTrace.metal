@@ -66,7 +66,8 @@ struct PathTracerFrame
     uint numLights;
     uint samplesPerPixel;
     uint rngFrameIndex;
-    uint3 padding0;
+    uint transparentShadowVisibilityEnabled;
+    uint2 padding0;
 };
 
 struct PathTracerLight
@@ -431,6 +432,7 @@ static float evaluate_light_visibility( float3 surfacePosition,
                                         float3 lightDirection,
                                         float maxDistance,
                                         uint currentInstanceId,
+                                        bool transparentShadowVisibilityEnabled,
                                         instance_acceleration_structure accelerationStructure,
                                         device const PathTracerMaterial *materials,
                                         device const PathTracerGeometry *geometryRecords )
@@ -443,6 +445,34 @@ static float evaluate_light_visibility( float3 surfacePosition,
 
     intersector<triangle_data, instancing> shadowIntersector;
     float visibility = 1.0f;
+
+    if( !transparentShadowVisibilityEnabled )
+    {
+        for( uint step = 0u; step < 2u; ++step )
+        {
+            typename intersector<triangle_data, instancing>::result_type shadowHit =
+                shadowIntersector.intersect( shadowRay, accelerationStructure, RAY_MASK_SHADOW );
+
+            if( shadowHit.type != intersection_type::triangle )
+                return 1.0f;
+
+            if( shadowHit.instance_id == currentInstanceId && shadowHit.distance <= kSelfHitSkipDistance )
+            {
+                const float consumedDistance = shadowHit.distance + kSelfHitSkipDistance;
+                if( consumedDistance >= shadowRay.max_distance )
+                    return 1.0f;
+
+                shadowRay.origin += shadowRay.direction * consumedDistance;
+                shadowRay.max_distance -= consumedDistance;
+                shadowRay.min_distance = kRayMinDistance;
+                continue;
+            }
+
+            return 0.0f;
+        }
+
+        return 0.0f;
+    }
 
     for( uint step = 0u; step < kMaxTransparentShadowSteps; ++step )
     {
@@ -500,6 +530,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                                                 constant PathTracerLight *lights,
                                                 uint numLights,
                                                 thread uint &seed,
+                                                bool transparentShadowVisibilityEnabled,
                                                 instance_acceleration_structure accelerationStructure,
                                                 device const PathTracerMaterial *materials,
                                                 device const PathTracerGeometry *geometryRecords )
@@ -585,7 +616,9 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
 
             const float visibility = evaluate_light_visibility( surfacePosition, shadowNormal,
                                                                 lightDirection, maxDistance,
-                                                                currentInstanceId, accelerationStructure,
+                                                                currentInstanceId,
+                                                                transparentShadowVisibilityEnabled,
+                                                                accelerationStructure,
                                                                 materials, geometryRecords );
             const float geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
             if( geometricNDotL <= 0.0f )
@@ -751,6 +784,7 @@ kernel void main_metal
                                                            viewDirection, materialFresnel,
                                                            roughness, hit.instance_id, bounce,
                                                            lights, frame->numLights, seed,
+                                                           frame->transparentShadowVisibilityEnabled != 0u,
                                                            accelerationStructure,
                                                            materials, geometryRecords );
             }

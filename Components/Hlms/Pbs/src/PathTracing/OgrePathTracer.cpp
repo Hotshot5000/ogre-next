@@ -85,7 +85,7 @@ namespace Ogre
             uint32 numLights;
             uint32 samplesPerPixel;
             uint32 rngFrameIndex;
-            uint32 padding0;
+            uint32 transparentShadowVisibilityEnabled;
             uint32 padding1;
             uint32 padding2;
         };
@@ -323,6 +323,7 @@ namespace Ogre
         mSkyHorizon( 1.55f, 1.28f, 0.68f, 1.0f ),
         mOpaqueSkyDiffuseScale( 0.11f ),
         mTransparentSkyDiffuseScale( 0.045f ),
+        mTransparentShadowVisibilityEnabled( false ),
         mFrameGenerationEnabled( false ),
         mHasLastCameraState( false ),
         mEnabled( false ),
@@ -521,6 +522,15 @@ namespace Ogre
         resetAccumulation();
     }
     //-------------------------------------------------------------------------
+    void PathTracer::setTransparentShadowVisibilityEnabled( bool enabled )
+    {
+        if( mTransparentShadowVisibilityEnabled == enabled )
+            return;
+
+        mTransparentShadowVisibilityEnabled = enabled;
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::setFrameGenerationEnabled( bool enabled )
     {
         if( mFrameGenerationEnabled == enabled )
@@ -630,7 +640,7 @@ namespace Ogre
         frame->numLights = numLights;
         frame->samplesPerPixel = mSamplesPerPixel;
         frame->rngFrameIndex = mRngFrameIndex;
-        frame->padding0 = 0u;
+        frame->transparentShadowVisibilityEnabled = mTransparentShadowVisibilityEnabled ? 1u : 0u;
         frame->padding1 = 0u;
         frame->padding2 = 0u;
 

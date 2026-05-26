@@ -95,6 +95,7 @@ namespace Ogre
         ColourValue          mSkyHorizon;
         Real                 mOpaqueSkyDiffuseScale;
         Real                 mTransparentSkyDiffuseScale;
+        bool                 mTransparentShadowVisibilityEnabled;
         bool                 mFrameGenerationEnabled;
         bool                 mHasLastCameraState;
         bool                 mEnabled;
@@ -144,6 +145,9 @@ namespace Ogre
         void setSkyDiffuseScales( Real opaqueScale, Real transparentScale );
         Real getOpaqueSkyDiffuseScale() const { return mOpaqueSkyDiffuseScale; }
         Real getTransparentSkyDiffuseScale() const { return mTransparentSkyDiffuseScale; }
+
+        void setTransparentShadowVisibilityEnabled( bool enabled );
+        bool getTransparentShadowVisibilityEnabled() const { return mTransparentShadowVisibilityEnabled; }
 
         void setFrameGenerationEnabled( bool enabled );
         bool getFrameGenerationEnabled() const { return mFrameGenerationEnabled; }
