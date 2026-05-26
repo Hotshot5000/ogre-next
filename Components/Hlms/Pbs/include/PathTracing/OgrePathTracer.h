@@ -107,7 +107,7 @@ namespace Ogre
         void uploadFrameConstants( uint32 numLights );
         uint32 uploadLights( SceneManager *sceneManager );
         void uploadMaterialBuffer();
-        void uploadGeometryBuffer();
+        void uploadGeometryBuffer( bool rebuildTriangles );
         void bindJobResources();
         void updateInternalResolution();
         void updateTraceJobThreadGroups();

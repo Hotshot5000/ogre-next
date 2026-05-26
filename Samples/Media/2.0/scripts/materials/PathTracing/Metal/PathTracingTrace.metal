@@ -98,6 +98,12 @@ struct PathTracerMaterial
 struct PathTracerGeometry
 {
     float4 material_subMesh;
+    float4 worldRow0;
+    float4 worldRow1;
+    float4 worldRow2;
+    float4 normalRow0;
+    float4 normalRow1;
+    float4 normalRow2;
 };
 
 struct PathTracerTriangle
@@ -178,14 +184,34 @@ static SurfaceMaterial load_surface_material( uint instanceId,
     return surface;
 }
 
-static PathTracerTriangle load_triangle( uint instanceId,
+static PathTracerGeometry load_geometry( uint instanceId,
+                                         device const PathTracerGeometry *geometryRecords )
+{
+    return geometryRecords[instanceId];
+}
+
+static PathTracerTriangle load_triangle( const PathTracerGeometry geometry,
                                          uint primitiveId,
-                                         device const PathTracerGeometry *geometryRecords,
                                          device const PathTracerTriangle *triangleRecords )
 {
-    const PathTracerGeometry geometry = geometryRecords[instanceId];
     const uint triangleStart = (uint)( geometry.material_subMesh.w + 0.5f );
     return triangleRecords[triangleStart + primitiveId];
+}
+
+static float3 transform_direction( const PathTracerGeometry geometry, float3 direction )
+{
+    return float3( dot( geometry.worldRow0.xyz, direction ),
+                   dot( geometry.worldRow1.xyz, direction ),
+                   dot( geometry.worldRow2.xyz, direction ) );
+}
+
+static float3 transform_normal( const PathTracerGeometry geometry, float3 normal )
+{
+    const float3 transformed = float3( dot( geometry.normalRow0.xyz, normal ),
+                                      dot( geometry.normalRow1.xyz, normal ),
+                                      dot( geometry.normalRow2.xyz, normal ) );
+    return dot( transformed, transformed ) > kMinFiniteDenominator && all( isfinite( transformed ) ) ?
+        normalize( transformed ) : float3( 0.0f, 1.0f, 0.0f );
 }
 
 static float2 interpolate_uv( const PathTracerTriangle triangle, float2 barycentric )
@@ -272,6 +298,7 @@ static float3 sample_emissive_texture( const SurfaceMaterial material,
 }
 
 static float3 apply_normal_texture( const SurfaceMaterial material,
+                                    const PathTracerGeometry geometry,
                                     const PathTracerTriangle triangle,
                                     float2 barycentric,
                                     float3 geometricNormal,
@@ -294,12 +321,12 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
     const float3 tangentSample = normalize(
         float3( tangentSampleXY, sqrt( max( 0.0f, 1.0f - dot( tangentSampleXY, tangentSampleXY ) ) ) ) );
 
-    float3 tangent = normalize( triangle.tangent.xyz );
+    float3 tangent = normalize( transform_direction( geometry, triangle.tangent.xyz ) );
     if( !all( isfinite( tangent ) ) || dot( tangent, tangent ) < kMinFiniteDenominator )
         return geometricNormal;
     tangent = normalize( tangent - geometricNormal * dot( tangent, geometricNormal ) );
 
-    float3 bitangent = normalize( triangle.bitangent.xyz );
+    float3 bitangent = normalize( transform_direction( geometry, triangle.bitangent.xyz ) );
     if( !all( isfinite( bitangent ) ) || dot( bitangent, bitangent ) < kMinFiniteDenominator )
         bitangent = normalize( cross( geometricNormal, tangent ) );
     bitangent = dot( bitangent, cross( geometricNormal, tangent ) ) < 0.0f ? -bitangent : bitangent;
@@ -749,9 +776,11 @@ kernel void main_metal
                 break;
             }
 
-            const PathTracerTriangle triangle = load_triangle( hit.instance_id, hit.primitive_id,
-                                                               geometryRecords, triangleRecords );
-            const float3 rawNormal = load_triangle_normal( triangle, -pathRay.direction );
+            const PathTracerGeometry geometry = load_geometry( hit.instance_id, geometryRecords );
+            const PathTracerTriangle triangle = load_triangle( geometry, hit.primitive_id, triangleRecords );
+            const float3 rawNormal = transform_normal( geometry,
+                                                       load_triangle_normal( triangle,
+                                                                             float3( 0.0f, 1.0f, 0.0f ) ) );
             const bool frontFacing = dot( pathRay.direction, rawNormal ) < 0.0f;
             const float3 geometricNormal = frontFacing ? rawNormal : -rawNormal;
             const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
@@ -767,7 +796,7 @@ kernel void main_metal
             const float mappedRoughness = material.hasRoughnessTexture ?
                 max( material.roughness, roughnessTexture ) : material.roughness;
             const float roughness = clamp( mappedRoughness, 0.35f, 1.0f );
-            const float3 shadingNormal = apply_normal_texture( material, triangle,
+            const float3 shadingNormal = apply_normal_texture( material, geometry, triangle,
                                                                hit.triangle_barycentric_coord,
                                                                geometricNormal, normalTextures,
                                                                diffuseSampler );

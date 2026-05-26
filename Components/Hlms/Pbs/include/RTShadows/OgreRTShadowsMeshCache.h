@@ -80,6 +80,7 @@ namespace Ogre
         const ShadowsCachedMesh &addMeshToCache( const MeshPtr &mesh, Item *refItem );
         void removeMeshFromCache( Item *item );
         void removeAllItems();
+        void markInstancesDirty();
 
         void setEnabled( bool enabled ) { mEnabled = enabled; }
         bool getEnabled() const { return mEnabled; }

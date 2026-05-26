@@ -90,6 +90,11 @@ namespace Ogre
         mRebuildTlas = true;
     }
     //-------------------------------------------------------------------------
+    void RTShadowsMeshCache::markInstancesDirty()
+    {
+        mRebuildTlas = true;
+    }
+    //-------------------------------------------------------------------------
     void RTShadowsMeshCache::updateAS()
     {
         if( !mEnabled )

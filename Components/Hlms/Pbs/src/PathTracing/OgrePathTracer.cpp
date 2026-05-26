@@ -130,6 +130,12 @@ namespace Ogre
         struct PathTracerGeometryGpu
         {
             float material_subMesh[4];
+            float worldRow0[4];
+            float worldRow1[4];
+            float worldRow2[4];
+            float normalRow0[4];
+            float normalRow1[4];
+            float normalRow2[4];
         };
 
         struct PathTracerTriangleGpu
@@ -144,6 +150,33 @@ namespace Ogre
         void copyMatrix( float *dst, const Matrix4 &src )
         {
             memcpy( dst, &src, sizeof( float ) * 16u );
+        }
+
+        void copyMatrixRow( float *dst, const Matrix4 &src, size_t row )
+        {
+            dst[0] = static_cast<float>( src[row][0] );
+            dst[1] = static_cast<float>( src[row][1] );
+            dst[2] = static_cast<float>( src[row][2] );
+            dst[3] = static_cast<float>( src[row][3] );
+        }
+
+        void copyMatrix3Row( float *dst, const Matrix3 &src, size_t row )
+        {
+            dst[0] = static_cast<float>( src[row][0] );
+            dst[1] = static_cast<float>( src[row][1] );
+            dst[2] = static_cast<float>( src[row][2] );
+            dst[3] = 0.0f;
+        }
+
+        Matrix3 getNormalMatrix( const Matrix4 &transform )
+        {
+            Matrix3 linear( transform[0][0], transform[0][1], transform[0][2],
+                            transform[1][0], transform[1][1], transform[1][2],
+                            transform[2][0], transform[2][1], transform[2][2] );
+            Matrix3 inverse;
+            if( linear.Inverse( inverse ) )
+                return inverse.Transpose();
+            return linear;
         }
 
         bool matricesDiffer( const Matrix4 &a, const Matrix4 &b )
@@ -547,7 +580,7 @@ namespace Ogre
         if( !mMeshCache )
             return;
 
-        if( mScene.needsBlasRebuild() || mScene.needsTlasRebuild() )
+        if( mScene.needsBlasRebuild() )
         {
             mMeshCache->removeAllItems();
 
@@ -560,6 +593,10 @@ namespace Ogre
                 mMeshCache->addMeshToCache( item->getMesh(), item );
                 ++itor;
             }
+        }
+        else if( mScene.needsTlasRebuild() )
+        {
+            mMeshCache->markInstancesDirty();
         }
 
         mMeshCache->updateAS();
@@ -818,7 +855,7 @@ namespace Ogre
         mMaterialBuffer->upload( staging.data(), 0u, bytesNeeded );
     }
     //-------------------------------------------------------------------------
-    void PathTracer::uploadGeometryBuffer()
+    void PathTracer::uploadGeometryBuffer( bool rebuildTriangles )
     {
         size_t numGeometryRecords = 0u;
         size_t numTriangleRecords = 0u;
@@ -840,6 +877,7 @@ namespace Ogre
         numTriangleRecords = std::max<size_t>( numTriangleRecords, 1u );
         const size_t bytesNeeded = numGeometryRecords * sizeof( PathTracerGeometryGpu );
         const size_t triangleBytesNeeded = numTriangleRecords * sizeof( PathTracerTriangleGpu );
+        const bool needsTriangleUpload = rebuildTriangles || !mTriangleBuffer;
 
         if( !mGeometryBuffer || mGeometryBuffer->getTotalSizeBytes() < bytesNeeded )
         {
@@ -849,7 +887,8 @@ namespace Ogre
                                                                  BT_DEFAULT, 0, false );
         }
 
-        if( !mTriangleBuffer || mTriangleBuffer->getTotalSizeBytes() < triangleBytesNeeded )
+        if( needsTriangleUpload &&
+            ( !mTriangleBuffer || mTriangleBuffer->getTotalSizeBytes() < triangleBytesNeeded ) )
         {
             if( mTriangleBuffer )
                 mVaoManager->destroyReadOnlyBuffer( mTriangleBuffer );
@@ -861,9 +900,14 @@ namespace Ogre
         PathTracerGeometryGpu *dst = staging.data();
         memset( dst, 0, bytesNeeded );
 
-        std::vector<PathTracerTriangleGpu> triangleStaging( numTriangleRecords );
-        PathTracerTriangleGpu *triangleDst = triangleStaging.data();
-        memset( triangleDst, 0, triangleBytesNeeded );
+        std::vector<PathTracerTriangleGpu> triangleStaging;
+        PathTracerTriangleGpu *triangleDst = 0;
+        if( needsTriangleUpload )
+        {
+            triangleStaging.resize( numTriangleRecords );
+            triangleDst = triangleStaging.data();
+            memset( triangleDst, 0, triangleBytesNeeded );
+        }
 
         size_t geometryIdx = 0u;
         size_t triangleIdx = 0u;
@@ -885,6 +929,15 @@ namespace Ogre
                 dst[geometryIdx].material_subMesh[2] = static_cast<float>( subItemIdx );
                 dst[geometryIdx].material_subMesh[3] = static_cast<float>( triangleIdx );
 
+                const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
+                const Matrix3 normalMatrix = getNormalMatrix( transform );
+                copyMatrixRow( dst[geometryIdx].worldRow0, transform, 0u );
+                copyMatrixRow( dst[geometryIdx].worldRow1, transform, 1u );
+                copyMatrixRow( dst[geometryIdx].worldRow2, transform, 2u );
+                copyMatrix3Row( dst[geometryIdx].normalRow0, normalMatrix, 0u );
+                copyMatrix3Row( dst[geometryIdx].normalRow1, normalMatrix, 1u );
+                copyMatrix3Row( dst[geometryIdx].normalRow2, normalMatrix, 2u );
+
                 SubMesh *subMesh = item->getMesh()->getSubMesh( static_cast<unsigned>( subItemIdx ) );
                 VertexArrayObject *vao = subMesh->mVao[VpNormal].front();
                 IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
@@ -899,6 +952,13 @@ namespace Ogre
                 const bool hasPosition = vao->findBySemantic( VES_POSITION, positionBufferIdx, positionOffset ) != 0;
                 const bool hasUv = vao->findBySemantic( VES_TEXTURE_COORDINATES, uvBufferIdx, uvOffset ) != 0;
                 const bool hasNormal = vao->findBySemantic( VES_NORMAL, normalBufferIdx, normalOffset ) != 0;
+
+                if( !needsTriangleUpload )
+                {
+                    triangleIdx += indexCount / 3u;
+                    ++geometryIdx;
+                    continue;
+                }
 
                 VertexArrayObject::ReadRequestsVec readRequests;
                 size_t positionRequestIdx = std::numeric_limits<size_t>::max();
@@ -945,7 +1005,6 @@ namespace Ogre
                     }
                 }
 
-                const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
                 for( uint32 idx = 0u; idx + 2u < indexCount; idx += 3u )
                 {
                     const uint32 vertexIdx0 = indexBuffer ? readIndexAt( indexData, indexBuffer, idx + 0u ) : idx + 0u;
@@ -973,15 +1032,8 @@ namespace Ogre
                         if( vertexNormal.squaredLength() > 1e-8f )
                         {
                             vertexNormal.normalise();
-                            const Vector4 worldNormal4 =
-                                transform.transformAffine( Vector4( vertexNormal, 0.0f ) );
-                            vertexNormal = Vector3( worldNormal4.x, worldNormal4.y, worldNormal4.z );
-                            if( vertexNormal.squaredLength() > 1e-8f )
-                            {
-                                vertexNormal.normalise();
-                                normal = vertexNormal;
-                                hasValidVertexNormal = true;
-                            }
+                            normal = vertexNormal;
+                            hasValidVertexNormal = true;
                         }
                     }
 
@@ -992,13 +1044,8 @@ namespace Ogre
                         const Vector3 localPos0 = readFloat3At( readRequests[positionRequestIdx], vertexIdx0 );
                         const Vector3 localPos1 = readFloat3At( readRequests[positionRequestIdx], vertexIdx1 );
                         const Vector3 localPos2 = readFloat3At( readRequests[positionRequestIdx], vertexIdx2 );
-                        const Vector4 worldPos04 = transform.transformAffine( Vector4( localPos0, 1.0f ) );
-                        const Vector4 worldPos14 = transform.transformAffine( Vector4( localPos1, 1.0f ) );
-                        const Vector4 worldPos24 = transform.transformAffine( Vector4( localPos2, 1.0f ) );
-                        const Vector3 edge1( worldPos14.x - worldPos04.x, worldPos14.y - worldPos04.y,
-                                             worldPos14.z - worldPos04.z );
-                        const Vector3 edge2( worldPos24.x - worldPos04.x, worldPos24.y - worldPos04.y,
-                                             worldPos24.z - worldPos04.z );
+                        const Vector3 edge1 = localPos1 - localPos0;
+                        const Vector3 edge2 = localPos2 - localPos0;
 
                         Vector3 faceNormal = edge1.crossProduct( edge2 );
                         if( faceNormal.squaredLength() > 1e-8f )
@@ -1060,7 +1107,8 @@ namespace Ogre
         }
 
         mGeometryBuffer->upload( staging.data(), 0u, bytesNeeded );
-        mTriangleBuffer->upload( triangleStaging.data(), 0u, triangleBytesNeeded );
+        if( needsTriangleUpload )
+            mTriangleBuffer->upload( triangleStaging.data(), 0u, triangleBytesNeeded );
     }
     //-------------------------------------------------------------------------
     void PathTracer::updateInternalResolution()
@@ -1222,7 +1270,7 @@ namespace Ogre
         if( mScene.needsMaterialUpload() )
             uploadMaterialBuffer();
         if( mScene.needsBlasRebuild() || mScene.needsTlasRebuild() || !mGeometryBuffer )
-            uploadGeometryBuffer();
+            uploadGeometryBuffer( mScene.needsBlasRebuild() || !mTriangleBuffer );
         bindJobResources();
 
         mScene.clearDirtyFlags();

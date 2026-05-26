@@ -72,7 +72,7 @@ namespace Ogre
             OGRE_EXCEPT( Exception::ERR_ITEM_NOT_FOUND, "", "PathTracerScene::removeItem" );
 
         mItems.erase( itor );
-        markInstancesDirty();
+        markGeometryDirty();
     }
     //-------------------------------------------------------------------------
     void PathTracerScene::removeAllItems()
