@@ -390,6 +390,13 @@ static float3 offset_ray( const float3 p, const float3 n )
                    fabs( p.z ) < origin() ? p.z + float_scale() * n.z : p_i.z );
 }
 
+static uint pcg_hash(uint input)
+{
+    uint state = input * 747796405u + 2891336453u;
+    uint word = ( ( state >> ( ( state >> 28u ) + 4u ) ) ^ state ) * 277803737u;
+    return ( word >> 22u ) ^ word;
+}
+
 static uint wang_hash( uint seed )
 {
     seed = ( seed ^ 61u ) ^ ( seed >> 16u );
@@ -402,7 +409,7 @@ static uint wang_hash( uint seed )
 
 static float rand01( thread uint &seed )
 {
-    seed = wang_hash( seed );
+    seed = pcg_hash( seed );
     return (float)( seed & 0x00ffffffu ) / 16777216.0f;
 }
 
@@ -740,7 +747,7 @@ kernel void main_metal
 
     for( uint sampleIdx = 0u; sampleIdx < samplesPerPixel; ++sampleIdx )
     {
-        uint seed = wang_hash( pixelPos.x + pixelPos.y * 1664525u +
+        uint seed = pcg_hash( pixelPos.x + pixelPos.y * 1664525u +
                                ( frame->sampleIndex + sampleIdx ) * 1013904223u +
                                frame->rngFrameIndex * 374761393u );
         const float jitterX = rand01( seed );
