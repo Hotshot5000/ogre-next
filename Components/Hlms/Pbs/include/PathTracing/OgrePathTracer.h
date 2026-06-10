@@ -143,6 +143,10 @@ namespace Ogre
         Real getGpuCullDistance() const;
         void setGpuCullReflectionConeExpansion( Real expansion );
         Real getGpuCullReflectionConeExpansion() const;
+        void setGpuCullMode( uint32 mode );
+        uint32 getGpuCullMode() const;
+        uint32 getActiveMeshletCount() const;
+        uint32 getTotalMeshletCount() const;
 
         void setSkyColours( const ColourValue &zenith, const ColourValue &horizon );
         const ColourValue &getSkyZenith() const { return mSkyZenith; }

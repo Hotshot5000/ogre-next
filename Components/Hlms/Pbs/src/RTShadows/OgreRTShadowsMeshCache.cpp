@@ -73,6 +73,18 @@ namespace Ogre
             return reinterpret_cast<const uint32 *>( indexData )[indexIdx];
         }
 
+        bool gpuCullModeUsesDistance( RTShadowsMeshCache::GpuCullMode mode )
+        {
+            return mode == RTShadowsMeshCache::GpuCullDistance ||
+                   mode == RTShadowsMeshCache::GpuCullFrustumAndDistance;
+        }
+
+        bool gpuCullModeUsesFrustum( RTShadowsMeshCache::GpuCullMode mode )
+        {
+            return mode == RTShadowsMeshCache::GpuCullFrustum ||
+                   mode == RTShadowsMeshCache::GpuCullFrustumAndDistance;
+        }
+
         Aabb calculateSubMeshBounds( SubMesh *subMesh, const Aabb &fallbackBounds )
         {
             if( subMesh->mVao[VpNormal].empty() )
@@ -390,6 +402,9 @@ namespace Ogre
         mLodCamera( 0 ),
         mGpuCullDistance( 0 ),
         mGpuCullReflectionConeExpansion( 2.5f ),
+        mGpuCullMode( GpuCullOff ),
+        mLastActiveMeshletCount( 0u ),
+        mLastTotalMeshletCount( 0u ),
         mGeometryRevision( 1u ),
         mRebuildBlas( true ),
         mRebuildTlas( true ),
@@ -420,6 +435,17 @@ namespace Ogre
             return;
 
         mGpuCullReflectionConeExpansion = expansion;
+        mRebuildTlas = true;
+    }
+    //-------------------------------------------------------------------------
+    void RTShadowsMeshCache::setGpuCullMode( GpuCullMode mode )
+    {
+        if( mode > GpuCullFrustumAndDistance )
+            mode = GpuCullOff;
+        if( mGpuCullMode == mode )
+            return;
+
+        mGpuCullMode = mode;
         mRebuildTlas = true;
     }
     //-------------------------------------------------------------------------
@@ -615,32 +641,87 @@ namespace Ogre
         RenderSystem *renderSystem = Root::getSingleton().getRenderSystem();
         if( instanceMeshIndex.empty() )
         {
+            mLastActiveMeshletCount = 0u;
+            mLastTotalMeshletCount = 0u;
             renderSystem->clearAccelerationStructure();
             mRebuildTlas = true;
             return;
         }
 
+        GpuCullMode effectiveCullMode = mGpuCullMode;
+        if( !mLodCamera && gpuCullModeUsesFrustum( effectiveCullMode ) )
+            effectiveCullMode = gpuCullModeUsesDistance( effectiveCullMode ) ? GpuCullDistance : GpuCullOff;
+
         RenderSystem::AccelerationStructureCullParams cullParams;
         const Vector3 cameraPos = mLodCamera ? mLodCamera->getDerivedPosition() : Vector3::ZERO;
         cullParams.cameraPositionAndMaxDistance = Vector4( cameraPos.x, cameraPos.y, cameraPos.z,
                                                            mGpuCullDistance );
-        if( mLodCamera && mGpuCullDistance > 0.0f )
+
+        Vector3 cameraForward = Vector3::ZERO;
+        Vector3 cameraRight = Vector3::ZERO;
+        Vector3 cameraUp = Vector3::ZERO;
+        Real tanHalfFovX = Real( 0 );
+        Real tanHalfFovY = Real( 0 );
+        Real nearDistance = Real( 0 );
+        Real farDistance = Real( 0 );
+
+        if( mLodCamera && effectiveCullMode != GpuCullOff )
         {
-            const Vector3 cameraForward = mLodCamera->getDerivedDirection().normalisedCopy();
-            const Vector3 cameraRight = mLodCamera->getDerivedRight().normalisedCopy();
-            const Vector3 cameraUp = mLodCamera->getDerivedUp().normalisedCopy();
-            const Real tanHalfFovY = Math::Tan( mLodCamera->getFOVy() * Real( 0.5 ) );
-            const Real tanHalfFovX = tanHalfFovY * mLodCamera->getAspectRatio();
+            cameraForward = mLodCamera->getDerivedDirection().normalisedCopy();
+            cameraRight = mLodCamera->getDerivedRight().normalisedCopy();
+            cameraUp = mLodCamera->getDerivedUp().normalisedCopy();
+            tanHalfFovY = Math::Tan( mLodCamera->getFOVy() * Real( 0.5 ) );
+            tanHalfFovX = tanHalfFovY * mLodCamera->getAspectRatio();
+            nearDistance = mLodCamera->getNearClipDistance();
+            farDistance = mLodCamera->getFarClipDistance();
 
             cullParams.cameraForwardAndNear = Vector4( cameraForward.x, cameraForward.y,
-                                                       cameraForward.z,
-                                                       mLodCamera->getNearClipDistance() );
+                                                       cameraForward.z, nearDistance );
             cullParams.cameraRightAndTanHalfFovX = Vector4( cameraRight.x, cameraRight.y,
                                                             cameraRight.z, tanHalfFovX );
             cullParams.cameraUpAndTanHalfFovY = Vector4( cameraUp.x, cameraUp.y,
                                                          cameraUp.z, tanHalfFovY );
-            cullParams.cullOptions = Vector4( 1.0f, mGpuCullReflectionConeExpansion,
-                                              mLodCamera->getFarClipDistance(), 0.0f );
+        }
+        cullParams.cullOptions = Vector4( static_cast<Real>( effectiveCullMode ),
+                                          mGpuCullReflectionConeExpansion, farDistance, 0.0f );
+
+        mLastTotalMeshletCount = static_cast<uint32>( instanceBounds.size() );
+        mLastActiveMeshletCount = 0u;
+        for( size_t i = 0u; i < instanceBounds.size(); ++i )
+        {
+            const Vector4 &bounds = instanceBounds[i];
+            const Vector3 toBounds( bounds.x - cameraPos.x, bounds.y - cameraPos.y,
+                                    bounds.z - cameraPos.z );
+            const Real radius = bounds.w;
+
+            bool distanceVisible = true;
+            if( gpuCullModeUsesDistance( effectiveCullMode ) && mGpuCullDistance > 0.0f )
+            {
+                const Real cullDistance = mGpuCullDistance + radius;
+                distanceVisible = toBounds.squaredLength() <= cullDistance * cullDistance;
+            }
+
+            bool frustumVisible = true;
+            if( gpuCullModeUsesFrustum( effectiveCullMode ) && mLodCamera )
+            {
+                const Real depth = toBounds.dotProduct( cameraForward );
+                const Real projectedDepth = std::max<Real>( depth, Real( 0 ) );
+                const Real expandedTanHalfFovX = tanHalfFovX * mGpuCullReflectionConeExpansion;
+                const Real expandedTanHalfFovY = tanHalfFovY * mGpuCullReflectionConeExpansion;
+                const Real horizontalDistance = Math::Abs( toBounds.dotProduct( cameraRight ) );
+                const Real verticalDistance = Math::Abs( toBounds.dotProduct( cameraUp ) );
+
+                const bool depthVisible = depth + radius >= nearDistance &&
+                    ( farDistance <= 0.0f || depth - radius <= farDistance );
+                const bool horizontalVisible =
+                    horizontalDistance <= projectedDepth * expandedTanHalfFovX + radius;
+                const bool verticalVisible =
+                    verticalDistance <= projectedDepth * expandedTanHalfFovY + radius;
+                frustumVisible = depthVisible && horizontalVisible && verticalVisible;
+            }
+
+            if( distanceVisible && frustumVisible )
+                ++mLastActiveMeshletCount;
         }
 
         if( mRebuildBlas )

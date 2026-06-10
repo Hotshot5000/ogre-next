@@ -36,6 +36,8 @@ namespace
     const Ogre::Real cPathTracerUpscaleScales[] = { 1.0f, 0.77f, 0.67f, 0.5f };
     const Ogre::Real cPathTracerGpuCullDistances[] = { 0.0f, 32.0f, 48.0f, 64.0f, 96.0f, 128.0f };
     const Ogre::Real cPathTracerGpuCullReflectionCones[] = { 1.0f, 1.5f, 2.5f, 4.0f, 6.0f };
+    const Ogre::uint32 cPathTracerGpuCullModes[] = { 0u, 1u, 2u, 3u };
+    const char *cPathTracerGpuCullModeNames[] = { "Off", "Distance", "Frustum", "Frustum+Distance" };
 }
 
 namespace Demo
@@ -50,6 +52,7 @@ namespace Demo
         mUpscaleScaleIdx( 0u ),
         mGpuCullDistanceIdx( 0u ),
         mGpuCullReflectionConeIdx( 2u ),
+        mGpuCullModeIdx( 0u ),
         mLastGeneratedFrameCount( 0u ),
         mDisplayFpsRealFrames( 0u ),
         mDisplayFpsGeneratedFrames( 0u ),
@@ -75,6 +78,7 @@ namespace Demo
                                             mGraphicsSystem->getCompositorWorkspace() );
         mPathTracer->setGpuCullReflectionConeExpansion(
             cPathTracerGpuCullReflectionCones[mGpuCullReflectionConeIdx] );
+        mPathTracer->setGpuCullMode( cPathTracerGpuCullModes[mGpuCullModeIdx] );
         mPathTracer->setEnabled( true );
 
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
@@ -351,20 +355,29 @@ namespace Demo
         outText += "]";
         outText += "\nPath tracer avg display fps: ";
         outText += Ogre::StringConverter::toString( mDisplayFps );
+        outText += "\nPath tracer GPU cull mode: ";
+        const Ogre::uint32 gpuCullMode = mPathTracer ? mPathTracer->getGpuCullMode() : 0u;
+        outText += cPathTracerGpuCullModeNames[std::min<Ogre::uint32>( gpuCullMode, 3u )];
+        outText += "\nPath tracer GPU active meshlets: ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getActiveMeshletCount() : 0u );
+        outText += " / ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getTotalMeshletCount() : 0u );
         outText += "\nPath tracer GPU cull distance: ";
         if( mPathTracer && mPathTracer->getGpuCullDistance() > 0.0f )
         {
             outText += Ogre::StringConverter::toString( mPathTracer->getGpuCullDistance(), 1u, 0u,
                                                         ' ', std::ios::fixed );
-            outText += " cone x";
-            outText += Ogre::StringConverter::toString(
-                mPathTracer->getGpuCullReflectionConeExpansion(), 1u, 0u, ' ', std::ios::fixed );
         }
         else
             outText += "Off";
+        outText += " cone x";
+        outText += Ogre::StringConverter::toString(
+            mPathTracer ? mPathTracer->getGpuCullReflectionConeExpansion() : 1.0f,
+            1u, 0u, ' ', std::ios::fixed );
         outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
+        outText += "\nPress B to cycle GPU meshlet culling mode.";
         outText += "\nPress C to cycle GPU meshlet culling distance.";
         outText += "\nPress V to cycle GPU reflection cone expansion.";
         outText += "\nPress F6 to toggle MetalFX frame generation. ";
@@ -482,6 +495,13 @@ namespace Demo
             const size_t numScales = sizeof( cPathTracerUpscaleScales ) / sizeof( cPathTracerUpscaleScales[0] );
             mUpscaleScaleIdx = ( mUpscaleScaleIdx + 1u ) % numScales;
             mPathTracer->setUpscaleInputScale( cPathTracerUpscaleScales[mUpscaleScaleIdx] );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_B )
+        {
+            const size_t numCullModes = sizeof( cPathTracerGpuCullModes ) /
+                                        sizeof( cPathTracerGpuCullModes[0] );
+            mGpuCullModeIdx = ( mGpuCullModeIdx + 1u ) % numCullModes;
+            mPathTracer->setGpuCullMode( cPathTracerGpuCullModes[mGpuCullModeIdx] );
         }
         else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_C )
         {

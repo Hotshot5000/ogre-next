@@ -569,6 +569,33 @@ namespace Ogre
         return mMeshCache ? mMeshCache->getGpuCullReflectionConeExpansion() : Real( 1 );
     }
     //-------------------------------------------------------------------------
+    void PathTracer::setGpuCullMode( uint32 mode )
+    {
+        if( mode > RTShadowsMeshCache::GpuCullFrustumAndDistance )
+            mode = RTShadowsMeshCache::GpuCullOff;
+        if( !mMeshCache || mMeshCache->getGpuCullMode() == mode )
+            return;
+
+        mMeshCache->setGpuCullMode( static_cast<RTShadowsMeshCache::GpuCullMode>( mode ) );
+        mMeshCache->markInstancesDirty();
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
+    uint32 PathTracer::getGpuCullMode() const
+    {
+        return mMeshCache ? static_cast<uint32>( mMeshCache->getGpuCullMode() ) : 0u;
+    }
+    //-------------------------------------------------------------------------
+    uint32 PathTracer::getActiveMeshletCount() const
+    {
+        return mMeshCache ? mMeshCache->getLastActiveMeshletCount() : 0u;
+    }
+    //-------------------------------------------------------------------------
+    uint32 PathTracer::getTotalMeshletCount() const
+    {
+        return mMeshCache ? mMeshCache->getLastTotalMeshletCount() : 0u;
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::setSkyColours( const ColourValue &zenith, const ColourValue &horizon )
     {
         if( mSkyZenith == zenith && mSkyHorizon == horizon )

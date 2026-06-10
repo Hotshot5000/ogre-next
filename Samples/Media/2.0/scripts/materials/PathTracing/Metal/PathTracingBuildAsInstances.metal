@@ -61,14 +61,17 @@ kernel void pathtracer_write_indirect_as_instances(
 
     const float3 cameraPos = cullParams.cameraPositionAndMaxDistance.xyz;
     const float maxCullDistance = cullParams.cameraPositionAndMaxDistance.w;
+    const uint cullMode = uint( cullParams.cullOptions.x + 0.5f );
+    const bool useDistanceCull = cullMode == 1u || cullMode == 3u;
+    const bool useFrustumCull = cullMode == 2u || cullMode == 3u;
     const float3 toBounds = src.boundsCenterRadius.xyz - cameraPos;
     const float radius = src.boundsCenterRadius.w;
     const float cullDistance = maxCullDistance + radius;
-    const bool distanceVisible = maxCullDistance <= 0.0f ||
+    const bool distanceVisible = !useDistanceCull || maxCullDistance <= 0.0f ||
                                  dot( toBounds, toBounds ) <= cullDistance * cullDistance;
 
     bool coneVisible = true;
-    if( cullParams.cullOptions.x > 0.0f )
+    if( useFrustumCull )
     {
         const float3 cameraForward = cullParams.cameraForwardAndNear.xyz;
         const float3 cameraRight = cullParams.cameraRightAndTanHalfFovX.xyz;

@@ -71,6 +71,14 @@ namespace Ogre
         };
         typedef FastArray<SelectedSubMeshInstance> SelectedSubMeshInstanceArray;
 
+        enum GpuCullMode
+        {
+            GpuCullOff = 0u,
+            GpuCullDistance = 1u,
+            GpuCullFrustum = 2u,
+            GpuCullFrustumAndDistance = 3u
+        };
+
     private:
         typedef map<IdString, ShadowsCachedMesh>::type MeshCacheMap;
         typedef map<MeshPtr, ShadowsCachedMesh>::type MeshPtrMap;
@@ -86,6 +94,9 @@ namespace Ogre
         const Camera *mLodCamera;
         Real mGpuCullDistance;
         Real mGpuCullReflectionConeExpansion;
+        GpuCullMode mGpuCullMode;
+        uint32 mLastActiveMeshletCount;
+        uint32 mLastTotalMeshletCount;
         uint32 mGeometryRevision;
         bool mRebuildBlas;
         bool mRebuildTlas;
@@ -119,6 +130,10 @@ namespace Ogre
         Real getGpuCullDistance() const { return mGpuCullDistance; }
         void setGpuCullReflectionConeExpansion( Real expansion );
         Real getGpuCullReflectionConeExpansion() const { return mGpuCullReflectionConeExpansion; }
+        void setGpuCullMode( GpuCullMode mode );
+        GpuCullMode getGpuCullMode() const { return mGpuCullMode; }
+        uint32 getLastActiveMeshletCount() const { return mLastActiveMeshletCount; }
+        uint32 getLastTotalMeshletCount() const { return mLastTotalMeshletCount; }
         const SelectedSubMeshInstanceArray &getSelectedSubMeshInstances() const
         {
             return mSelectedSubMeshInstances;
