@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include "OgreIdString.h"
 #include "OgreMesh2.h"
 #include <ogrestd/map.h>
+#include <set>
 
 #include "OgreHeaderPrefix.h"
 
@@ -72,11 +73,13 @@ namespace Ogre
         typedef map<MeshPtr, ShadowsCachedMesh>::type MeshPtrMap;
         typedef FastArray<MeshPtr> MeshPtrArray;
         typedef FastArray<Item *> ItemArray;
+        typedef std::set<Item *> ItemSet;
         
         MeshCacheMap mMeshCaches;
         MeshPtrArray mMeshes;
         ItemArray mItems;
         SelectedSubMeshInstanceArray mSelectedSubMeshInstances;
+        ItemSet mLastSelectedProxyItems;
         const Camera *mLodCamera;
         uint32 mGeometryRevision;
         bool mRebuildBlas;

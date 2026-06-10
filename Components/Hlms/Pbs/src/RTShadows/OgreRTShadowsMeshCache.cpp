@@ -215,7 +215,8 @@ namespace Ogre
 
         uint32 chooseRtLodLevel( const Item *item,
                                  const RTShadowsMeshCache::ShadowsCachedMesh &cachedMesh,
-                                 const Camera *lodCamera )
+                                 const Camera *lodCamera,
+                                 bool wasUsingProxy )
         {
             const uint32 maxLod = static_cast<uint32>( cachedMesh.lodRanges.size() - 1u );
             uint32 lodLevel = std::min<uint32>( item->getCurrentMeshLod(), maxLod );
@@ -226,8 +227,11 @@ namespace Ogre
                 const Vector3 worldCenter = transform * mesh->getAabb().mCenter;
                 const Real distance = worldCenter.distance( lodCamera->getDerivedPosition() );
                 const Real radius = std::max<Real>( mesh->getBoundingSphereRadius(), Real( 1 ) );
-                const Real proxyDistance = std::max<Real>( radius * Real( 24 ), Real( 80 ) );
-                if( distance > proxyDistance )
+                const Real proxyEnterDistance = std::max<Real>( radius * Real( 30 ), Real( 96 ) );
+                const Real proxyExitDistance = std::max<Real>( radius * Real( 20 ), Real( 64 ) );
+                if( wasUsingProxy )
+                    lodLevel = distance > proxyExitDistance ? maxLod : lodLevel;
+                else if( distance > proxyEnterDistance )
                     lodLevel = maxLod;
             }
             return lodLevel;
@@ -374,6 +378,7 @@ namespace Ogre
         }
         
         SelectedSubMeshInstanceArray selectedSubMeshInstances;
+        ItemSet selectedProxyItems;
         std::vector<uint32> instanceMeshIndex;
         std::vector<Matrix4> instanceTransform;
         ItemArray::iterator itemItor = mItems.begin();
@@ -387,9 +392,12 @@ namespace Ogre
             if( meshCacheIt != mMeshCaches.end() && !meshCacheIt->second.lodRanges.empty() )
             {
                 const ShadowsCachedMesh &cachedMesh = meshCacheIt->second;
-                const uint32 lodLevel = chooseRtLodLevel( item, cachedMesh, mLodCamera );
+                const bool wasUsingProxy = mLastSelectedProxyItems.find( item ) != mLastSelectedProxyItems.end();
+                const uint32 lodLevel = chooseRtLodLevel( item, cachedMesh, mLodCamera, wasUsingProxy );
                 const MeshLodRange &lodRange = cachedMesh.lodRanges[lodLevel];
                 const bool usingProxy = cachedMesh.proxyMesh && lodLevel == cachedMesh.lodRanges.size() - 1u;
+                if( usingProxy )
+                    selectedProxyItems.insert( item );
                 const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
                 const uint32 numSubMeshes = usingProxy ?
                     std::min<uint32>( item->getNumSubItems(), cachedMesh.proxyMesh->getNumSubMeshes() ) :
@@ -426,6 +434,8 @@ namespace Ogre
         {
             mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
         }
+
+        mLastSelectedProxyItems.swap( selectedProxyItems );
 
         if( wasRebuildingBlas )
             ++mGeometryRevision;
