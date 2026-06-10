@@ -128,6 +128,10 @@ namespace Ogre
         
         id<MTLBuffer> mAccelerationStructureInstanceBuffer;
         id<MTLBuffer> mAccelerationStructureInstanceCountBuffer;
+        id<MTLBuffer> mAccelerationStructureInstanceInputBuffer;
+        id<MTLBuffer> mAccelerationStructureResourceIdBuffer;
+        id<MTLLibrary> mAccelerationStructureInstanceLibrary;
+        id<MTLComputePipelineState> mAccelerationStructureInstancePso;
         
         id<MTLIntersectionFunctionTable> mIntersectionFunctionTable;
 

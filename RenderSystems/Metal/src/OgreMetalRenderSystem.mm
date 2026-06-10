@@ -72,6 +72,88 @@ Copyright (c) 2000-2016 Torus Knot Software Ltd
 
 namespace Ogre
 {
+    namespace
+    {
+        struct PathTracerAsInstanceInput
+        {
+            uint32_t accelerationStructureIndex;
+            uint32_t padding[3];
+            float transform[16];
+        };
+
+        static const char *c_pathTracerAsInstanceKernel = R"(
+#include <metal_stdlib>
+using namespace metal;
+
+struct PathTracerAsInstanceInput
+{
+    uint accelerationStructureIndex;
+    uint padding0;
+    uint padding1;
+    uint padding2;
+    float4 transformRow0;
+    float4 transformRow1;
+    float4 transformRow2;
+    float4 transformRow3;
+};
+
+struct PathTracerPackedFloat4x3
+{
+    packed_float3 column0;
+    packed_float3 column1;
+    packed_float3 column2;
+    packed_float3 column3;
+};
+
+struct PathTracerIndirectInstanceDescriptor
+{
+    PathTracerPackedFloat4x3 transformationMatrix;
+    uint options;
+    uint mask;
+    uint intersectionFunctionTableOffset;
+    uint userID;
+    ulong accelerationStructureID;
+};
+
+kernel void pathtracer_write_indirect_as_instances(
+    constant PathTracerAsInstanceInput *inputs [[buffer(0)]],
+    constant ulong *accelerationStructureIds [[buffer(1)]],
+    device PathTracerIndirectInstanceDescriptor *descriptors [[buffer(2)]],
+    device atomic_uint *instanceCount [[buffer(3)]],
+    constant uint &numInstances [[buffer(4)]],
+    uint tid [[thread_position_in_grid]] )
+{
+    if( tid == 0 )
+        atomic_store_explicit( instanceCount, numInstances, memory_order_relaxed );
+
+    if( tid >= numInstances )
+        return;
+
+    constant PathTracerAsInstanceInput &src = inputs[tid];
+    device PathTracerIndirectInstanceDescriptor &dst = descriptors[tid];
+
+    dst.accelerationStructureID = accelerationStructureIds[src.accelerationStructureIndex];
+    dst.userID = tid;
+    dst.options = 4u; // MTLAccelerationStructureInstanceOptionOpaque
+    dst.mask = 1u;
+    dst.intersectionFunctionTableOffset = 0u;
+
+    dst.transformationMatrix.column0 = packed_float3( src.transformRow0.x,
+                                                      src.transformRow1.x,
+                                                      src.transformRow2.x );
+    dst.transformationMatrix.column1 = packed_float3( src.transformRow0.y,
+                                                      src.transformRow1.y,
+                                                      src.transformRow2.y );
+    dst.transformationMatrix.column2 = packed_float3( src.transformRow0.z,
+                                                      src.transformRow1.z,
+                                                      src.transformRow2.z );
+    dst.transformationMatrix.column3 = packed_float3( src.transformRow0.w,
+                                                      src.transformRow1.w,
+                                                      src.transformRow2.w );
+}
+)";
+    }
+
 #if OGRE_METAL_HAS_METALFX
     namespace
     {
@@ -114,6 +196,10 @@ namespace Ogre
         mAccelerationStructureVertexBuffers( 0 ),
         mAccelerationStructureInstanceBuffer( 0 ),
         mAccelerationStructureInstanceCountBuffer( 0 ),
+        mAccelerationStructureInstanceInputBuffer( 0 ),
+        mAccelerationStructureResourceIdBuffer( 0 ),
+        mAccelerationStructureInstanceLibrary( 0 ),
+        mAccelerationStructureInstancePso( 0 ),
         mIntersectionFunctionTable( 0 ),
         mPathTracerDenoiserScaler( 0 ),
         mPathTracerDenoiserInputWidth( 0u ),
@@ -3550,6 +3636,8 @@ namespace Ogre
         mAccelerationStructureVertexBuffers = 0;
         mAccelerationStructureInstanceBuffer = 0;
         mAccelerationStructureInstanceCountBuffer = 0;
+        mAccelerationStructureInstanceInputBuffer = 0;
+        mAccelerationStructureResourceIdBuffer = 0;
         mIntersectionFunctionTable = 0;
     }
     
@@ -3601,38 +3689,117 @@ namespace Ogre
 
         if( @available( macOS 14.0, iOS 17.0, * ) )
         {
+            if( !mAccelerationStructureInstancePso )
+            {
+                NSError *error = nil;
+                mAccelerationStructureInstanceLibrary = [device
+                    newLibraryWithSource:@( c_pathTracerAsInstanceKernel )
+                                  options:nil
+                                    error:&error];
+                if( mAccelerationStructureInstanceLibrary && !error )
+                {
+                    id<MTLFunction> function = [mAccelerationStructureInstanceLibrary
+                        newFunctionWithName:@"pathtracer_write_indirect_as_instances"];
+                    mAccelerationStructureInstancePso = [device newComputePipelineStateWithFunction:function
+                                                                                              error:&error];
+                }
+
+                if( !mAccelerationStructureInstancePso || error )
+                {
+                    String errorDesc;
+                    if( error )
+                        errorDesc = error.localizedDescription.UTF8String;
+                    LogManager::getSingleton().logMessage(
+                        "Path tracer GPU AS instance writer compile error:\n" + errorDesc,
+                        LML_CRITICAL );
+                    mAccelerationStructureInstanceLibrary = 0;
+                    mAccelerationStructureInstancePso = 0;
+                }
+            }
+
+            mAccelerationStructureInstanceInputBuffer = [device newBufferWithLength:sizeof(PathTracerAsInstanceInput) * instanceCount options:options];
+            mAccelerationStructureResourceIdBuffer = [device newBufferWithLength:sizeof(MTLResourceID) * mPrimitiveAccelerationStructures.count options:options];
             mAccelerationStructureInstanceBuffer = [device newBufferWithLength:sizeof(MTLIndirectAccelerationStructureInstanceDescriptor) * instanceCount options:options];
             mAccelerationStructureInstanceCountBuffer = [device newBufferWithLength:sizeof(uint32_t) options:options];
 
-            MTLIndirectAccelerationStructureInstanceDescriptor *instanceDescriptors =
-                (MTLIndirectAccelerationStructureInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
-            uint32_t *instanceCountPtr = (uint32_t *)mAccelerationStructureInstanceCountBuffer.contents;
-            *instanceCountPtr = (uint32_t)instanceCount;
+            PathTracerAsInstanceInput *instanceInputs =
+                (PathTracerAsInstanceInput *)mAccelerationStructureInstanceInputBuffer.contents;
+            MTLResourceID *resourceIds =
+                (MTLResourceID *)mAccelerationStructureResourceIdBuffer.contents;
+            for( NSUInteger blasIdx = 0; blasIdx < mPrimitiveAccelerationStructures.count; ++blasIdx )
+            {
+                id<MTLAccelerationStructure> primitiveAccelerationStructure =
+                    [mPrimitiveAccelerationStructures objectAtIndex:blasIdx];
+                resourceIds[blasIdx] = primitiveAccelerationStructure.gpuResourceID;
+            }
 
             for( NSUInteger instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex )
             {
-                const NSUInteger geometryIndex = instanceMeshIndex[instanceIndex];
-                id<MTLAccelerationStructure> primitiveAccelerationStructure =
-                    [mPrimitiveAccelerationStructures objectAtIndex:geometryIndex];
-
-                instanceDescriptors[instanceIndex].accelerationStructureID =
-                    primitiveAccelerationStructure.gpuResourceID;
-                instanceDescriptors[instanceIndex].userID = (uint32_t)instanceIndex;
-                instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
-                instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
-                instanceDescriptors[instanceIndex].mask = (uint32_t)GEOMETRY_MASK_TRIANGLE;
-
+                instanceInputs[instanceIndex].accelerationStructureIndex = instanceMeshIndex[instanceIndex];
                 const Matrix4 &matTrans = instanceTransform[instanceIndex];
-                for( int column = 0; column < 4; ++column )
-                    for( int row = 0; row < 3; ++row )
-                        instanceDescriptors[instanceIndex].transformationMatrix.columns[column][row] =
-                            matTrans[row][column];
+                for( int row = 0; row < 4; ++row )
+                    for( int column = 0; column < 4; ++column )
+                        instanceInputs[instanceIndex].transform[row * 4 + column] = matTrans[row][column];
             }
 
 #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
-            [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
-            [mAccelerationStructureInstanceCountBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceCountBuffer.length)];
+            [mAccelerationStructureInstanceInputBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceInputBuffer.length)];
+            [mAccelerationStructureResourceIdBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureResourceIdBuffer.length)];
 #endif
+
+            if( mAccelerationStructureInstancePso )
+            {
+                id<MTLCommandBuffer> commandBuffer = [mActiveDevice->mMainCommandQueue commandBuffer];
+                id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
+                uint32_t numInstances = static_cast<uint32_t>( instanceCount );
+                [computeEncoder setComputePipelineState:mAccelerationStructureInstancePso];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceInputBuffer offset:0 atIndex:0];
+                [computeEncoder setBuffer:mAccelerationStructureResourceIdBuffer offset:0 atIndex:1];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceBuffer offset:0 atIndex:2];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceCountBuffer offset:0 atIndex:3];
+                [computeEncoder setBytes:&numInstances length:sizeof(numInstances) atIndex:4];
+
+                const NSUInteger threadsPerGroup = std::min<NSUInteger>(
+                    std::max<NSUInteger>( mAccelerationStructureInstancePso.threadExecutionWidth, 1u ), 256u );
+                MTLSize threadgroupSize = MTLSizeMake( threadsPerGroup, 1, 1 );
+                MTLSize gridSize = MTLSizeMake( std::max<NSUInteger>( instanceCount, 1u ), 1, 1 );
+                [computeEncoder dispatchThreads:gridSize threadsPerThreadgroup:threadgroupSize];
+                [computeEncoder endEncoding];
+                [commandBuffer commit];
+            }
+            else
+            {
+                MTLIndirectAccelerationStructureInstanceDescriptor *instanceDescriptors =
+                    (MTLIndirectAccelerationStructureInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
+                uint32_t *instanceCountPtr =
+                    (uint32_t *)mAccelerationStructureInstanceCountBuffer.contents;
+                *instanceCountPtr = static_cast<uint32_t>( instanceCount );
+
+                for( NSUInteger instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex )
+                {
+                    const NSUInteger geometryIndex = instanceMeshIndex[instanceIndex];
+                    id<MTLAccelerationStructure> primitiveAccelerationStructure =
+                        [mPrimitiveAccelerationStructures objectAtIndex:geometryIndex];
+
+                    instanceDescriptors[instanceIndex].accelerationStructureID =
+                        primitiveAccelerationStructure.gpuResourceID;
+                    instanceDescriptors[instanceIndex].userID = (uint32_t)instanceIndex;
+                    instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
+                    instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
+                    instanceDescriptors[instanceIndex].mask = (uint32_t)GEOMETRY_MASK_TRIANGLE;
+
+                    const Matrix4 &matTrans = instanceTransform[instanceIndex];
+                    for( int column = 0; column < 4; ++column )
+                        for( int row = 0; row < 3; ++row )
+                            instanceDescriptors[instanceIndex].transformationMatrix.columns[column][row] =
+                                matTrans[row][column];
+                }
+
+#if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
+                [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
+                [mAccelerationStructureInstanceCountBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceCountBuffer.length)];
+#endif
+            }
 
             MTLIndirectInstanceAccelerationStructureDescriptor *accelDescriptor =
                 [MTLIndirectInstanceAccelerationStructureDescriptor descriptor];
