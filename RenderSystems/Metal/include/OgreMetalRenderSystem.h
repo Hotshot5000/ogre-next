@@ -127,6 +127,7 @@ namespace Ogre
         NSMutableArray *mAccelerationStructureVertexBuffers;
         
         id<MTLBuffer> mAccelerationStructureInstanceBuffer;
+        id<MTLBuffer> mAccelerationStructureInstanceCountBuffer;
         
         id<MTLIntersectionFunctionTable> mIntersectionFunctionTable;
 

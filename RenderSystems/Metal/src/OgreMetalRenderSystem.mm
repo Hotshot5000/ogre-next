@@ -113,6 +113,7 @@ namespace Ogre
         mPrimitiveAccelerationStructures( 0 ),
         mAccelerationStructureVertexBuffers( 0 ),
         mAccelerationStructureInstanceBuffer( 0 ),
+        mAccelerationStructureInstanceCountBuffer( 0 ),
         mIntersectionFunctionTable( 0 ),
         mPathTracerDenoiserScaler( 0 ),
         mPathTracerDenoiserInputWidth( 0u ),
@@ -3548,6 +3549,7 @@ namespace Ogre
         mPrimitiveAccelerationStructures = 0;
         mAccelerationStructureVertexBuffers = 0;
         mAccelerationStructureInstanceBuffer = 0;
+        mAccelerationStructureInstanceCountBuffer = 0;
         mIntersectionFunctionTable = 0;
     }
     
@@ -3594,59 +3596,96 @@ namespace Ogre
     
     void MetalRenderSystem::updateInstanceAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure )
     {
-        mAccelerationStructureInstanceBuffer = [mActiveDevice->mDevice newBufferWithLength:sizeof(MTLAccelerationStructureUserIDInstanceDescriptor) * instanceMeshIndex.size() options:options];
-        
-        MTLAccelerationStructureUserIDInstanceDescriptor *instanceDescriptors = (MTLAccelerationStructureUserIDInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
-        
-        // Fill out instance descriptors.
-        for (NSUInteger instanceIndex = 0; instanceIndex < instanceMeshIndex.size(); instanceIndex++) {
-            
-            NSUInteger geometryIndex = instanceMeshIndex[instanceIndex];
-            
-            // Map the instance to its acceleration structure.
-            instanceDescriptors[instanceIndex].accelerationStructureIndex = (uint32_t)geometryIndex;
-            instanceDescriptors[instanceIndex].userID = (uint32_t)instanceIndex;
-            
-            // Mark the instance as opaque if it doesn't have an intersection function so that the
-            // ray intersector doesn't attempt to execute a function that doesn't exist.
-            instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
-            
-            // Metal adds the geometry intersection function table offset and instance intersection
-            // function table offset together to determine which intersection function to execute.
-            // The sample mapped geometries directly to their intersection functions above, so it
-            // sets the instance's table offset to 0.
-            instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
-            
-            // Set the instance mask, which the sample uses to filter out intersections between rays
-            // and geometry. For example, it uses masks to prevent light sources from being visible
-            // to secondary rays, which would result in their contribution being double-counted.
-            instanceDescriptors[instanceIndex].mask = (uint32_t) GEOMETRY_MASK_TRIANGLE;//(uint32_t)instance.mask;
-            
-            // Copy the first three rows of the instance transformation matrix. Metal assumes that
-            // the bottom row is (0, 0, 0, 1).
-            // This allows instance descriptors to be tightly packed in memory.
-            const Matrix4& matTrans = instanceTransform[instanceIndex];
-            for (int column = 0; column < 4; column++)
-                for (int row = 0; row < 3; row++)
-                    instanceDescriptors[instanceIndex].transformationMatrix.columns[column][row] = matTrans[row][column];
-        }
-        
+        id<MTLDevice> device = mActiveDevice->mDevice;
+        const NSUInteger instanceCount = instanceMeshIndex.size();
+
+        if( @available( macOS 14.0, iOS 17.0, * ) )
+        {
+            mAccelerationStructureInstanceBuffer = [device newBufferWithLength:sizeof(MTLIndirectAccelerationStructureInstanceDescriptor) * instanceCount options:options];
+            mAccelerationStructureInstanceCountBuffer = [device newBufferWithLength:sizeof(uint32_t) options:options];
+
+            MTLIndirectAccelerationStructureInstanceDescriptor *instanceDescriptors =
+                (MTLIndirectAccelerationStructureInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
+            uint32_t *instanceCountPtr = (uint32_t *)mAccelerationStructureInstanceCountBuffer.contents;
+            *instanceCountPtr = (uint32_t)instanceCount;
+
+            for( NSUInteger instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex )
+            {
+                const NSUInteger geometryIndex = instanceMeshIndex[instanceIndex];
+                id<MTLAccelerationStructure> primitiveAccelerationStructure =
+                    [mPrimitiveAccelerationStructures objectAtIndex:geometryIndex];
+
+                instanceDescriptors[instanceIndex].accelerationStructureID =
+                    primitiveAccelerationStructure.gpuResourceID;
+                instanceDescriptors[instanceIndex].userID = (uint32_t)instanceIndex;
+                instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
+                instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
+                instanceDescriptors[instanceIndex].mask = (uint32_t)GEOMETRY_MASK_TRIANGLE;
+
+                const Matrix4 &matTrans = instanceTransform[instanceIndex];
+                for( int column = 0; column < 4; ++column )
+                    for( int row = 0; row < 3; ++row )
+                        instanceDescriptors[instanceIndex].transformationMatrix.columns[column][row] =
+                            matTrans[row][column];
+            }
+
 #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
-        [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
+            [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
+            [mAccelerationStructureInstanceCountBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceCountBuffer.length)];
 #endif
-        
-        // Create an instance acceleration structure descriptor.
-        MTLInstanceAccelerationStructureDescriptor *accelDescriptor = [MTLInstanceAccelerationStructureDescriptor descriptor];
-        
-        accelDescriptor.instancedAccelerationStructures = mPrimitiveAccelerationStructures;
-        accelDescriptor.instanceCount = instanceMeshIndex.size();
-        accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
-        accelDescriptor.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeUserID;
-        accelDescriptor.usage = MTLAccelerationStructureUsageRefit;
-        
-        // Finally, create the instance acceleration structure containing all of the instances
-        // in the scene.
-        mInstanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor, refitAccelerationStructure );
+
+            MTLIndirectInstanceAccelerationStructureDescriptor *accelDescriptor =
+                [MTLIndirectInstanceAccelerationStructureDescriptor descriptor];
+            accelDescriptor.maxInstanceCount = instanceCount;
+            accelDescriptor.instanceCountBuffer = mAccelerationStructureInstanceCountBuffer;
+            accelDescriptor.instanceCountBufferOffset = 0;
+            accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
+            accelDescriptor.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeIndirect;
+            accelDescriptor.instanceDescriptorStride = sizeof(MTLIndirectAccelerationStructureInstanceDescriptor);
+            accelDescriptor.usage = MTLAccelerationStructureUsageRefit;
+
+            mInstanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor,
+                                                                                        refitAccelerationStructure );
+        }
+        else
+        {
+            mAccelerationStructureInstanceBuffer = [device newBufferWithLength:sizeof(MTLAccelerationStructureUserIDInstanceDescriptor) * instanceCount options:options];
+            mAccelerationStructureInstanceCountBuffer = 0;
+
+            MTLAccelerationStructureUserIDInstanceDescriptor *instanceDescriptors =
+                (MTLAccelerationStructureUserIDInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
+
+            for( NSUInteger instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex )
+            {
+                const NSUInteger geometryIndex = instanceMeshIndex[instanceIndex];
+                instanceDescriptors[instanceIndex].accelerationStructureIndex = (uint32_t)geometryIndex;
+                instanceDescriptors[instanceIndex].userID = (uint32_t)instanceIndex;
+                instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
+                instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
+                instanceDescriptors[instanceIndex].mask = (uint32_t)GEOMETRY_MASK_TRIANGLE;
+
+                const Matrix4 &matTrans = instanceTransform[instanceIndex];
+                for( int column = 0; column < 4; ++column )
+                    for( int row = 0; row < 3; ++row )
+                        instanceDescriptors[instanceIndex].transformationMatrix.columns[column][row] =
+                            matTrans[row][column];
+            }
+
+#if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
+            [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
+#endif
+
+            MTLInstanceAccelerationStructureDescriptor *accelDescriptor =
+                [MTLInstanceAccelerationStructureDescriptor descriptor];
+            accelDescriptor.instancedAccelerationStructures = mPrimitiveAccelerationStructures;
+            accelDescriptor.instanceCount = instanceCount;
+            accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
+            accelDescriptor.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeUserID;
+            accelDescriptor.usage = MTLAccelerationStructureUsageRefit;
+
+            mInstanceAccelerationStructure = createAccelerationStructureWithDescriptor( accelDescriptor,
+                                                                                        refitAccelerationStructure );
+        }
     }
     
     //-------------------------------------------------------------------------
