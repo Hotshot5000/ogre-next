@@ -362,6 +362,10 @@ namespace Demo
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getActiveMeshletCount() : 0u );
         outText += " / ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getTotalMeshletCount() : 0u );
+        outText += "\nPath tracer meshlet tiers full/proxy: ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getFullTierMeshletCount() : 0u );
+        outText += " / ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getProxyTierMeshletCount() : 0u );
         outText += "\nPath tracer GPU cull distance: ";
         if( mPathTracer && mPathTracer->getGpuCullDistance() > 0.0f )
         {

@@ -358,19 +358,32 @@ namespace Ogre
         {
             const uint32 maxLod = static_cast<uint32>( cachedMesh.lodRanges.size() - 1u );
             uint32 lodLevel = std::min<uint32>( item->getCurrentMeshLod(), maxLod );
-            if( lodCamera && maxLod > lodLevel )
+            if( lodCamera && maxLod > lodLevel && cachedMesh.proxyMesh )
             {
                 const Mesh *mesh = item->getMesh().get();
                 const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
                 const Vector3 worldCenter = transform * mesh->getAabb().mCenter;
-                const Real distance = worldCenter.distance( lodCamera->getDerivedPosition() );
-                const Real radius = std::max<Real>( mesh->getBoundingSphereRadius(), Real( 1 ) );
-                const Real proxyEnterDistance = std::max<Real>( radius * Real( 30 ), Real( 96 ) );
-                const Real proxyExitDistance = std::max<Real>( radius * Real( 20 ), Real( 64 ) );
-                if( wasUsingProxy )
-                    lodLevel = distance > proxyExitDistance ? maxLod : lodLevel;
-                else if( distance > proxyEnterDistance )
-                    lodLevel = maxLod;
+                const Vector3 axisX( transform[0][0], transform[1][0], transform[2][0] );
+                const Vector3 axisY( transform[0][1], transform[1][1], transform[2][1] );
+                const Vector3 axisZ( transform[0][2], transform[1][2], transform[2][2] );
+                const Real maxScale = std::max<Real>( axisX.length(),
+                    std::max<Real>( axisY.length(), axisZ.length() ) );
+                const Real worldRadius = std::max<Real>( mesh->getBoundingSphereRadius() * maxScale,
+                                                         Real( 1e-4 ) );
+                const Real cameraDistance = worldCenter.distance( lodCamera->getDerivedPosition() );
+                const Real projectedDistance = std::max<Real>( cameraDistance, Real( 1e-4 ) );
+                const Real pixelDisplayRatio = lodCamera->getPixelDisplayRatio();
+                if( pixelDisplayRatio > Real( 1e-6 ) )
+                {
+                    const Real projectedDiameterPixels =
+                        ( worldRadius * Real( 2 ) ) / ( projectedDistance * pixelDisplayRatio );
+                    const Real proxyEnterPixels = Real( 48 );
+                    const Real proxyExitPixels = Real( 72 );
+                    if( wasUsingProxy )
+                        lodLevel = projectedDiameterPixels < proxyExitPixels ? maxLod : lodLevel;
+                    else if( projectedDiameterPixels < proxyEnterPixels )
+                        lodLevel = maxLod;
+                }
             }
             return lodLevel;
         }
@@ -405,6 +418,8 @@ namespace Ogre
         mGpuCullMode( GpuCullOff ),
         mLastActiveMeshletCount( 0u ),
         mLastTotalMeshletCount( 0u ),
+        mLastFullTierMeshletCount( 0u ),
+        mLastProxyTierMeshletCount( 0u ),
         mGeometryRevision( 1u ),
         mRebuildBlas( true ),
         mRebuildTlas( true ),
@@ -560,6 +575,8 @@ namespace Ogre
         std::vector<uint32> instanceMeshIndex;
         std::vector<Matrix4> instanceTransform;
         std::vector<Vector4> instanceBounds;
+        mLastFullTierMeshletCount = 0u;
+        mLastProxyTierMeshletCount = 0u;
         ItemArray::iterator itemItor = mItems.begin();
         ItemArray::iterator itemEnd = mItems.end();
         
@@ -583,6 +600,10 @@ namespace Ogre
                                                         cachedMesh.proxySubMeshToSourceSubMesh.size() ),
                                       cachedMesh.proxySubMeshBounds.size() ) :
                     std::min<uint32>( item->getNumSubItems(), lodRange.numBlas );
+                if( usingProxy )
+                    mLastProxyTierMeshletCount += numSubMeshes;
+                else
+                    mLastFullTierMeshletCount += numSubMeshes;
                 for( uint32 subMeshIdx = 0u; subMeshIdx < numSubMeshes; ++subMeshIdx )
                 {
                     const uint32 sourceSubMeshIdx = usingProxy ?

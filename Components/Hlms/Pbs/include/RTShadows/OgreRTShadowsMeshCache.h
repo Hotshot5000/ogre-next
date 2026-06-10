@@ -97,6 +97,8 @@ namespace Ogre
         GpuCullMode mGpuCullMode;
         uint32 mLastActiveMeshletCount;
         uint32 mLastTotalMeshletCount;
+        uint32 mLastFullTierMeshletCount;
+        uint32 mLastProxyTierMeshletCount;
         uint32 mGeometryRevision;
         bool mRebuildBlas;
         bool mRebuildTlas;
@@ -134,6 +136,8 @@ namespace Ogre
         GpuCullMode getGpuCullMode() const { return mGpuCullMode; }
         uint32 getLastActiveMeshletCount() const { return mLastActiveMeshletCount; }
         uint32 getLastTotalMeshletCount() const { return mLastTotalMeshletCount; }
+        uint32 getLastFullTierMeshletCount() const { return mLastFullTierMeshletCount; }
+        uint32 getLastProxyTierMeshletCount() const { return mLastProxyTierMeshletCount; }
         const SelectedSubMeshInstanceArray &getSelectedSubMeshInstances() const
         {
             return mSelectedSubMeshInstances;
