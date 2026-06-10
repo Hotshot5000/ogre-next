@@ -31,6 +31,7 @@ THE SOFTWARE.
 
 #include "OgreHlmsPbsPrerequisites.h"
 #include "OgreIdString.h"
+#include "OgreMesh2.h"
 #include <ogrestd/map.h>
 
 #include "OgreHeaderPrefix.h"
@@ -51,6 +52,7 @@ namespace Ogre
             uint64                  hash[2];
             String                  meshName;
             Mesh                    *mesh;
+            MeshPtr                 proxyMesh;
             FastArray<MeshLodRange> lodRanges;
         };
 
@@ -75,6 +77,7 @@ namespace Ogre
         MeshPtrArray mMeshes;
         ItemArray mItems;
         SelectedSubMeshInstanceArray mSelectedSubMeshInstances;
+        const Camera *mLodCamera;
         uint32 mGeometryRevision;
         bool mRebuildBlas;
         bool mRebuildTlas;
@@ -103,6 +106,7 @@ namespace Ogre
 
         void setEnabled( bool enabled ) { mEnabled = enabled; }
         bool getEnabled() const { return mEnabled; }
+        void setLodCamera( const Camera *camera ) { mLodCamera = camera; }
         const SelectedSubMeshInstanceArray &getSelectedSubMeshInstances() const
         {
             return mSelectedSubMeshInstances;

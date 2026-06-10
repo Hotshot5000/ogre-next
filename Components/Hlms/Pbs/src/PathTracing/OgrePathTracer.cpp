@@ -581,6 +581,8 @@ namespace Ogre
         if( !mMeshCache )
             return;
 
+        mMeshCache->setLodCamera( mCamera );
+
         if( mScene.needsBlasRebuild() )
         {
             mMeshCache->removeAllItems();

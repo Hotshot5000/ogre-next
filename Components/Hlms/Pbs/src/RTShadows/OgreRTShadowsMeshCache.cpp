@@ -34,9 +34,16 @@ THE SOFTWARE.
 #include "OgreRenderSystem.h"
 
 #include "OgreMesh2.h"
+#include "OgreMeshManager2.h"
+#include "OgreResourceGroupManager.h"
 #include "OgreSceneManager.h"
+#include "OgreStringConverter.h"
 #include "OgreSubMesh2.h"
 #include "OgreItem.h"
+#include "Vao/OgreIndexBufferPacked.h"
+#include "Vao/OgreVaoManager.h"
+#include "Vao/OgreVertexArrayObject.h"
+#include "Vao/OgreVertexBufferPacked.h"
 
 namespace Ogre
 {
@@ -54,6 +61,78 @@ namespace Ogre
                                              std::max<size_t>( subMesh->mVao[VpNormal].size(), 1u ) );
             }
             return std::max<uint32>( lodCount, 1u );
+        }
+
+        MeshPtr createBoundsProxyMesh( const Mesh *sourceMesh, VaoManager *vaoManager )
+        {
+            const Aabb &bounds = sourceMesh->getAabb();
+            Vector3 halfSize = bounds.mHalfSize;
+            if( halfSize.squaredLength() <= Real( 1e-8 ) )
+                halfSize = Vector3( 0.5f, 0.5f, 0.5f );
+
+            const Vector3 center = bounds.mCenter;
+            const Vector3 vertices[8] = {
+                center + Vector3( -halfSize.x, -halfSize.y,  halfSize.z ),
+                center + Vector3(  halfSize.x, -halfSize.y,  halfSize.z ),
+                center + Vector3(  halfSize.x,  halfSize.y,  halfSize.z ),
+                center + Vector3( -halfSize.x,  halfSize.y,  halfSize.z ),
+                center + Vector3( -halfSize.x, -halfSize.y, -halfSize.z ),
+                center + Vector3(  halfSize.x, -halfSize.y, -halfSize.z ),
+                center + Vector3(  halfSize.x,  halfSize.y, -halfSize.z ),
+                center + Vector3( -halfSize.x,  halfSize.y, -halfSize.z )
+            };
+
+            const uint16 indices[36] = {
+                2, 1, 0, 0, 3, 2,
+                4, 5, 6, 6, 7, 4,
+                6, 2, 3, 3, 7, 6,
+                0, 1, 5, 5, 4, 0,
+                3, 0, 4, 4, 7, 3,
+                1, 2, 6, 6, 5, 1
+            };
+
+            VertexElement2Vec vertexElements;
+            vertexElements.push_back( VertexElement2( VET_FLOAT3, VES_POSITION ) );
+            VertexBufferPacked *vertexBuffer = vaoManager->createVertexBuffer(
+                vertexElements, 8u, BT_IMMUTABLE,
+                reinterpret_cast<void *>( const_cast<Vector3 *>( vertices ) ), false );
+            IndexBufferPacked *indexBuffer = vaoManager->createIndexBuffer(
+                IndexBufferPacked::IT_16BIT, 36u, BT_IMMUTABLE,
+                reinterpret_cast<void *>( const_cast<uint16 *>( indices ) ), false );
+            VertexBufferPackedVec vertexBuffers( 1u, vertexBuffer );
+            VertexArrayObject *vao =
+                vaoManager->createVertexArrayObject( vertexBuffers, indexBuffer, OT_TRIANGLE_LIST );
+
+            MeshPtr proxyMesh = MeshManager::getSingleton().createManual(
+                "AutoGen_PathTracerRtProxy_" + sourceMesh->getName() + "_" +
+                    StringConverter::toString( IdString( sourceMesh->getName() ).mHash ),
+                ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME );
+            SubMesh *subMesh = proxyMesh->createSubMesh();
+            for( int i = 0; i < NumVertexPass; ++i )
+                subMesh->mVao[i].push_back( vao );
+            proxyMesh->_setBounds( Aabb( center, halfSize ), false );
+            proxyMesh->_setBoundingSphereRadius( halfSize.length() );
+            return proxyMesh;
+        }
+
+        uint32 chooseRtLodLevel( const Item *item,
+                                 const RTShadowsMeshCache::ShadowsCachedMesh &cachedMesh,
+                                 const Camera *lodCamera )
+        {
+            const uint32 maxLod = static_cast<uint32>( cachedMesh.lodRanges.size() - 1u );
+            uint32 lodLevel = std::min<uint32>( item->getCurrentMeshLod(), maxLod );
+            if( lodCamera && maxLod > lodLevel )
+            {
+                const Mesh *mesh = item->getMesh().get();
+                const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
+                const Vector3 worldCenter = transform * mesh->getAabb().mCenter;
+                const Real distance = worldCenter.distance( lodCamera->getDerivedPosition() );
+                const Real radius = std::max<Real>( mesh->getBoundingSphereRadius(), Real( 1 ) );
+                const Real proxyDistance = std::max<Real>( radius * Real( 24 ), Real( 80 ) );
+                if( distance > proxyDistance )
+                    lodLevel = maxLod;
+            }
+            return lodLevel;
         }
 
         bool selectedInstancesDiffer(
@@ -78,6 +157,7 @@ namespace Ogre
     }
 
     RTShadowsMeshCache::RTShadowsMeshCache() :
+        mLodCamera( 0 ),
         mGeometryRevision( 1u ),
         mRebuildBlas( true ),
         mRebuildTlas( true ),
@@ -172,6 +252,22 @@ namespace Ogre
                         meshCacheIt->second.lodRanges.push_back( lodRange );
                 }
 
+                if( meshCacheIt != mMeshCaches.end() )
+                {
+                    if( !meshCacheIt->second.proxyMesh )
+                        meshCacheIt->second.proxyMesh = createBoundsProxyMesh(
+                            mesh, Root::getSingleton().getRenderSystem()->getVaoManager() );
+
+                    Mesh *proxyMesh = meshCacheIt->second.proxyMesh.get();
+                    SubMesh *proxySubMesh = proxyMesh->getSubMesh( 0u );
+                    MeshLodRange proxyRange;
+                    proxyRange.blasStart = blasIdx;
+                    proxyRange.numBlas = 1u;
+                    meshVaos.push_back( proxySubMesh->mVao[VpNormal].front() );
+                    ++blasIdx;
+                    meshCacheIt->second.lodRanges.push_back( proxyRange );
+                }
+
                 ++itor;
             }
         }
@@ -189,19 +285,22 @@ namespace Ogre
             MeshCacheMap::iterator meshCacheIt = mMeshCaches.find( mesh->getName() );
             if( meshCacheIt != mMeshCaches.end() && !meshCacheIt->second.lodRanges.empty() )
             {
-                const uint32 lodLevel = std::min<uint32>( item->getCurrentMeshLod(),
-                                                          meshCacheIt->second.lodRanges.size() - 1u );
-                const MeshLodRange &lodRange = meshCacheIt->second.lodRanges[lodLevel];
+                const ShadowsCachedMesh &cachedMesh = meshCacheIt->second;
+                const uint32 lodLevel = chooseRtLodLevel( item, cachedMesh, mLodCamera );
+                const MeshLodRange &lodRange = cachedMesh.lodRanges[lodLevel];
+                const bool usingProxy = cachedMesh.proxyMesh && lodLevel == cachedMesh.lodRanges.size() - 1u;
                 const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
-                const uint32 numSubMeshes = std::min<uint32>( item->getNumSubItems(), lodRange.numBlas );
+                const uint32 numSubMeshes = usingProxy ? 1u :
+                    std::min<uint32>( item->getNumSubItems(), lodRange.numBlas );
                 for( uint32 subMeshIdx = 0u; subMeshIdx < numSubMeshes; ++subMeshIdx )
                 {
                     SelectedSubMeshInstance selectedInstance;
                     selectedInstance.item = item;
-                    selectedInstance.mesh = mesh;
-                    selectedInstance.subMesh = mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) );
-                    selectedInstance.subMeshIdx = subMeshIdx;
-                    selectedInstance.lodLevel = lodLevel;
+                    selectedInstance.mesh = usingProxy ? cachedMesh.proxyMesh.get() : mesh;
+                    selectedInstance.subMesh = usingProxy ? cachedMesh.proxyMesh->getSubMesh( 0u ) :
+                        mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) );
+                    selectedInstance.subMeshIdx = usingProxy ? 0u : subMeshIdx;
+                    selectedInstance.lodLevel = usingProxy ? 0u : lodLevel;
                     selectedInstance.blasIndex = lodRange.blasStart + subMeshIdx;
                     selectedSubMeshInstances.push_back( selectedInstance );
 
