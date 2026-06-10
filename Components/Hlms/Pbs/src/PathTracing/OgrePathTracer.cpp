@@ -347,6 +347,7 @@ namespace Ogre
         mTriangleBuffer( 0 ),
         mAccumulatedSamples( 0u ),
         mRngFrameIndex( 0u ),
+        mLastGeometryRevision( 0u ),
         mMaxBounces( DefaultBounces ),
         mSamplesPerPixel( DefaultSamplesPerPixel ),
         mUpscaleInputScale( 1.0f ),
@@ -859,18 +860,16 @@ namespace Ogre
     {
         size_t numGeometryRecords = 0u;
         size_t numTriangleRecords = 0u;
-        const PathTracerScene::ItemArray &items = mScene.getItems();
-        for( size_t i = 0u; i < items.size(); ++i )
+        const RTShadowsMeshCache::SelectedSubMeshInstanceArray &selectedInstances =
+            mMeshCache->getSelectedSubMeshInstances();
+        numGeometryRecords = selectedInstances.size();
+        for( size_t i = 0u; i < selectedInstances.size(); ++i )
         {
-            Item *item = items[i];
-            numGeometryRecords += item->getNumSubItems();
-            for( size_t subItemIdx = 0u; subItemIdx < item->getNumSubItems(); ++subItemIdx )
-            {
-                VertexArrayObject *vao = item->getMesh()->getSubMesh( static_cast<unsigned>( subItemIdx ) )
-                                             ->mVao[VpNormal]
-                                             .front();
-                numTriangleRecords += vao->getPrimitiveCount() / 3u;
-            }
+            const RTShadowsMeshCache::SelectedSubMeshInstance &selectedInstance = selectedInstances[i];
+            const size_t vaoLod = std::min<size_t>( selectedInstance.lodLevel,
+                                                    selectedInstance.subMesh->mVao[VpNormal].size() - 1u );
+            VertexArrayObject *vao = selectedInstance.subMesh->mVao[VpNormal][vaoLod];
+            numTriangleRecords += vao->getPrimitiveCount() / 3u;
         }
 
         numGeometryRecords = std::max<size_t>( numGeometryRecords, 1u );
@@ -911,13 +910,15 @@ namespace Ogre
 
         size_t geometryIdx = 0u;
         size_t triangleIdx = 0u;
-        for( size_t itemIdx = 0u; itemIdx < items.size(); ++itemIdx )
+        for( size_t selectedIdx = 0u; selectedIdx < selectedInstances.size(); ++selectedIdx )
         {
-            Item *item = items[itemIdx];
-            for( size_t subItemIdx = 0u; subItemIdx < item->getNumSubItems(); ++subItemIdx )
-            {
-                uint32 materialIdx = 0u;
-                HlmsDatablock *datablock = item->getSubItem( subItemIdx )->getDatablock();
+            const RTShadowsMeshCache::SelectedSubMeshInstance &selectedInstance = selectedInstances[selectedIdx];
+            Item *item = selectedInstance.item;
+            const size_t subItemIdx = selectedInstance.subMeshIdx;
+            const size_t vaoLod = std::min<size_t>( selectedInstance.lodLevel,
+                                                    selectedInstance.subMesh->mVao[VpNormal].size() - 1u );
+            uint32 materialIdx = 0u;
+            HlmsDatablock *datablock = item->getSubItem( subItemIdx )->getDatablock();
                 if( datablock && datablock->getCreator()->getType() == HLMS_PBS )
                 {
                     materialIdx = mScene.getMaterialCache().addDatablock(
@@ -925,7 +926,7 @@ namespace Ogre
                 }
 
                 dst[geometryIdx].material_subMesh[0] = static_cast<float>( materialIdx );
-                dst[geometryIdx].material_subMesh[1] = static_cast<float>( itemIdx );
+                dst[geometryIdx].material_subMesh[1] = static_cast<float>( selectedIdx );
                 dst[geometryIdx].material_subMesh[2] = static_cast<float>( subItemIdx );
                 dst[geometryIdx].material_subMesh[3] = static_cast<float>( triangleIdx );
 
@@ -938,8 +939,8 @@ namespace Ogre
                 copyMatrix3Row( dst[geometryIdx].normalRow1, normalMatrix, 1u );
                 copyMatrix3Row( dst[geometryIdx].normalRow2, normalMatrix, 2u );
 
-                SubMesh *subMesh = item->getMesh()->getSubMesh( static_cast<unsigned>( subItemIdx ) );
-                VertexArrayObject *vao = subMesh->mVao[VpNormal].front();
+                SubMesh *subMesh = selectedInstance.subMesh;
+                VertexArrayObject *vao = subMesh->mVao[VpNormal][vaoLod];
                 IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
                 const uint32 indexCount = vao->getPrimitiveCount();
 
@@ -1103,7 +1104,6 @@ namespace Ogre
                     vao->unmapAsyncTickets( readRequests );
 
                 ++geometryIdx;
-            }
         }
 
         mGeometryBuffer->upload( staging.data(), 0u, bytesNeeded );
@@ -1265,12 +1265,20 @@ namespace Ogre
         mHasLastCameraState = true;
 
         updateAccelerationStructure();
+        const uint32 geometryRevision = mMeshCache ? mMeshCache->getGeometryRevision() : 0u;
+        const bool geometrySelectionChanged = geometryRevision != mLastGeometryRevision;
+        if( geometrySelectionChanged )
+            resetAccumulation();
         const uint32 numLights = uploadLights( sceneManager );
         uploadFrameConstants( numLights );
         if( mScene.needsMaterialUpload() )
             uploadMaterialBuffer();
-        if( mScene.needsBlasRebuild() || mScene.needsTlasRebuild() || !mGeometryBuffer )
-            uploadGeometryBuffer( mScene.needsBlasRebuild() || !mTriangleBuffer );
+        if( geometrySelectionChanged || mScene.needsBlasRebuild() || mScene.needsTlasRebuild() ||
+            !mGeometryBuffer )
+        {
+            uploadGeometryBuffer( geometrySelectionChanged || mScene.needsBlasRebuild() || !mTriangleBuffer );
+            mLastGeometryRevision = geometryRevision;
+        }
         bindJobResources();
 
         mScene.clearDirtyFlags();

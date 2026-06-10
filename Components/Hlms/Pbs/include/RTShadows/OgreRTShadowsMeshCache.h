@@ -40,14 +40,31 @@ namespace Ogre
     class _OgreHlmsPbsExport RTShadowsMeshCache
     {
     public:
+        struct MeshLodRange
+        {
+            uint32 blasStart;
+            uint32 numBlas;
+        };
+
         struct ShadowsCachedMesh
         {
-            uint64      hash[2];
-            String      meshName;
-            Mesh        *mesh;
-            uint32      blasStart;
-            uint32      numBlas;
+            uint64                  hash[2];
+            String                  meshName;
+            Mesh                    *mesh;
+            FastArray<MeshLodRange> lodRanges;
         };
+
+        struct SelectedSubMeshInstance
+        {
+            Item    *item;
+            Mesh    *mesh;
+            SubMesh *subMesh;
+            uint32  subMeshIdx;
+            uint32  lodLevel;
+            uint32  blasIndex;
+        };
+        typedef FastArray<SelectedSubMeshInstance> SelectedSubMeshInstanceArray;
+
     private:
         typedef map<IdString, ShadowsCachedMesh>::type MeshCacheMap;
         typedef map<MeshPtr, ShadowsCachedMesh>::type MeshPtrMap;
@@ -57,6 +74,8 @@ namespace Ogre
         MeshCacheMap mMeshCaches;
         MeshPtrArray mMeshes;
         ItemArray mItems;
+        SelectedSubMeshInstanceArray mSelectedSubMeshInstances;
+        uint32 mGeometryRevision;
         bool mRebuildBlas;
         bool mRebuildTlas;
         bool mEnabled;
@@ -84,6 +103,11 @@ namespace Ogre
 
         void setEnabled( bool enabled ) { mEnabled = enabled; }
         bool getEnabled() const { return mEnabled; }
+        const SelectedSubMeshInstanceArray &getSelectedSubMeshInstances() const
+        {
+            return mSelectedSubMeshInstances;
+        }
+        uint32 getGeometryRevision() const { return mGeometryRevision; }
         
         void updateAS();
     };
