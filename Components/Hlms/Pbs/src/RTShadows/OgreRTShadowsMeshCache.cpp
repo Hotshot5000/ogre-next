@@ -40,9 +40,11 @@ THE SOFTWARE.
 #include "OgreStringConverter.h"
 #include "OgreSubMesh2.h"
 #include "OgreItem.h"
+#include "Vao/OgreAsyncTicket.h"
 #include "Vao/OgreIndexBufferPacked.h"
 #include "Vao/OgreVaoManager.h"
 #include "Vao/OgreVertexArrayObject.h"
+#include "Vao/OgreVertexBufferDownloadHelper.h"
 #include "Vao/OgreVertexBufferPacked.h"
 
 namespace Ogre
@@ -63,9 +65,93 @@ namespace Ogre
             return std::max<uint32>( lodCount, 1u );
         }
 
-        MeshPtr createBoundsProxyMesh( const Mesh *sourceMesh, VaoManager *vaoManager )
+        uint32 readIndexAt( const uint8 *indexData, IndexBufferPacked *indexBuffer, size_t indexIdx )
         {
-            const Aabb &bounds = sourceMesh->getAabb();
+            if( indexBuffer->getIndexType() == IndexBufferPacked::IT_16BIT )
+                return reinterpret_cast<const uint16 *>( indexData )[indexIdx];
+            return reinterpret_cast<const uint32 *>( indexData )[indexIdx];
+        }
+
+        Aabb calculateSubMeshBounds( SubMesh *subMesh, const Aabb &fallbackBounds )
+        {
+            if( subMesh->mVao[VpNormal].empty() )
+                return fallbackBounds;
+
+            VertexArrayObject *vao = subMesh->mVao[VpNormal].front();
+            VertexElementSemanticFullArray semanticsToDownload;
+            semanticsToDownload.push_back( VES_POSITION );
+
+            VertexBufferDownloadHelper downloadHelper;
+            downloadHelper.queueDownload( vao, semanticsToDownload, 0u, 0u );
+            const VertexBufferDownloadHelper::DownloadData *downloadData =
+                downloadHelper.getDownloadData().data();
+            if( !downloadData || !downloadData[0].origElements )
+                return fallbackBounds;
+
+            uint8 const *srcData[1];
+            downloadHelper.map( srcData );
+            if( !srcData[0] )
+            {
+                downloadHelper.unmap();
+                return fallbackBounds;
+            }
+
+            IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
+            AsyncTicketPtr indexTicket;
+            const uint8 *indexData = 0;
+            if( indexBuffer )
+            {
+                if( indexBuffer->getShadowCopy() )
+                {
+                    indexData = reinterpret_cast<const uint8 *>( indexBuffer->getShadowCopy() ) +
+                                vao->getPrimitiveStart() * indexBuffer->getBytesPerElement();
+                }
+                else
+                {
+                    indexTicket = indexBuffer->readRequest( vao->getPrimitiveStart(),
+                                                            vao->getPrimitiveCount() );
+                    indexData = reinterpret_cast<const uint8 *>( indexTicket->map() );
+                }
+            }
+
+            Vector3 minCorner( Math::POS_INFINITY, Math::POS_INFINITY, Math::POS_INFINITY );
+            Vector3 maxCorner( Math::NEG_INFINITY, Math::NEG_INFINITY, Math::NEG_INFINITY );
+            bool hasVertex = false;
+            const uint32 indexCount = vao->getPrimitiveCount();
+            const size_t vertexCount = vao->getBaseVertexBuffer()->getNumElements();
+            const uint32 iterations = indexBuffer ? indexCount : static_cast<uint32>( vertexCount );
+            for( uint32 idx = 0u; idx < iterations; ++idx )
+            {
+                const uint32 vertexIdx = indexBuffer ? readIndexAt( indexData, indexBuffer, idx ) : idx;
+                if( vertexIdx >= vertexCount )
+                    continue;
+
+                const uint8 *vertexData = srcData[0] + downloadData[0].srcOffset +
+                                          vertexIdx * downloadData[0].srcBytesPerVertex;
+                const Vector4 pos4 = VertexBufferDownloadHelper::getVector4(
+                    vertexData, *downloadData[0].origElements );
+                const Vector3 pos( pos4.x, pos4.y, pos4.z );
+                minCorner.makeFloor( pos );
+                maxCorner.makeCeil( pos );
+                hasVertex = true;
+            }
+
+            if( indexTicket )
+                indexTicket->unmap();
+            downloadHelper.unmap();
+
+            if( !hasVertex )
+                return fallbackBounds;
+
+            Aabb bounds;
+            bounds.setExtents( minCorner, maxCorner );
+            if( bounds.mHalfSize.squaredLength() <= Real( 1e-8 ) )
+                bounds.mHalfSize = Vector3( 0.5f, 0.5f, 0.5f );
+            return bounds;
+        }
+
+        VertexArrayObject *createBoxVao( const Aabb &bounds, VaoManager *vaoManager )
+        {
             Vector3 halfSize = bounds.mHalfSize;
             if( halfSize.squaredLength() <= Real( 1e-8 ) )
                 halfSize = Vector3( 0.5f, 0.5f, 0.5f );
@@ -100,18 +186,30 @@ namespace Ogre
                 IndexBufferPacked::IT_16BIT, 36u, BT_IMMUTABLE,
                 reinterpret_cast<void *>( const_cast<uint16 *>( indices ) ), false );
             VertexBufferPackedVec vertexBuffers( 1u, vertexBuffer );
-            VertexArrayObject *vao =
-                vaoManager->createVertexArrayObject( vertexBuffers, indexBuffer, OT_TRIANGLE_LIST );
+            return vaoManager->createVertexArrayObject( vertexBuffers, indexBuffer, OT_TRIANGLE_LIST );
+        }
 
+        MeshPtr createBoundsProxyMesh( Mesh *sourceMesh, VaoManager *vaoManager )
+        {
             MeshPtr proxyMesh = MeshManager::getSingleton().createManual(
                 "AutoGen_PathTracerRtProxy_" + sourceMesh->getName() + "_" +
                     StringConverter::toString( IdString( sourceMesh->getName() ).mHash ),
                 ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME );
-            SubMesh *subMesh = proxyMesh->createSubMesh();
-            for( int i = 0; i < NumVertexPass; ++i )
-                subMesh->mVao[i].push_back( vao );
-            proxyMesh->_setBounds( Aabb( center, halfSize ), false );
-            proxyMesh->_setBoundingSphereRadius( halfSize.length() );
+
+            const Aabb &meshBounds = sourceMesh->getAabb();
+            for( unsigned subMeshIdx = 0u; subMeshIdx < sourceMesh->getNumSubMeshes(); ++subMeshIdx )
+            {
+                SubMesh *sourceSubMesh = sourceMesh->getSubMesh( subMeshIdx );
+                const Aabb subMeshBounds = calculateSubMeshBounds( sourceSubMesh, meshBounds );
+                VertexArrayObject *vao = createBoxVao( subMeshBounds, vaoManager );
+
+                SubMesh *proxySubMesh = proxyMesh->createSubMesh();
+                for( int i = 0; i < NumVertexPass; ++i )
+                    proxySubMesh->mVao[i].push_back( vao );
+            }
+
+            proxyMesh->_setBounds( meshBounds, false );
+            proxyMesh->_setBoundingSphereRadius( meshBounds.getRadius() );
             return proxyMesh;
         }
 
@@ -226,7 +324,7 @@ namespace Ogre
 
             while( itor != end )
             {
-                const Mesh *mesh = itor->get();
+                Mesh *mesh = itor->get();
                 const unsigned numSubmeshes = mesh->getNumSubMeshes();
                 MeshCacheMap::iterator meshCacheIt = mMeshCaches.find( mesh->getName() );
                 const uint32 lodCount = getMeshRtLodCount( mesh );
@@ -259,12 +357,15 @@ namespace Ogre
                             mesh, Root::getSingleton().getRenderSystem()->getVaoManager() );
 
                     Mesh *proxyMesh = meshCacheIt->second.proxyMesh.get();
-                    SubMesh *proxySubMesh = proxyMesh->getSubMesh( 0u );
                     MeshLodRange proxyRange;
                     proxyRange.blasStart = blasIdx;
-                    proxyRange.numBlas = 1u;
-                    meshVaos.push_back( proxySubMesh->mVao[VpNormal].front() );
-                    ++blasIdx;
+                    proxyRange.numBlas = proxyMesh->getNumSubMeshes();
+                    for( unsigned subMeshIdx = 0u; subMeshIdx < proxyMesh->getNumSubMeshes(); ++subMeshIdx )
+                    {
+                        SubMesh *proxySubMesh = proxyMesh->getSubMesh( subMeshIdx );
+                        meshVaos.push_back( proxySubMesh->mVao[VpNormal].front() );
+                        ++blasIdx;
+                    }
                     meshCacheIt->second.lodRanges.push_back( proxyRange );
                 }
 
@@ -290,16 +391,18 @@ namespace Ogre
                 const MeshLodRange &lodRange = cachedMesh.lodRanges[lodLevel];
                 const bool usingProxy = cachedMesh.proxyMesh && lodLevel == cachedMesh.lodRanges.size() - 1u;
                 const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
-                const uint32 numSubMeshes = usingProxy ? 1u :
+                const uint32 numSubMeshes = usingProxy ?
+                    std::min<uint32>( item->getNumSubItems(), cachedMesh.proxyMesh->getNumSubMeshes() ) :
                     std::min<uint32>( item->getNumSubItems(), lodRange.numBlas );
                 for( uint32 subMeshIdx = 0u; subMeshIdx < numSubMeshes; ++subMeshIdx )
                 {
                     SelectedSubMeshInstance selectedInstance;
                     selectedInstance.item = item;
                     selectedInstance.mesh = usingProxy ? cachedMesh.proxyMesh.get() : mesh;
-                    selectedInstance.subMesh = usingProxy ? cachedMesh.proxyMesh->getSubMesh( 0u ) :
+                    selectedInstance.subMesh = usingProxy ?
+                        cachedMesh.proxyMesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) ) :
                         mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) );
-                    selectedInstance.subMeshIdx = usingProxy ? 0u : subMeshIdx;
+                    selectedInstance.subMeshIdx = subMeshIdx;
                     selectedInstance.lodLevel = usingProxy ? 0u : lodLevel;
                     selectedInstance.blasIndex = lodRange.blasStart + subMeshIdx;
                     selectedSubMeshInstances.push_back( selectedInstance );
