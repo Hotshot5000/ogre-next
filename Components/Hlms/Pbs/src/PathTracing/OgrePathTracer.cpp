@@ -553,6 +553,22 @@ namespace Ogre
         return mMeshCache ? mMeshCache->getGpuCullDistance() : Real( 0 );
     }
     //-------------------------------------------------------------------------
+    void PathTracer::setGpuCullReflectionConeExpansion( Real expansion )
+    {
+        expansion = std::max<Real>( Real( 1 ), expansion );
+        if( !mMeshCache || Math::Abs( mMeshCache->getGpuCullReflectionConeExpansion() - expansion ) <= Real( 1e-4 ) )
+            return;
+
+        mMeshCache->setGpuCullReflectionConeExpansion( expansion );
+        mMeshCache->markInstancesDirty();
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
+    Real PathTracer::getGpuCullReflectionConeExpansion() const
+    {
+        return mMeshCache ? mMeshCache->getGpuCullReflectionConeExpansion() : Real( 1 );
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::setSkyColours( const ColourValue &zenith, const ColourValue &horizon )
     {
         if( mSkyZenith == zenith && mSkyHorizon == horizon )

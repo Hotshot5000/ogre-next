@@ -352,6 +352,9 @@ namespace Demo
         {
             outText += Ogre::StringConverter::toString( mPathTracer->getGpuCullDistance(), 1u, 0u,
                                                         ' ', std::ios::fixed );
+            outText += " cone x";
+            outText += Ogre::StringConverter::toString(
+                mPathTracer->getGpuCullReflectionConeExpansion(), 1u, 0u, ' ', std::ios::fixed );
         }
         else
             outText += "Off";

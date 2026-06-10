@@ -77,8 +77,9 @@ kernel void pathtracer_write_indirect_as_instances(
         const float nearDistance = cullParams.cameraForwardAndNear.w;
         const float farDistance = maxCullDistance > 0.0f ? maxCullDistance : cullParams.cullOptions.z;
         const float projectedDepth = max( depth, 0.0f );
-        const float tanHalfFovX = cullParams.cameraRightAndTanHalfFovX.w;
-        const float tanHalfFovY = cullParams.cameraUpAndTanHalfFovY.w;
+        const float reflectionConeExpansion = max( cullParams.cullOptions.y, 1.0f );
+        const float tanHalfFovX = cullParams.cameraRightAndTanHalfFovX.w * reflectionConeExpansion;
+        const float tanHalfFovY = cullParams.cameraUpAndTanHalfFovY.w * reflectionConeExpansion;
         const float horizontalDistance = abs( dot( toBounds, cameraRight ) );
         const float verticalDistance = abs( dot( toBounds, cameraUp ) );
 

@@ -389,6 +389,7 @@ namespace Ogre
     RTShadowsMeshCache::RTShadowsMeshCache() :
         mLodCamera( 0 ),
         mGpuCullDistance( 0 ),
+        mGpuCullReflectionConeExpansion( 2.5f ),
         mGeometryRevision( 1u ),
         mRebuildBlas( true ),
         mRebuildTlas( true ),
@@ -409,6 +410,16 @@ namespace Ogre
             return;
 
         mGpuCullDistance = distance;
+        mRebuildTlas = true;
+    }
+    //-------------------------------------------------------------------------
+    void RTShadowsMeshCache::setGpuCullReflectionConeExpansion( Real expansion )
+    {
+        expansion = expansion > Real( 1 ) ? expansion : Real( 1 );
+        if( Math::Abs( mGpuCullReflectionConeExpansion - expansion ) <= Real( 1e-4 ) )
+            return;
+
+        mGpuCullReflectionConeExpansion = expansion;
         mRebuildTlas = true;
     }
     //-------------------------------------------------------------------------
@@ -618,8 +629,7 @@ namespace Ogre
             const Vector3 cameraForward = mLodCamera->getDerivedDirection().normalisedCopy();
             const Vector3 cameraRight = mLodCamera->getDerivedRight().normalisedCopy();
             const Vector3 cameraUp = mLodCamera->getDerivedUp().normalisedCopy();
-            const Real coneExpansion = Real( 1.5 );
-            const Real tanHalfFovY = Math::Tan( mLodCamera->getFOVy() * Real( 0.5 ) ) * coneExpansion;
+            const Real tanHalfFovY = Math::Tan( mLodCamera->getFOVy() * Real( 0.5 ) );
             const Real tanHalfFovX = tanHalfFovY * mLodCamera->getAspectRatio();
 
             cullParams.cameraForwardAndNear = Vector4( cameraForward.x, cameraForward.y,
@@ -629,7 +639,7 @@ namespace Ogre
                                                             cameraRight.z, tanHalfFovX );
             cullParams.cameraUpAndTanHalfFovY = Vector4( cameraUp.x, cameraUp.y,
                                                          cameraUp.z, tanHalfFovY );
-            cullParams.cullOptions = Vector4( 1.0f, coneExpansion,
+            cullParams.cullOptions = Vector4( 1.0f, mGpuCullReflectionConeExpansion,
                                               mLodCamera->getFarClipDistance(), 0.0f );
         }
 
