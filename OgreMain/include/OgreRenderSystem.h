@@ -1189,16 +1189,34 @@ namespace Ogre
         /** Returns whether or not a Gpu program of the given type is currently bound. */
         virtual bool isGpuProgramBound( GpuProgramType gptype );
         
+        struct AccelerationStructureCullParams
+        {
+            Vector4 cameraPositionAndMaxDistance;
+            Vector4 cameraForwardAndNear;
+            Vector4 cameraRightAndTanHalfFovX;
+            Vector4 cameraUpAndTanHalfFovY;
+            Vector4 cullOptions;
+
+            AccelerationStructureCullParams() :
+                cameraPositionAndMaxDistance( Vector4::ZERO ),
+                cameraForwardAndNear( Vector4::ZERO ),
+                cameraRightAndTanHalfFovX( Vector4::ZERO ),
+                cameraUpAndTanHalfFovY( Vector4::ZERO ),
+                cullOptions( Vector4::ZERO )
+            {
+            }
+        };
+
         virtual void refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                  std::vector<Vector4> *instanceBounds = 0,
-                                                 const Vector4 &cameraCullParams = Vector4::ZERO ) {}
+                                                 const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) {}
         virtual void rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                    std::vector<Vector4> *instanceBounds = 0,
-                                                   const Vector4 &cameraCullParams = Vector4::ZERO ) {}
+                                                   const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) {}
         
         virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform,
                                                   std::vector<Vector4> *instanceBounds = 0,
-                                                  const Vector4 &cameraCullParams = Vector4::ZERO ) {}
+                                                  const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) {}
         virtual void clearAccelerationStructure() {}
 
         VaoManager *getVaoManager() const { return mVaoManager; }

@@ -32,13 +32,22 @@ struct PathTracerIndirectInstanceDescriptor
     ulong accelerationStructureID;
 };
 
+struct PathTracerAsCullParams
+{
+    float4 cameraPositionAndMaxDistance;
+    float4 cameraForwardAndNear;
+    float4 cameraRightAndTanHalfFovX;
+    float4 cameraUpAndTanHalfFovY;
+    float4 cullOptions;
+};
+
 kernel void pathtracer_write_indirect_as_instances(
     constant PathTracerAsInstanceInput *inputs [[buffer(0)]],
     constant ulong *accelerationStructureIds [[buffer(1)]],
     device PathTracerIndirectInstanceDescriptor *descriptors [[buffer(2)]],
     device atomic_uint *instanceCount [[buffer(3)]],
     constant uint &numInstances [[buffer(4)]],
-    constant float4 &cameraCullParams [[buffer(5)]],
+    constant PathTracerAsCullParams &cullParams [[buffer(5)]],
     uint tid [[thread_position_in_grid]] )
 {
     if( tid == 0 )
@@ -50,12 +59,37 @@ kernel void pathtracer_write_indirect_as_instances(
     constant PathTracerAsInstanceInput &src = inputs[tid];
     device PathTracerIndirectInstanceDescriptor &dst = descriptors[tid];
 
-    const float3 cameraPos = cameraCullParams.xyz;
-    const float maxCullDistance = cameraCullParams.w;
+    const float3 cameraPos = cullParams.cameraPositionAndMaxDistance.xyz;
+    const float maxCullDistance = cullParams.cameraPositionAndMaxDistance.w;
     const float3 toBounds = src.boundsCenterRadius.xyz - cameraPos;
-    const float cullDistance = maxCullDistance + src.boundsCenterRadius.w;
-    const bool distanceVisible = maxCullDistance <= 0.0f || dot( toBounds, toBounds ) <= cullDistance * cullDistance;
-    const bool active = src.active != 0u && distanceVisible;
+    const float radius = src.boundsCenterRadius.w;
+    const float cullDistance = maxCullDistance + radius;
+    const bool distanceVisible = maxCullDistance <= 0.0f ||
+                                 dot( toBounds, toBounds ) <= cullDistance * cullDistance;
+
+    bool coneVisible = true;
+    if( cullParams.cullOptions.x > 0.0f )
+    {
+        const float3 cameraForward = cullParams.cameraForwardAndNear.xyz;
+        const float3 cameraRight = cullParams.cameraRightAndTanHalfFovX.xyz;
+        const float3 cameraUp = cullParams.cameraUpAndTanHalfFovY.xyz;
+        const float depth = dot( toBounds, cameraForward );
+        const float nearDistance = cullParams.cameraForwardAndNear.w;
+        const float farDistance = maxCullDistance > 0.0f ? maxCullDistance : cullParams.cullOptions.z;
+        const float projectedDepth = max( depth, 0.0f );
+        const float tanHalfFovX = cullParams.cameraRightAndTanHalfFovX.w;
+        const float tanHalfFovY = cullParams.cameraUpAndTanHalfFovY.w;
+        const float horizontalDistance = abs( dot( toBounds, cameraRight ) );
+        const float verticalDistance = abs( dot( toBounds, cameraUp ) );
+
+        const bool depthVisible = depth + radius >= nearDistance &&
+                                  ( farDistance <= 0.0f || depth - radius <= farDistance );
+        const bool horizontalVisible = horizontalDistance <= projectedDepth * tanHalfFovX + radius;
+        const bool verticalVisible = verticalDistance <= projectedDepth * tanHalfFovY + radius;
+        coneVisible = depthVisible && horizontalVisible && verticalVisible;
+    }
+
+    const bool active = src.active != 0u && distanceVisible && coneVisible;
 
     dst.accelerationStructureID = accelerationStructureIds[src.accelerationStructureIndex];
     dst.userID = src.sourceInstanceIndex;

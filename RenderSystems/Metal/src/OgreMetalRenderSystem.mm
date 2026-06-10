@@ -84,6 +84,15 @@ namespace Ogre
             float transform[16];
         };
 
+        struct PathTracerAsCullParams
+        {
+            float cameraPositionAndMaxDistance[4];
+            float cameraForwardAndNear[4];
+            float cameraRightAndTanHalfFovX[4];
+            float cameraUpAndTanHalfFovY[4];
+            float cullOptions[4];
+        };
+
     }
 
 #if OGRE_METAL_HAS_METALFX
@@ -3549,22 +3558,22 @@ namespace Ogre
     
     void MetalRenderSystem::refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                         std::vector<Vector4> *instanceBounds,
-                                                        const Vector4 &cameraCullParams )
+                                                        const AccelerationStructureCullParams &cullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
         
         updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, true,
-                                            instanceBounds, cameraCullParams);
+                                            instanceBounds, cullParams);
     }
     //-------------------------------------------------------------------------
     void MetalRenderSystem::rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                           std::vector<Vector4> *instanceBounds,
-                                                          const Vector4 &cameraCullParams )
+                                                          const AccelerationStructureCullParams &cullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
 
         updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, false,
-                                            instanceBounds, cameraCullParams);
+                                            instanceBounds, cullParams);
     }
     //-------------------------------------------------------------------------
     void MetalRenderSystem::clearAccelerationStructure()
@@ -3622,7 +3631,7 @@ namespace Ogre
     
     void MetalRenderSystem::updateInstanceAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure,
                                                                  std::vector<Vector4> *instanceBounds,
-                                                                 const Vector4 &cameraCullParams )
+                                                                 const AccelerationStructureCullParams &cullParams )
     {
         id<MTLDevice> device = mActiveDevice->mDevice;
         const NSUInteger instanceCount = instanceMeshIndex.size();
@@ -3723,16 +3732,26 @@ namespace Ogre
                 id<MTLCommandBuffer> commandBuffer = [mActiveDevice->mMainCommandQueue commandBuffer];
                 id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
                 uint32_t numInstances = static_cast<uint32_t>( instanceCount );
-                float metalCameraCullParams[4] = {
-                    static_cast<float>( cameraCullParams.x ), static_cast<float>( cameraCullParams.y ),
-                    static_cast<float>( cameraCullParams.z ), static_cast<float>( cameraCullParams.w ) };
+                PathTracerAsCullParams metalCullParams;
+                for( size_t i = 0u; i < 4u; ++i )
+                {
+                    metalCullParams.cameraPositionAndMaxDistance[i] =
+                        static_cast<float>( cullParams.cameraPositionAndMaxDistance[i] );
+                    metalCullParams.cameraForwardAndNear[i] =
+                        static_cast<float>( cullParams.cameraForwardAndNear[i] );
+                    metalCullParams.cameraRightAndTanHalfFovX[i] =
+                        static_cast<float>( cullParams.cameraRightAndTanHalfFovX[i] );
+                    metalCullParams.cameraUpAndTanHalfFovY[i] =
+                        static_cast<float>( cullParams.cameraUpAndTanHalfFovY[i] );
+                    metalCullParams.cullOptions[i] = static_cast<float>( cullParams.cullOptions[i] );
+                }
                 [computeEncoder setComputePipelineState:mAccelerationStructureInstancePso];
                 [computeEncoder setBuffer:mAccelerationStructureInstanceInputBuffer offset:0 atIndex:0];
                 [computeEncoder setBuffer:mAccelerationStructureResourceIdBuffer offset:0 atIndex:1];
                 [computeEncoder setBuffer:mAccelerationStructureInstanceBuffer offset:0 atIndex:2];
                 [computeEncoder setBuffer:mAccelerationStructureInstanceCountBuffer offset:0 atIndex:3];
                 [computeEncoder setBytes:&numInstances length:sizeof(numInstances) atIndex:4];
-                [computeEncoder setBytes:metalCameraCullParams length:sizeof(metalCameraCullParams) atIndex:5];
+                [computeEncoder setBytes:&metalCullParams length:sizeof(metalCullParams) atIndex:5];
 
                 const NSUInteger threadsPerGroup = std::min<NSUInteger>(
                     std::max<NSUInteger>( mAccelerationStructureInstancePso.threadExecutionWidth, 1u ), 256u );
@@ -3833,7 +3852,7 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void MetalRenderSystem::createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform,
                                                          std::vector<Vector4> *instanceBounds,
-                                                         const Vector4 &cameraCullParams )
+                                                         const AccelerationStructureCullParams &cullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
         
@@ -3983,6 +4002,6 @@ namespace Ogre
         // an instance of one of the primitive acceleration structures created above, with its own
         // transformation matrix.
         updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, false,
-                                            instanceBounds, cameraCullParams);
+                                            instanceBounds, cullParams);
     }
 }

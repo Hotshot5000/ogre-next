@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "OgreStableHeaders.h"
 
 #include "OgreRoot.h"
+#include "OgreCamera.h"
 #include "OgreRenderSystem.h"
 
 #include "OgreMesh2.h"
@@ -608,27 +609,47 @@ namespace Ogre
             return;
         }
 
+        RenderSystem::AccelerationStructureCullParams cullParams;
         const Vector3 cameraPos = mLodCamera ? mLodCamera->getDerivedPosition() : Vector3::ZERO;
-        const Vector4 cameraCullParams( cameraPos.x, cameraPos.y, cameraPos.z,
-                                        mGpuCullDistance );
+        cullParams.cameraPositionAndMaxDistance = Vector4( cameraPos.x, cameraPos.y, cameraPos.z,
+                                                           mGpuCullDistance );
+        if( mLodCamera && mGpuCullDistance > 0.0f )
+        {
+            const Vector3 cameraForward = mLodCamera->getDerivedDirection().normalisedCopy();
+            const Vector3 cameraRight = mLodCamera->getDerivedRight().normalisedCopy();
+            const Vector3 cameraUp = mLodCamera->getDerivedUp().normalisedCopy();
+            const Real coneExpansion = Real( 1.5 );
+            const Real tanHalfFovY = Math::Tan( mLodCamera->getFOVy() * Real( 0.5 ) ) * coneExpansion;
+            const Real tanHalfFovX = tanHalfFovY * mLodCamera->getAspectRatio();
+
+            cullParams.cameraForwardAndNear = Vector4( cameraForward.x, cameraForward.y,
+                                                       cameraForward.z,
+                                                       mLodCamera->getNearClipDistance() );
+            cullParams.cameraRightAndTanHalfFovX = Vector4( cameraRight.x, cameraRight.y,
+                                                            cameraRight.z, tanHalfFovX );
+            cullParams.cameraUpAndTanHalfFovY = Vector4( cameraUp.x, cameraUp.y,
+                                                         cameraUp.z, tanHalfFovY );
+            cullParams.cullOptions = Vector4( 1.0f, coneExpansion,
+                                              mLodCamera->getFarClipDistance(), 0.0f );
+        }
 
         if( mRebuildBlas )
         {
             renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform,
-                                                       &instanceBounds, cameraCullParams );
+                                                       &instanceBounds, cullParams );
             mRebuildBlas = false;
             mRebuildTlas = false;
         }
         else if( mRebuildTlas )
         {
             renderSystem->rebuildAccelerationStructure( instanceMeshIndex, instanceTransform,
-                                                        &instanceBounds, cameraCullParams );
+                                                        &instanceBounds, cullParams );
             mRebuildTlas = false;
         }
         else
         {
             renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform,
-                                                      &instanceBounds, cameraCullParams );
+                                                      &instanceBounds, cullParams );
         }
     }
 }
