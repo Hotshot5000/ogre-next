@@ -35,6 +35,7 @@ namespace
 {
     const Ogre::Real cPathTracerUpscaleScales[] = { 1.0f, 0.77f, 0.67f, 0.5f };
     const Ogre::Real cPathTracerGpuCullDistances[] = { 0.0f, 32.0f, 48.0f, 64.0f, 96.0f, 128.0f };
+    const Ogre::Real cPathTracerGpuCullReflectionCones[] = { 1.0f, 1.5f, 2.5f, 4.0f, 6.0f };
 }
 
 namespace Demo
@@ -48,6 +49,7 @@ namespace Demo
         mTransparencyValue( 1.0f ),
         mUpscaleScaleIdx( 0u ),
         mGpuCullDistanceIdx( 0u ),
+        mGpuCullReflectionConeIdx( 2u ),
         mLastGeneratedFrameCount( 0u ),
         mDisplayFpsRealFrames( 0u ),
         mDisplayFpsGeneratedFrames( 0u ),
@@ -71,6 +73,8 @@ namespace Demo
         mPathTracer = new Ogre::PathTracer( mGraphicsSystem->getRenderWindow()->getTexture(),
                                             renderSystem, hlmsManager, camera,
                                             mGraphicsSystem->getCompositorWorkspace() );
+        mPathTracer->setGpuCullReflectionConeExpansion(
+            cPathTracerGpuCullReflectionCones[mGpuCullReflectionConeIdx] );
         mPathTracer->setEnabled( true );
 
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
@@ -362,6 +366,7 @@ namespace Demo
         outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
         outText += "\nPress C to cycle GPU meshlet culling distance.";
+        outText += "\nPress V to cycle GPU reflection cone expansion.";
         outText += "\nPress F6 to toggle MetalFX frame generation. ";
         outText += mPathTracer && mPathTracer->getFrameGenerationEnabled() ? "[On]" : "[Off]";
         outText += "\nPress F2 to toggle animation. ";
@@ -484,6 +489,14 @@ namespace Demo
                                             sizeof( cPathTracerGpuCullDistances[0] );
             mGpuCullDistanceIdx = ( mGpuCullDistanceIdx + 1u ) % numCullDistances;
             mPathTracer->setGpuCullDistance( cPathTracerGpuCullDistances[mGpuCullDistanceIdx] );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_V )
+        {
+            const size_t numReflectionCones = sizeof( cPathTracerGpuCullReflectionCones ) /
+                                              sizeof( cPathTracerGpuCullReflectionCones[0] );
+            mGpuCullReflectionConeIdx = ( mGpuCullReflectionConeIdx + 1u ) % numReflectionCones;
+            mPathTracer->setGpuCullReflectionConeExpansion(
+                cPathTracerGpuCullReflectionCones[mGpuCullReflectionConeIdx] );
         }
         else if( arg.keysym.scancode == SDL_SCANCODE_KP_PLUS )
         {
