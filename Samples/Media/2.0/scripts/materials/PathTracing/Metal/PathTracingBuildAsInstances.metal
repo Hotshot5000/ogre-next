@@ -4,9 +4,9 @@ using namespace metal;
 struct PathTracerAsInstanceInput
 {
     uint accelerationStructureIndex;
-    uint padding0;
-    uint padding1;
-    uint padding2;
+    uint sourceInstanceIndex;
+    uint active;
+    uint padding;
     float4 transformRow0;
     float4 transformRow1;
     float4 transformRow2;
@@ -49,9 +49,9 @@ kernel void pathtracer_write_indirect_as_instances(
     device PathTracerIndirectInstanceDescriptor &dst = descriptors[tid];
 
     dst.accelerationStructureID = accelerationStructureIds[src.accelerationStructureIndex];
-    dst.userID = tid;
+    dst.userID = src.sourceInstanceIndex;
     dst.options = 4u; // MTLAccelerationStructureInstanceOptionOpaque
-    dst.mask = 1u;
+    dst.mask = src.active != 0u ? 1u : 0u;
     dst.intersectionFunctionTableOffset = 0u;
 
     dst.transformationMatrix.column0 = packed_float3( src.transformRow0.x,

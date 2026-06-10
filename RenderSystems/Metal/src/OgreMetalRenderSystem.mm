@@ -77,7 +77,9 @@ namespace Ogre
         struct PathTracerAsInstanceInput
         {
             uint32_t accelerationStructureIndex;
-            uint32_t padding[3];
+            uint32_t sourceInstanceIndex;
+            uint32_t active;
+            uint32_t padding;
             float transform[16];
         };
 
@@ -3679,9 +3681,16 @@ namespace Ogre
                 resourceIds[blasIdx] = primitiveAccelerationStructure.gpuResourceID;
             }
 
+            uint32_t *instanceCountPtr =
+                (uint32_t *)mAccelerationStructureInstanceCountBuffer.contents;
+            *instanceCountPtr = static_cast<uint32_t>( instanceCount );
+
             for( NSUInteger instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex )
             {
                 instanceInputs[instanceIndex].accelerationStructureIndex = instanceMeshIndex[instanceIndex];
+                instanceInputs[instanceIndex].sourceInstanceIndex = static_cast<uint32_t>( instanceIndex );
+                instanceInputs[instanceIndex].active = 1u;
+                instanceInputs[instanceIndex].padding = 0u;
                 const Matrix4 &matTrans = instanceTransform[instanceIndex];
                 for( int row = 0; row < 4; ++row )
                     for( int column = 0; column < 4; ++column )
@@ -3691,6 +3700,7 @@ namespace Ogre
 #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
             [mAccelerationStructureInstanceInputBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceInputBuffer.length)];
             [mAccelerationStructureResourceIdBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureResourceIdBuffer.length)];
+            [mAccelerationStructureInstanceCountBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceCountBuffer.length)];
 #endif
 
             if( mAccelerationStructureInstancePso )
