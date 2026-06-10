@@ -202,6 +202,9 @@ namespace Ogre
             return vaoManager->createVertexArrayObject( vertexBuffers, indexBuffer, OT_TRIANGLE_LIST );
         }
 
+        // Middle RT LOD tier. These triangles are used directly by the Metal ray tracing AS,
+        // so the VAO must carry the same shading attributes that PathTracingTrace.metal reads
+        // through primitive_id: position for intersection, plus UV/normal for material lookup.
         struct SimplifiedMeshletVertex
         {
             Vector3 position;
@@ -374,6 +377,9 @@ namespace Ogre
                 return;
             }
 
+            // Download source attributes once and emit a sparse triangle stream per meshlet.
+            // This is deliberately not a visual renderer LOD: it is AS geometry, and the trace
+            // shader shades it using the primitive's own UV/normal records.
             VertexElementSemanticFullArray semanticsToDownload;
             semanticsToDownload.push_back( VES_POSITION );
             semanticsToDownload.push_back( VES_NORMAL );
@@ -639,6 +645,9 @@ namespace Ogre
                 {
                     const Real projectedDiameterPixels =
                         ( worldRadius * Real( 2 ) ) / ( projectedDistance * pixelDisplayRatio );
+                    // Projected diameter thresholds are intentionally conservative. The sampled
+                    // triangle tier is visibly approximate at close range, while the box proxy is
+                    // only acceptable when the whole item is tiny. Exit thresholds add hysteresis.
                     const Real proxyEnterPixels = Real( 8 );
                     const Real proxyExitPixels = Real( 12 );
                     const Real simplifiedEnterPixels = Real( 32 );
@@ -824,6 +833,9 @@ namespace Ogre
 
                 if( meshCacheIt != mMeshCaches.end() )
                 {
+                    // BLAS ranges are appended in selection order: source mesh LODs first,
+                    // sampled-triangle meshlets next, and box meshlets last. The LOD picker
+                    // uses this ordering to identify the simplified/proxy tiers.
                     VaoManager *vaoManager = Root::getSingleton().getRenderSystem()->getVaoManager();
                     if( !meshCacheIt->second.simplifiedMesh )
                         meshCacheIt->second.simplifiedMesh = createSimplifiedMeshletMesh(
@@ -924,6 +936,9 @@ namespace Ogre
                     mLastFullTierMeshletCount += numSubMeshes;
                 for( uint32 subMeshIdx = 0u; subMeshIdx < numSubMeshes; ++subMeshIdx )
                 {
+                    // AS geometry may come from generated meshlets, but material lookup must stay
+                    // on the original Item subitem. Keep the generated submesh index separate from
+                    // the source submesh index used by PathTracer::uploadGeometryBuffer.
                     const uint32 sourceSubMeshIdx = usingProxy ?
                         cachedMesh.proxySubMeshToSourceSubMesh[subMeshIdx] :
                         ( usingSimplified ? cachedMesh.simplifiedSubMeshToSourceSubMesh[subMeshIdx] :
