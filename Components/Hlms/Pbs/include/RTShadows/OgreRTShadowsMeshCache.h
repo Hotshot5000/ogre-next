@@ -53,6 +53,9 @@ namespace Ogre
             uint64                  hash[2];
             String                  meshName;
             Mesh                    *mesh;
+            MeshPtr                 simplifiedMesh;
+            FastArray<uint32>       simplifiedSubMeshToSourceSubMesh;
+            FastArray<Aabb>         simplifiedSubMeshBounds;
             MeshPtr                 proxyMesh;
             FastArray<uint32>       proxySubMeshToSourceSubMesh;
             FastArray<Aabb>         proxySubMeshBounds;
@@ -90,6 +93,7 @@ namespace Ogre
         MeshPtrArray mMeshes;
         ItemArray mItems;
         SelectedSubMeshInstanceArray mSelectedSubMeshInstances;
+        ItemSet mLastSelectedSimplifiedItems;
         ItemSet mLastSelectedProxyItems;
         const Camera *mLodCamera;
         Real mGpuCullDistance;
@@ -98,6 +102,7 @@ namespace Ogre
         uint32 mLastActiveMeshletCount;
         uint32 mLastTotalMeshletCount;
         uint32 mLastFullTierMeshletCount;
+        uint32 mLastSimplifiedTierMeshletCount;
         uint32 mLastProxyTierMeshletCount;
         uint32 mGeometryRevision;
         bool mRebuildBlas;
@@ -137,6 +142,7 @@ namespace Ogre
         uint32 getLastActiveMeshletCount() const { return mLastActiveMeshletCount; }
         uint32 getLastTotalMeshletCount() const { return mLastTotalMeshletCount; }
         uint32 getLastFullTierMeshletCount() const { return mLastFullTierMeshletCount; }
+        uint32 getLastSimplifiedTierMeshletCount() const { return mLastSimplifiedTierMeshletCount; }
         uint32 getLastProxyTierMeshletCount() const { return mLastProxyTierMeshletCount; }
         const SelectedSubMeshInstanceArray &getSelectedSubMeshInstances() const
         {

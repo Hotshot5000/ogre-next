@@ -601,6 +601,11 @@ namespace Ogre
         return mMeshCache ? mMeshCache->getLastFullTierMeshletCount() : 0u;
     }
     //-------------------------------------------------------------------------
+    uint32 PathTracer::getSimplifiedTierMeshletCount() const
+    {
+        return mMeshCache ? mMeshCache->getLastSimplifiedTierMeshletCount() : 0u;
+    }
+    //-------------------------------------------------------------------------
     uint32 PathTracer::getProxyTierMeshletCount() const
     {
         return mMeshCache ? mMeshCache->getLastProxyTierMeshletCount() : 0u;

@@ -202,8 +202,41 @@ namespace Ogre
             return vaoManager->createVertexArrayObject( vertexBuffers, indexBuffer, OT_TRIANGLE_LIST );
         }
 
+        struct SimplifiedMeshletVertex
+        {
+            Vector3 position;
+            Vector2 uv;
+            Vector3 normal;
+        };
+
+        VertexArrayObject *createTriangleSampleVao( const std::vector<SimplifiedMeshletVertex> &vertices,
+                                                     VaoManager *vaoManager )
+        {
+            if( vertices.empty() )
+                return 0;
+
+            std::vector<uint16> indices;
+            indices.reserve( vertices.size() );
+            for( size_t i = 0u; i < vertices.size(); ++i )
+                indices.push_back( static_cast<uint16>( i ) );
+
+            VertexElement2Vec vertexElements;
+            vertexElements.push_back( VertexElement2( VET_FLOAT3, VES_POSITION ) );
+            vertexElements.push_back( VertexElement2( VET_FLOAT2, VES_TEXTURE_COORDINATES ) );
+            vertexElements.push_back( VertexElement2( VET_FLOAT3, VES_NORMAL ) );
+            VertexBufferPacked *vertexBuffer = vaoManager->createVertexBuffer(
+                vertexElements, vertices.size(), BT_IMMUTABLE,
+                reinterpret_cast<void *>( const_cast<SimplifiedMeshletVertex *>( vertices.data() ) ), false );
+            IndexBufferPacked *indexBuffer = vaoManager->createIndexBuffer(
+                IndexBufferPacked::IT_16BIT, indices.size(), BT_IMMUTABLE,
+                reinterpret_cast<void *>( indices.data() ), false );
+            VertexBufferPackedVec vertexBuffers( 1u, vertexBuffer );
+            return vaoManager->createVertexArrayObject( vertexBuffers, indexBuffer, OT_TRIANGLE_LIST );
+        }
+
         const uint32 RtMeshletTargetTriangles = 192u;
         const uint32 RtMeshletMaxPerSubMesh = 32u;
+        const uint32 RtSimplifiedMeshletMaxTriangles = 32u;
 
         void calculateSubMeshMeshletBounds( SubMesh *subMesh, const Aabb &fallbackBounds,
                                             FastArray<Aabb> &meshletBounds )
@@ -317,6 +350,225 @@ namespace Ogre
                 meshletBounds.push_back( fallbackBounds );
         }
 
+        void createSimplifiedMeshletVaos( SubMesh *subMesh, const Aabb &fallbackBounds,
+                                          VaoManager *vaoManager,
+                                          FastArray<VertexArrayObject *> &meshletVaos,
+                                          FastArray<Aabb> &meshletBounds )
+        {
+            meshletVaos.clear();
+            meshletBounds.clear();
+            if( subMesh->mVao[VpNormal].empty() )
+            {
+                meshletBounds.push_back( fallbackBounds );
+                meshletVaos.push_back( createBoxVao( fallbackBounds, vaoManager ) );
+                return;
+            }
+
+            VertexArrayObject *vao = subMesh->mVao[VpNormal].front();
+            const uint32 indexCount = vao->getPrimitiveCount();
+            const uint32 triangleCount = indexCount / 3u;
+            if( triangleCount == 0u )
+            {
+                meshletBounds.push_back( fallbackBounds );
+                meshletVaos.push_back( createBoxVao( fallbackBounds, vaoManager ) );
+                return;
+            }
+
+            VertexElementSemanticFullArray semanticsToDownload;
+            semanticsToDownload.push_back( VES_POSITION );
+            semanticsToDownload.push_back( VES_NORMAL );
+            semanticsToDownload.push_back( VES_TEXTURE_COORDINATES );
+
+            VertexBufferDownloadHelper downloadHelper;
+            downloadHelper.queueDownload( vao, semanticsToDownload, 0u, 0u );
+            const VertexBufferDownloadHelper::DownloadData *downloadData =
+                downloadHelper.getDownloadData().data();
+            if( !downloadData || !downloadData[0].origElements )
+            {
+                meshletBounds.push_back( fallbackBounds );
+                meshletVaos.push_back( createBoxVao( fallbackBounds, vaoManager ) );
+                return;
+            }
+
+            VertexElement2 dummy( VET_FLOAT1, VES_TEXTURE_COORDINATES );
+            VertexElement2 origElements[3] = {
+                downloadData[0].origElements ? *downloadData[0].origElements : dummy,
+                downloadData[1].origElements ? *downloadData[1].origElements : dummy,
+                downloadData[2].origElements ? *downloadData[2].origElements : dummy,
+            };
+
+            uint8 const *srcData[3];
+            downloadHelper.map( srcData );
+            if( !srcData[0] )
+            {
+                downloadHelper.unmap();
+                meshletBounds.push_back( fallbackBounds );
+                meshletVaos.push_back( createBoxVao( fallbackBounds, vaoManager ) );
+                return;
+            }
+
+            IndexBufferPacked *indexBuffer = vao->getIndexBuffer();
+            AsyncTicketPtr indexTicket;
+            const uint8 *indexData = 0;
+            if( indexBuffer )
+            {
+                if( indexBuffer->getShadowCopy() )
+                {
+                    indexData = reinterpret_cast<const uint8 *>( indexBuffer->getShadowCopy() ) +
+                                vao->getPrimitiveStart() * indexBuffer->getBytesPerElement();
+                }
+                else
+                {
+                    indexTicket = indexBuffer->readRequest( vao->getPrimitiveStart(), indexCount );
+                    indexData = reinterpret_cast<const uint8 *>( indexTicket->map() );
+                }
+            }
+
+            const uint32 meshletCount = std::min<uint32>( RtMeshletMaxPerSubMesh,
+                std::max<uint32>( 1u, ( triangleCount + RtMeshletTargetTriangles - 1u ) /
+                                      RtMeshletTargetTriangles ) );
+            const uint32 trianglesPerMeshlet = ( triangleCount + meshletCount - 1u ) / meshletCount;
+            const size_t vertexCount = vao->getBaseVertexBuffer()->getNumElements();
+
+            for( uint32 meshletIdx = 0u; meshletIdx < meshletCount; ++meshletIdx )
+            {
+                const uint32 firstTriangle = meshletIdx * trianglesPerMeshlet;
+                const uint32 lastTriangle = std::min<uint32>( triangleCount,
+                                                              firstTriangle + trianglesPerMeshlet );
+                const uint32 meshletTriangleCount = std::max<uint32>( lastTriangle - firstTriangle, 1u );
+                const uint32 triangleStep = std::max<uint32>( 1u,
+                    ( meshletTriangleCount + RtSimplifiedMeshletMaxTriangles - 1u ) /
+                    RtSimplifiedMeshletMaxTriangles );
+
+                std::vector<SimplifiedMeshletVertex> vertices;
+                vertices.reserve( RtSimplifiedMeshletMaxTriangles * 3u );
+                Vector3 minCorner( Math::POS_INFINITY, Math::POS_INFINITY, Math::POS_INFINITY );
+                Vector3 maxCorner( Math::NEG_INFINITY, Math::NEG_INFINITY, Math::NEG_INFINITY );
+
+                for( uint32 triangleIdx = firstTriangle; triangleIdx < lastTriangle;
+                     triangleIdx += triangleStep )
+                {
+                    SimplifiedMeshletVertex triangleVertices[3];
+                    uint32 validCorners = 0u;
+                    for( uint32 corner = 0u; corner < 3u; ++corner )
+                    {
+                        const uint32 indexIdx = triangleIdx * 3u + corner;
+                        const uint32 vertexIdx = indexBuffer ?
+                            readIndexAt( indexData, indexBuffer, indexIdx ) : indexIdx;
+                        if( vertexIdx >= vertexCount )
+                            continue;
+
+                        const uint8 *positionData = srcData[0] + downloadData[0].srcOffset +
+                                                    vertexIdx * downloadData[0].srcBytesPerVertex;
+                        const Vector4 pos4 = VertexBufferDownloadHelper::getVector4(
+                            positionData, origElements[0] );
+
+                        SimplifiedMeshletVertex vertex;
+                        vertex.position = Vector3( pos4.x, pos4.y, pos4.z );
+                        vertex.uv = Vector2::ZERO;
+                        vertex.normal = Vector3::UNIT_Y;
+
+                        if( srcData[1] )
+                        {
+                            const uint8 *normalData = srcData[1] + downloadData[1].srcOffset +
+                                                      vertexIdx * downloadData[1].srcBytesPerVertex;
+                            vertex.normal = downloadHelper.getNormal( normalData, origElements[1] );
+                            if( vertex.normal.squaredLength() <= Real( 1e-8 ) )
+                                vertex.normal = Vector3::UNIT_Y;
+                        }
+                        if( srcData[2] )
+                        {
+                            const uint8 *uvData = srcData[2] + downloadData[2].srcOffset +
+                                                  vertexIdx * downloadData[2].srcBytesPerVertex;
+                            vertex.uv = VertexBufferDownloadHelper::getVector4( uvData, origElements[2] ).xy();
+                        }
+
+                        triangleVertices[validCorners++] = vertex;
+                        minCorner.makeFloor( vertex.position );
+                        maxCorner.makeCeil( vertex.position );
+                    }
+
+                    if( validCorners == 3u )
+                    {
+                        const Vector3 edge1 = triangleVertices[1].position - triangleVertices[0].position;
+                        const Vector3 edge2 = triangleVertices[2].position - triangleVertices[0].position;
+                        Vector3 faceNormal = edge1.crossProduct( edge2 );
+                        if( faceNormal.squaredLength() > Real( 1e-8 ) )
+                        {
+                            faceNormal.normalise();
+                            for( uint32 corner = 0u; corner < 3u; ++corner )
+                            {
+                                if( triangleVertices[corner].normal.squaredLength() <= Real( 1e-8 ) )
+                                    triangleVertices[corner].normal = faceNormal;
+                                else if( triangleVertices[corner].normal.dotProduct( faceNormal ) < Real( 0 ) )
+                                    triangleVertices[corner].normal = -triangleVertices[corner].normal;
+                                triangleVertices[corner].normal.normalise();
+                            }
+                        }
+
+                        vertices.push_back( triangleVertices[0] );
+                        vertices.push_back( triangleVertices[1] );
+                        vertices.push_back( triangleVertices[2] );
+                    }
+                }
+
+                if( vertices.empty() )
+                    continue;
+
+                Aabb bounds;
+                bounds.setExtents( minCorner, maxCorner );
+                if( bounds.mHalfSize.squaredLength() <= Real( 1e-8 ) )
+                    bounds.mHalfSize = Vector3( 0.5f, 0.5f, 0.5f );
+                meshletBounds.push_back( bounds );
+                meshletVaos.push_back( createTriangleSampleVao( vertices, vaoManager ) );
+            }
+
+            if( indexTicket )
+                indexTicket->unmap();
+            downloadHelper.unmap();
+
+            if( meshletVaos.empty() )
+            {
+                meshletBounds.push_back( fallbackBounds );
+                meshletVaos.push_back( createBoxVao( fallbackBounds, vaoManager ) );
+            }
+        }
+
+        MeshPtr createSimplifiedMeshletMesh( Mesh *sourceMesh, VaoManager *vaoManager,
+                                             FastArray<uint32> &simplifiedSubMeshToSourceSubMesh,
+                                             FastArray<Aabb> &simplifiedSubMeshBounds )
+        {
+            simplifiedSubMeshToSourceSubMesh.clear();
+            simplifiedSubMeshBounds.clear();
+            MeshPtr simplifiedMesh = MeshManager::getSingleton().createManual(
+                "AutoGen_PathTracerRtSimplifiedMeshlets_" + sourceMesh->getName() + "_" +
+                    StringConverter::toString( IdString( sourceMesh->getName() ).mHash ),
+                ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME );
+
+            const Aabb &meshBounds = sourceMesh->getAabb();
+            FastArray<VertexArrayObject *> meshletVaos;
+            FastArray<Aabb> meshletBounds;
+            for( unsigned subMeshIdx = 0u; subMeshIdx < sourceMesh->getNumSubMeshes(); ++subMeshIdx )
+            {
+                SubMesh *sourceSubMesh = sourceMesh->getSubMesh( subMeshIdx );
+                createSimplifiedMeshletVaos( sourceSubMesh, meshBounds, vaoManager, meshletVaos,
+                                             meshletBounds );
+                const size_t numMeshlets = std::min( meshletVaos.size(), meshletBounds.size() );
+                for( size_t meshletIdx = 0u; meshletIdx < numMeshlets; ++meshletIdx )
+                {
+                    SubMesh *simplifiedSubMesh = simplifiedMesh->createSubMesh();
+                    for( int i = 0; i < NumVertexPass; ++i )
+                        simplifiedSubMesh->mVao[i].push_back( meshletVaos[meshletIdx] );
+                    simplifiedSubMeshToSourceSubMesh.push_back( subMeshIdx );
+                    simplifiedSubMeshBounds.push_back( meshletBounds[meshletIdx] );
+                }
+            }
+
+            simplifiedMesh->_setBounds( meshBounds, false );
+            simplifiedMesh->_setBoundingSphereRadius( meshBounds.getRadius() );
+            return simplifiedMesh;
+        }
+
         MeshPtr createMeshletProxyMesh( Mesh *sourceMesh, VaoManager *vaoManager,
                                         FastArray<uint32> &proxySubMeshToSourceSubMesh,
                                         FastArray<Aabb> &proxySubMeshBounds )
@@ -354,11 +606,21 @@ namespace Ogre
         uint32 chooseRtLodLevel( const Item *item,
                                  const RTShadowsMeshCache::ShadowsCachedMesh &cachedMesh,
                                  const Camera *lodCamera,
+                                 bool wasUsingSimplified,
                                  bool wasUsingProxy )
         {
-            const uint32 maxLod = static_cast<uint32>( cachedMesh.lodRanges.size() - 1u );
-            uint32 lodLevel = std::min<uint32>( item->getCurrentMeshLod(), maxLod );
-            if( lodCamera && maxLod > lodLevel && cachedMesh.proxyMesh )
+            const uint32 lastLod = static_cast<uint32>( cachedMesh.lodRanges.size() - 1u );
+            const bool hasProxy = cachedMesh.proxyMesh && !cachedMesh.proxySubMeshToSourceSubMesh.empty();
+            const bool hasSimplified = cachedMesh.simplifiedMesh &&
+                !cachedMesh.simplifiedSubMeshToSourceSubMesh.empty() &&
+                cachedMesh.lodRanges.size() > ( hasProxy ? 2u : 1u );
+            const uint32 proxyLod = hasProxy ? lastLod : lastLod + 1u;
+            const uint32 simplifiedLod = hasSimplified ? ( hasProxy ? lastLod - 1u : lastLod ) :
+                                                          lastLod + 1u;
+            const uint32 maxFullLod = hasSimplified ? simplifiedLod - 1u :
+                ( hasProxy && proxyLod > 0u ? proxyLod - 1u : lastLod );
+            uint32 lodLevel = std::min<uint32>( item->getCurrentMeshLod(), maxFullLod );
+            if( lodCamera && ( hasSimplified || hasProxy ) )
             {
                 const Mesh *mesh = item->getMesh().get();
                 const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
@@ -377,12 +639,26 @@ namespace Ogre
                 {
                     const Real projectedDiameterPixels =
                         ( worldRadius * Real( 2 ) ) / ( projectedDistance * pixelDisplayRatio );
-                    const Real proxyEnterPixels = Real( 48 );
-                    const Real proxyExitPixels = Real( 72 );
-                    if( wasUsingProxy )
-                        lodLevel = projectedDiameterPixels < proxyExitPixels ? maxLod : lodLevel;
-                    else if( projectedDiameterPixels < proxyEnterPixels )
-                        lodLevel = maxLod;
+                    const Real proxyEnterPixels = Real( 8 );
+                    const Real proxyExitPixels = Real( 12 );
+                    const Real simplifiedEnterPixels = Real( 32 );
+                    const Real simplifiedExitPixels = Real( 48 );
+
+                    if( hasProxy )
+                    {
+                        if( wasUsingProxy && projectedDiameterPixels < proxyExitPixels )
+                            return proxyLod;
+                        if( !wasUsingProxy && projectedDiameterPixels < proxyEnterPixels )
+                            return proxyLod;
+                    }
+
+                    if( hasSimplified )
+                    {
+                        if( wasUsingSimplified && projectedDiameterPixels < simplifiedExitPixels )
+                            return simplifiedLod;
+                        if( !wasUsingSimplified && projectedDiameterPixels < simplifiedEnterPixels )
+                            return simplifiedLod;
+                    }
                 }
             }
             return lodLevel;
@@ -419,6 +695,7 @@ namespace Ogre
         mLastActiveMeshletCount( 0u ),
         mLastTotalMeshletCount( 0u ),
         mLastFullTierMeshletCount( 0u ),
+        mLastSimplifiedTierMeshletCount( 0u ),
         mLastProxyTierMeshletCount( 0u ),
         mGeometryRevision( 1u ),
         mRebuildBlas( true ),
@@ -547,9 +824,28 @@ namespace Ogre
 
                 if( meshCacheIt != mMeshCaches.end() )
                 {
+                    VaoManager *vaoManager = Root::getSingleton().getRenderSystem()->getVaoManager();
+                    if( !meshCacheIt->second.simplifiedMesh )
+                        meshCacheIt->second.simplifiedMesh = createSimplifiedMeshletMesh(
+                            mesh, vaoManager,
+                            meshCacheIt->second.simplifiedSubMeshToSourceSubMesh,
+                            meshCacheIt->second.simplifiedSubMeshBounds );
+
+                    Mesh *simplifiedMesh = meshCacheIt->second.simplifiedMesh.get();
+                    MeshLodRange simplifiedRange;
+                    simplifiedRange.blasStart = blasIdx;
+                    simplifiedRange.numBlas = simplifiedMesh->getNumSubMeshes();
+                    for( unsigned subMeshIdx = 0u; subMeshIdx < simplifiedMesh->getNumSubMeshes(); ++subMeshIdx )
+                    {
+                        SubMesh *simplifiedSubMesh = simplifiedMesh->getSubMesh( subMeshIdx );
+                        meshVaos.push_back( simplifiedSubMesh->mVao[VpNormal].front() );
+                        ++blasIdx;
+                    }
+                    meshCacheIt->second.lodRanges.push_back( simplifiedRange );
+
                     if( !meshCacheIt->second.proxyMesh )
                         meshCacheIt->second.proxyMesh = createMeshletProxyMesh(
-                            mesh, Root::getSingleton().getRenderSystem()->getVaoManager(),
+                            mesh, vaoManager,
                             meshCacheIt->second.proxySubMeshToSourceSubMesh,
                             meshCacheIt->second.proxySubMeshBounds );
 
@@ -571,11 +867,13 @@ namespace Ogre
         }
         
         SelectedSubMeshInstanceArray selectedSubMeshInstances;
+        ItemSet selectedSimplifiedItems;
         ItemSet selectedProxyItems;
         std::vector<uint32> instanceMeshIndex;
         std::vector<Matrix4> instanceTransform;
         std::vector<Vector4> instanceBounds;
         mLastFullTierMeshletCount = 0u;
+        mLastSimplifiedTierMeshletCount = 0u;
         mLastProxyTierMeshletCount = 0u;
         ItemArray::iterator itemItor = mItems.begin();
         ItemArray::iterator itemEnd = mItems.end();
@@ -588,39 +886,64 @@ namespace Ogre
             if( meshCacheIt != mMeshCaches.end() && !meshCacheIt->second.lodRanges.empty() )
             {
                 const ShadowsCachedMesh &cachedMesh = meshCacheIt->second;
+                const bool wasUsingSimplified =
+                    mLastSelectedSimplifiedItems.find( item ) != mLastSelectedSimplifiedItems.end();
                 const bool wasUsingProxy = mLastSelectedProxyItems.find( item ) != mLastSelectedProxyItems.end();
-                const uint32 lodLevel = chooseRtLodLevel( item, cachedMesh, mLodCamera, wasUsingProxy );
+                const uint32 lodLevel = chooseRtLodLevel( item, cachedMesh, mLodCamera,
+                                                          wasUsingSimplified, wasUsingProxy );
                 const MeshLodRange &lodRange = cachedMesh.lodRanges[lodLevel];
                 const bool usingProxy = cachedMesh.proxyMesh && lodLevel == cachedMesh.lodRanges.size() - 1u;
+                const bool usingSimplified = !usingProxy && cachedMesh.simplifiedMesh &&
+                    cachedMesh.lodRanges.size() >= 2u && lodLevel == cachedMesh.lodRanges.size() - 2u;
+                if( usingSimplified )
+                    selectedSimplifiedItems.insert( item );
                 if( usingProxy )
                     selectedProxyItems.insert( item );
                 const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
-                const uint32 numSubMeshes = usingProxy ?
-                    std::min<uint32>( std::min<uint32>( cachedMesh.proxyMesh->getNumSubMeshes(),
-                                                        cachedMesh.proxySubMeshToSourceSubMesh.size() ),
-                                      cachedMesh.proxySubMeshBounds.size() ) :
-                    std::min<uint32>( item->getNumSubItems(), lodRange.numBlas );
+                uint32 numSubMeshes = std::min<uint32>( item->getNumSubItems(), lodRange.numBlas );
+                if( usingSimplified )
+                {
+                    numSubMeshes = std::min<uint32>(
+                        std::min<uint32>( cachedMesh.simplifiedMesh->getNumSubMeshes(),
+                                          cachedMesh.simplifiedSubMeshToSourceSubMesh.size() ),
+                        cachedMesh.simplifiedSubMeshBounds.size() );
+                }
+                else if( usingProxy )
+                {
+                    numSubMeshes = std::min<uint32>(
+                        std::min<uint32>( cachedMesh.proxyMesh->getNumSubMeshes(),
+                                          cachedMesh.proxySubMeshToSourceSubMesh.size() ),
+                        cachedMesh.proxySubMeshBounds.size() );
+                }
+
                 if( usingProxy )
                     mLastProxyTierMeshletCount += numSubMeshes;
+                else if( usingSimplified )
+                    mLastSimplifiedTierMeshletCount += numSubMeshes;
                 else
                     mLastFullTierMeshletCount += numSubMeshes;
                 for( uint32 subMeshIdx = 0u; subMeshIdx < numSubMeshes; ++subMeshIdx )
                 {
                     const uint32 sourceSubMeshIdx = usingProxy ?
-                        cachedMesh.proxySubMeshToSourceSubMesh[subMeshIdx] : subMeshIdx;
+                        cachedMesh.proxySubMeshToSourceSubMesh[subMeshIdx] :
+                        ( usingSimplified ? cachedMesh.simplifiedSubMeshToSourceSubMesh[subMeshIdx] :
+                                            subMeshIdx );
                     if( sourceSubMeshIdx >= item->getNumSubItems() )
                         continue;
 
                     SelectedSubMeshInstance selectedInstance;
                     selectedInstance.item = item;
-                    selectedInstance.mesh = usingProxy ? cachedMesh.proxyMesh.get() : mesh;
+                    selectedInstance.mesh = usingProxy ? cachedMesh.proxyMesh.get() :
+                        ( usingSimplified ? cachedMesh.simplifiedMesh.get() : mesh );
                     selectedInstance.subMesh = usingProxy ?
                         cachedMesh.proxyMesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) ) :
-                        mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) );
+                        ( usingSimplified ?
+                              cachedMesh.simplifiedMesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) ) :
+                              mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) ) );
                     selectedInstance.subMeshIdx = sourceSubMeshIdx;
                     selectedInstance.localBounds = usingProxy ? cachedMesh.proxySubMeshBounds[subMeshIdx] :
-                        mesh->getAabb();
-                    selectedInstance.lodLevel = usingProxy ? 0u : lodLevel;
+                        ( usingSimplified ? cachedMesh.simplifiedSubMeshBounds[subMeshIdx] : mesh->getAabb() );
+                    selectedInstance.lodLevel = ( usingProxy || usingSimplified ) ? 0u : lodLevel;
                     selectedInstance.blasIndex = lodRange.blasStart + subMeshIdx;
                     selectedSubMeshInstances.push_back( selectedInstance );
 
@@ -654,6 +977,7 @@ namespace Ogre
             mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
         }
 
+        mLastSelectedSimplifiedItems.swap( selectedSimplifiedItems );
         mLastSelectedProxyItems.swap( selectedProxyItems );
 
         if( wasRebuildingBlas )

@@ -148,6 +148,7 @@ namespace Ogre
         uint32 getActiveMeshletCount() const;
         uint32 getTotalMeshletCount() const;
         uint32 getFullTierMeshletCount() const;
+        uint32 getSimplifiedTierMeshletCount() const;
         uint32 getProxyTierMeshletCount() const;
 
         void setSkyColours( const ColourValue &zenith, const ColourValue &horizon );
