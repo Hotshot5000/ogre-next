@@ -305,9 +305,11 @@ namespace Ogre
         }
 
         MeshPtr createMeshletProxyMesh( Mesh *sourceMesh, VaoManager *vaoManager,
-                                        FastArray<uint32> &proxySubMeshToSourceSubMesh )
+                                        FastArray<uint32> &proxySubMeshToSourceSubMesh,
+                                        FastArray<Aabb> &proxySubMeshBounds )
         {
             proxySubMeshToSourceSubMesh.clear();
+            proxySubMeshBounds.clear();
             MeshPtr proxyMesh = MeshManager::getSingleton().createManual(
                 "AutoGen_PathTracerRtMeshlets_" + sourceMesh->getName() + "_" +
                     StringConverter::toString( IdString( sourceMesh->getName() ).mHash ),
@@ -327,6 +329,7 @@ namespace Ogre
                     for( int i = 0; i < NumVertexPass; ++i )
                         proxySubMesh->mVao[i].push_back( vao );
                     proxySubMeshToSourceSubMesh.push_back( subMeshIdx );
+                    proxySubMeshBounds.push_back( meshletBounds[meshletIdx] );
                 }
             }
 
@@ -369,6 +372,8 @@ namespace Ogre
             for( size_t i = 0u; i < a.size(); ++i )
             {
                 if( a[i].item != b[i].item || a[i].mesh != b[i].mesh || a[i].subMesh != b[i].subMesh ||
+                    a[i].localBounds.mCenter != b[i].localBounds.mCenter ||
+                    a[i].localBounds.mHalfSize != b[i].localBounds.mHalfSize ||
                     a[i].subMeshIdx != b[i].subMeshIdx || a[i].lodLevel != b[i].lodLevel ||
                     a[i].blasIndex != b[i].blasIndex )
                 {
@@ -481,7 +486,8 @@ namespace Ogre
                     if( !meshCacheIt->second.proxyMesh )
                         meshCacheIt->second.proxyMesh = createMeshletProxyMesh(
                             mesh, Root::getSingleton().getRenderSystem()->getVaoManager(),
-                            meshCacheIt->second.proxySubMeshToSourceSubMesh );
+                            meshCacheIt->second.proxySubMeshToSourceSubMesh,
+                            meshCacheIt->second.proxySubMeshBounds );
 
                     Mesh *proxyMesh = meshCacheIt->second.proxyMesh.get();
                     MeshLodRange proxyRange;
@@ -524,8 +530,9 @@ namespace Ogre
                     selectedProxyItems.insert( item );
                 const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
                 const uint32 numSubMeshes = usingProxy ?
-                    std::min<uint32>( cachedMesh.proxyMesh->getNumSubMeshes(),
-                                      cachedMesh.proxySubMeshToSourceSubMesh.size() ) :
+                    std::min<uint32>( std::min<uint32>( cachedMesh.proxyMesh->getNumSubMeshes(),
+                                                        cachedMesh.proxySubMeshToSourceSubMesh.size() ),
+                                      cachedMesh.proxySubMeshBounds.size() ) :
                     std::min<uint32>( item->getNumSubItems(), lodRange.numBlas );
                 for( uint32 subMeshIdx = 0u; subMeshIdx < numSubMeshes; ++subMeshIdx )
                 {
@@ -541,16 +548,22 @@ namespace Ogre
                         cachedMesh.proxyMesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) ) :
                         mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) );
                     selectedInstance.subMeshIdx = sourceSubMeshIdx;
+                    selectedInstance.localBounds = usingProxy ? cachedMesh.proxySubMeshBounds[subMeshIdx] :
+                        mesh->getAabb();
                     selectedInstance.lodLevel = usingProxy ? 0u : lodLevel;
                     selectedInstance.blasIndex = lodRange.blasStart + subMeshIdx;
                     selectedSubMeshInstances.push_back( selectedInstance );
 
                     instanceMeshIndex.push_back( selectedInstance.blasIndex );
                     instanceTransform.push_back( transform );
-                    const Aabb &bounds = selectedInstance.mesh->getAabb();
+                    const Aabb &bounds = selectedInstance.localBounds;
                     const Vector3 worldCenter = transform * bounds.mCenter;
-                    const Real worldRadius = std::max<Real>( selectedInstance.mesh->getBoundingSphereRadius(),
-                                                             bounds.mHalfSize.length() );
+                    const Vector3 axisX( transform[0][0], transform[1][0], transform[2][0] );
+                    const Vector3 axisY( transform[0][1], transform[1][1], transform[2][1] );
+                    const Vector3 axisZ( transform[0][2], transform[1][2], transform[2][2] );
+                    const Real maxScale = std::max<Real>( axisX.length(),
+                        std::max<Real>( axisY.length(), axisZ.length() ) );
+                    const Real worldRadius = bounds.mHalfSize.length() * std::max<Real>( maxScale, Real( 1e-6 ) );
                     instanceBounds.push_back( Vector4( worldCenter.x, worldCenter.y, worldCenter.z,
                                                        worldRadius ) );
                 }

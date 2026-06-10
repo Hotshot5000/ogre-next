@@ -55,6 +55,7 @@ namespace Ogre
             Mesh                    *mesh;
             MeshPtr                 proxyMesh;
             FastArray<uint32>       proxySubMeshToSourceSubMesh;
+            FastArray<Aabb>         proxySubMeshBounds;
             FastArray<MeshLodRange> lodRanges;
         };
 
@@ -63,6 +64,7 @@ namespace Ogre
             Item    *item;
             Mesh    *mesh;
             SubMesh *subMesh;
+            Aabb     localBounds;
             uint32  subMeshIdx;
             uint32  lodLevel;
             uint32  blasIndex;
