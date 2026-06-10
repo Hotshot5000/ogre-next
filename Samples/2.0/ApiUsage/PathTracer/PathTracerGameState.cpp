@@ -349,7 +349,10 @@ namespace Demo
         outText += Ogre::StringConverter::toString( mDisplayFps );
         outText += "\nPath tracer GPU cull distance: ";
         if( mPathTracer && mPathTracer->getGpuCullDistance() > 0.0f )
-            outText += Ogre::StringConverter::toString( mPathTracer->getGpuCullDistance(), 1u );
+        {
+            outText += Ogre::StringConverter::toString( mPathTracer->getGpuCullDistance(), 1u, 0u,
+                                                        ' ', std::ios::fixed );
+        }
         else
             outText += "Off";
         outText += "\nPress [ or ] to decrease/increase path bounces.";
