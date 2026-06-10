@@ -54,6 +54,7 @@ namespace Ogre
             String                  meshName;
             Mesh                    *mesh;
             MeshPtr                 proxyMesh;
+            FastArray<uint32>       proxySubMeshToSourceSubMesh;
             FastArray<MeshLodRange> lodRanges;
         };
 
