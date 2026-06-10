@@ -55,6 +55,8 @@ THE SOFTWARE.
 #include "Vao/OgreReadOnlyBufferPacked.h"
 #include "Vao/OgreVaoManager.h"
 
+#include <map>
+
 namespace Ogre
 {
     namespace
@@ -264,6 +266,10 @@ namespace Ogre
                 return reinterpret_cast<const uint16 *>( indexData )[indexIdx];
             return reinterpret_cast<const uint32 *>( indexData )[indexIdx];
         }
+
+        typedef std::vector<PathTracerTriangleGpu> PathTracerTriangleGpuVec;
+        typedef std::map<VertexArrayObject *, PathTracerTriangleGpuVec> TriangleRecordCache;
+        TriangleRecordCache gTriangleRecordCache;
 
         void addLight( PathTracerLightGpu *dst, Light *light )
         {
@@ -963,6 +969,19 @@ namespace Ogre
                     continue;
                 }
 
+                const TriangleRecordCache::const_iterator cachedIt = gTriangleRecordCache.find( vao );
+                if( cachedIt != gTriangleRecordCache.end() )
+                {
+                    const PathTracerTriangleGpuVec &cachedTriangles = cachedIt->second;
+                    memcpy( triangleDst + triangleIdx, cachedTriangles.data(),
+                            cachedTriangles.size() * sizeof( PathTracerTriangleGpu ) );
+                    triangleIdx += cachedTriangles.size();
+                    ++geometryIdx;
+                    continue;
+                }
+
+                const size_t cacheStartTriangleIdx = triangleIdx;
+
                 VertexArrayObject::ReadRequestsVec readRequests;
                 size_t positionRequestIdx = std::numeric_limits<size_t>::max();
                 size_t uvRequestIdx = std::numeric_limits<size_t>::max();
@@ -1104,6 +1123,14 @@ namespace Ogre
                     indexTicket->unmap();
                 if( !readRequests.empty() )
                     vao->unmapAsyncTickets( readRequests );
+
+                PathTracerTriangleGpuVec cachedTriangles( triangleIdx - cacheStartTriangleIdx );
+                if( !cachedTriangles.empty() )
+                {
+                    memcpy( cachedTriangles.data(), triangleDst + cacheStartTriangleIdx,
+                            cachedTriangles.size() * sizeof( PathTracerTriangleGpu ) );
+                    gTriangleRecordCache[vao].swap( cachedTriangles );
+                }
 
                 ++geometryIdx;
         }
