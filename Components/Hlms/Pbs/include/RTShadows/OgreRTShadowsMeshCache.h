@@ -84,6 +84,7 @@ namespace Ogre
         SelectedSubMeshInstanceArray mSelectedSubMeshInstances;
         ItemSet mLastSelectedProxyItems;
         const Camera *mLodCamera;
+        Real mGpuCullDistance;
         uint32 mGeometryRevision;
         bool mRebuildBlas;
         bool mRebuildTlas;
@@ -113,6 +114,8 @@ namespace Ogre
         void setEnabled( bool enabled ) { mEnabled = enabled; }
         bool getEnabled() const { return mEnabled; }
         void setLodCamera( const Camera *camera ) { mLodCamera = camera; }
+        void setGpuCullDistance( Real distance );
+        Real getGpuCullDistance() const { return mGpuCullDistance; }
         const SelectedSubMeshInstanceArray &getSelectedSubMeshInstances() const
         {
             return mSelectedSubMeshInstances;

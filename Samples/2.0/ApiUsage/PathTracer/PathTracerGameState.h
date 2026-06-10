@@ -43,6 +43,7 @@ namespace Demo
         Ogre::uint8 mTransparencyMode;
         float mTransparencyValue;
         size_t mUpscaleScaleIdx;
+        size_t mGpuCullDistanceIdx;
         Ogre::uint64 mLastGeneratedFrameCount;
         Ogre::uint32 mDisplayFpsRealFrames;
         Ogre::uint32 mDisplayFpsGeneratedFrames;

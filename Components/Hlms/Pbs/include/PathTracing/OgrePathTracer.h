@@ -139,6 +139,9 @@ namespace Ogre
         uint32 getInternalWidth() const { return mInternalWidth; }
         uint32 getInternalHeight() const { return mInternalHeight; }
 
+        void setGpuCullDistance( Real distance );
+        Real getGpuCullDistance() const;
+
         void setSkyColours( const ColourValue &zenith, const ColourValue &horizon );
         const ColourValue &getSkyZenith() const { return mSkyZenith; }
         const ColourValue &getSkyHorizon() const { return mSkyHorizon; }

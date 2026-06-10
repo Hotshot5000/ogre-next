@@ -387,6 +387,7 @@ namespace Ogre
 
     RTShadowsMeshCache::RTShadowsMeshCache() :
         mLodCamera( 0 ),
+        mGpuCullDistance( 0 ),
         mGeometryRevision( 1u ),
         mRebuildBlas( true ),
         mRebuildTlas( true ),
@@ -398,6 +399,16 @@ namespace Ogre
     RTShadowsMeshCache::~RTShadowsMeshCache()
     {
         
+    }
+    //-------------------------------------------------------------------------
+    void RTShadowsMeshCache::setGpuCullDistance( Real distance )
+    {
+        distance = distance > Real( 0 ) ? distance : Real( 0 );
+        if( Math::Abs( mGpuCullDistance - distance ) <= Real( 1e-4 ) )
+            return;
+
+        mGpuCullDistance = distance;
+        mRebuildTlas = true;
     }
     //-------------------------------------------------------------------------
     const RTShadowsMeshCache::ShadowsCachedMesh &RTShadowsMeshCache::addMeshToCache(
@@ -598,7 +609,8 @@ namespace Ogre
         }
 
         const Vector3 cameraPos = mLodCamera ? mLodCamera->getDerivedPosition() : Vector3::ZERO;
-        const Vector4 cameraCullParams( cameraPos.x, cameraPos.y, cameraPos.z, 0.0f );
+        const Vector4 cameraCullParams( cameraPos.x, cameraPos.y, cameraPos.z,
+                                        mGpuCullDistance );
 
         if( mRebuildBlas )
         {

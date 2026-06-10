@@ -34,6 +34,7 @@ using namespace Demo;
 namespace
 {
     const Ogre::Real cPathTracerUpscaleScales[] = { 1.0f, 0.77f, 0.67f, 0.5f };
+    const Ogre::Real cPathTracerGpuCullDistances[] = { 0.0f, 32.0f, 48.0f, 64.0f, 96.0f, 128.0f };
 }
 
 namespace Demo
@@ -46,6 +47,7 @@ namespace Demo
         mTransparencyMode( Ogre::HlmsPbsDatablock::Transparent ),
         mTransparencyValue( 1.0f ),
         mUpscaleScaleIdx( 0u ),
+        mGpuCullDistanceIdx( 0u ),
         mLastGeneratedFrameCount( 0u ),
         mDisplayFpsRealFrames( 0u ),
         mDisplayFpsGeneratedFrames( 0u ),
@@ -345,9 +347,15 @@ namespace Demo
         outText += "]";
         outText += "\nPath tracer avg display fps: ";
         outText += Ogre::StringConverter::toString( mDisplayFps );
+        outText += "\nPath tracer GPU cull distance: ";
+        if( mPathTracer && mPathTracer->getGpuCullDistance() > 0.0f )
+            outText += Ogre::StringConverter::toString( mPathTracer->getGpuCullDistance(), 1u );
+        else
+            outText += "Off";
         outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
+        outText += "\nPress C to cycle GPU meshlet culling distance.";
         outText += "\nPress F6 to toggle MetalFX frame generation. ";
         outText += mPathTracer && mPathTracer->getFrameGenerationEnabled() ? "[On]" : "[Off]";
         outText += "\nPress F2 to toggle animation. ";
@@ -463,6 +471,13 @@ namespace Demo
             const size_t numScales = sizeof( cPathTracerUpscaleScales ) / sizeof( cPathTracerUpscaleScales[0] );
             mUpscaleScaleIdx = ( mUpscaleScaleIdx + 1u ) % numScales;
             mPathTracer->setUpscaleInputScale( cPathTracerUpscaleScales[mUpscaleScaleIdx] );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_C )
+        {
+            const size_t numCullDistances = sizeof( cPathTracerGpuCullDistances ) /
+                                            sizeof( cPathTracerGpuCullDistances[0] );
+            mGpuCullDistanceIdx = ( mGpuCullDistanceIdx + 1u ) % numCullDistances;
+            mPathTracer->setGpuCullDistance( cPathTracerGpuCullDistances[mGpuCullDistanceIdx] );
         }
         else if( arg.keysym.scancode == SDL_SCANCODE_KP_PLUS )
         {
