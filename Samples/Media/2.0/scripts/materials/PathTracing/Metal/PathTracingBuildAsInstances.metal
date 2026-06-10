@@ -7,6 +7,7 @@ struct PathTracerAsInstanceInput
     uint sourceInstanceIndex;
     uint active;
     uint padding;
+    float4 boundsCenterRadius;
     float4 transformRow0;
     float4 transformRow1;
     float4 transformRow2;
@@ -37,6 +38,7 @@ kernel void pathtracer_write_indirect_as_instances(
     device PathTracerIndirectInstanceDescriptor *descriptors [[buffer(2)]],
     device atomic_uint *instanceCount [[buffer(3)]],
     constant uint &numInstances [[buffer(4)]],
+    constant float4 &cameraCullParams [[buffer(5)]],
     uint tid [[thread_position_in_grid]] )
 {
     if( tid == 0 )
@@ -48,10 +50,17 @@ kernel void pathtracer_write_indirect_as_instances(
     constant PathTracerAsInstanceInput &src = inputs[tid];
     device PathTracerIndirectInstanceDescriptor &dst = descriptors[tid];
 
+    const float3 cameraPos = cameraCullParams.xyz;
+    const float maxCullDistance = cameraCullParams.w;
+    const float3 toBounds = src.boundsCenterRadius.xyz - cameraPos;
+    const float cullDistance = maxCullDistance + src.boundsCenterRadius.w;
+    const bool distanceVisible = maxCullDistance <= 0.0f || dot( toBounds, toBounds ) <= cullDistance * cullDistance;
+    const bool active = src.active != 0u && distanceVisible;
+
     dst.accelerationStructureID = accelerationStructureIds[src.accelerationStructureIndex];
     dst.userID = src.sourceInstanceIndex;
     dst.options = 4u; // MTLAccelerationStructureInstanceOptionOpaque
-    dst.mask = src.active != 0u ? 1u : 0u;
+    dst.mask = active ? 1u : 0u;
     dst.intersectionFunctionTableOffset = 0u;
 
     dst.transformationMatrix.column0 = packed_float3( src.transformRow0.x,

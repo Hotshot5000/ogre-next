@@ -80,6 +80,7 @@ namespace Ogre
             uint32_t sourceInstanceIndex;
             uint32_t active;
             uint32_t padding;
+            float boundsCenterRadius[4];
             float transform[16];
         };
 
@@ -3546,18 +3547,24 @@ namespace Ogre
     #endif
     }
     
-    void MetalRenderSystem::refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform )
+    void MetalRenderSystem::refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
+                                                        std::vector<Vector4> *instanceBounds,
+                                                        const Vector4 &cameraCullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
         
-        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, true);
+        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, true,
+                                            instanceBounds, cameraCullParams);
     }
     //-------------------------------------------------------------------------
-    void MetalRenderSystem::rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform )
+    void MetalRenderSystem::rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
+                                                          std::vector<Vector4> *instanceBounds,
+                                                          const Vector4 &cameraCullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
 
-        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, false);
+        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, false,
+                                            instanceBounds, cameraCullParams);
     }
     //-------------------------------------------------------------------------
     void MetalRenderSystem::clearAccelerationStructure()
@@ -3613,7 +3620,9 @@ namespace Ogre
         return accelerationStructure;
     }
     
-    void MetalRenderSystem::updateInstanceAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure )
+    void MetalRenderSystem::updateInstanceAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure,
+                                                                 std::vector<Vector4> *instanceBounds,
+                                                                 const Vector4 &cameraCullParams )
     {
         id<MTLDevice> device = mActiveDevice->mDevice;
         const NSUInteger instanceCount = instanceMeshIndex.size();
@@ -3691,6 +3700,12 @@ namespace Ogre
                 instanceInputs[instanceIndex].sourceInstanceIndex = static_cast<uint32_t>( instanceIndex );
                 instanceInputs[instanceIndex].active = 1u;
                 instanceInputs[instanceIndex].padding = 0u;
+                const Vector4 bounds = instanceBounds && instanceIndex < instanceBounds->size() ?
+                    ( *instanceBounds )[instanceIndex] : Vector4::ZERO;
+                instanceInputs[instanceIndex].boundsCenterRadius[0] = static_cast<float>( bounds.x );
+                instanceInputs[instanceIndex].boundsCenterRadius[1] = static_cast<float>( bounds.y );
+                instanceInputs[instanceIndex].boundsCenterRadius[2] = static_cast<float>( bounds.z );
+                instanceInputs[instanceIndex].boundsCenterRadius[3] = static_cast<float>( bounds.w );
                 const Matrix4 &matTrans = instanceTransform[instanceIndex];
                 for( int row = 0; row < 4; ++row )
                     for( int column = 0; column < 4; ++column )
@@ -3708,12 +3723,16 @@ namespace Ogre
                 id<MTLCommandBuffer> commandBuffer = [mActiveDevice->mMainCommandQueue commandBuffer];
                 id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
                 uint32_t numInstances = static_cast<uint32_t>( instanceCount );
+                float metalCameraCullParams[4] = {
+                    static_cast<float>( cameraCullParams.x ), static_cast<float>( cameraCullParams.y ),
+                    static_cast<float>( cameraCullParams.z ), static_cast<float>( cameraCullParams.w ) };
                 [computeEncoder setComputePipelineState:mAccelerationStructureInstancePso];
                 [computeEncoder setBuffer:mAccelerationStructureInstanceInputBuffer offset:0 atIndex:0];
                 [computeEncoder setBuffer:mAccelerationStructureResourceIdBuffer offset:0 atIndex:1];
                 [computeEncoder setBuffer:mAccelerationStructureInstanceBuffer offset:0 atIndex:2];
                 [computeEncoder setBuffer:mAccelerationStructureInstanceCountBuffer offset:0 atIndex:3];
                 [computeEncoder setBytes:&numInstances length:sizeof(numInstances) atIndex:4];
+                [computeEncoder setBytes:metalCameraCullParams length:sizeof(metalCameraCullParams) atIndex:5];
 
                 const NSUInteger threadsPerGroup = std::min<NSUInteger>(
                     std::max<NSUInteger>( mAccelerationStructureInstancePso.threadExecutionWidth, 1u ), 256u );
@@ -3812,7 +3831,9 @@ namespace Ogre
     }
     
     //-------------------------------------------------------------------------
-    void MetalRenderSystem::createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform )
+    void MetalRenderSystem::createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform,
+                                                         std::vector<Vector4> *instanceBounds,
+                                                         const Vector4 &cameraCullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
         
@@ -3961,6 +3982,7 @@ namespace Ogre
         // Allocate a buffer of acceleration structure instance descriptors. Each descriptor represents
         // an instance of one of the primitive acceleration structures created above, with its own
         // transformation matrix.
-        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options);
+        updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, false,
+                                            instanceBounds, cameraCullParams);
     }
 }

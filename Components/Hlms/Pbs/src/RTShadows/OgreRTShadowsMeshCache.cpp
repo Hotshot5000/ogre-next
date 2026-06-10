@@ -504,6 +504,7 @@ namespace Ogre
         ItemSet selectedProxyItems;
         std::vector<uint32> instanceMeshIndex;
         std::vector<Matrix4> instanceTransform;
+        std::vector<Vector4> instanceBounds;
         ItemArray::iterator itemItor = mItems.begin();
         ItemArray::iterator itemEnd = mItems.end();
         
@@ -546,6 +547,12 @@ namespace Ogre
 
                     instanceMeshIndex.push_back( selectedInstance.blasIndex );
                     instanceTransform.push_back( transform );
+                    const Aabb &bounds = selectedInstance.mesh->getAabb();
+                    const Vector3 worldCenter = transform * bounds.mCenter;
+                    const Real worldRadius = std::max<Real>( selectedInstance.mesh->getBoundingSphereRadius(),
+                                                             bounds.mHalfSize.length() );
+                    instanceBounds.push_back( Vector4( worldCenter.x, worldCenter.y, worldCenter.z,
+                                                       worldRadius ) );
                 }
             }
             
@@ -577,20 +584,26 @@ namespace Ogre
             return;
         }
 
+        const Vector3 cameraPos = mLodCamera ? mLodCamera->getDerivedPosition() : Vector3::ZERO;
+        const Vector4 cameraCullParams( cameraPos.x, cameraPos.y, cameraPos.z, 0.0f );
+
         if( mRebuildBlas )
         {
-            renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform );
+            renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform,
+                                                       &instanceBounds, cameraCullParams );
             mRebuildBlas = false;
             mRebuildTlas = false;
         }
         else if( mRebuildTlas )
         {
-            renderSystem->rebuildAccelerationStructure( instanceMeshIndex, instanceTransform );
+            renderSystem->rebuildAccelerationStructure( instanceMeshIndex, instanceTransform,
+                                                        &instanceBounds, cameraCullParams );
             mRebuildTlas = false;
         }
         else
         {
-            renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform );
+            renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform,
+                                                      &instanceBounds, cameraCullParams );
         }
     }
 }
