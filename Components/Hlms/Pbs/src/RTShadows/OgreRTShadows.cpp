@@ -309,7 +309,7 @@ namespace Ogre
             return;
 
         HlmsCompute *hlmsCompute = mHlmsManager->getComputeHlms();
-        Ogre::Matrix4 projMat = mCamera->getProjectionMatrix();
+//        Ogre::Matrix4 projMat = mCamera->getProjectionMatrix();
         Ogre::Matrix4 viewProj = mCamera->getProjectionMatrixWithRSDepth() * mCamera->getViewMatrix( true );
         Ogre::Matrix4 invViewProj = viewProj.inverse();
         Ogre::Matrix4 invProjMat = mCamera->getProjectionMatrix().inverse();
@@ -318,21 +318,21 @@ namespace Ogre
         Ogre::Vector4 cameraDirInViewSpace = invProjMat * cameraDir;
         cameraDirInViewSpace /= cameraDirInViewSpace.w;
         cameraDirInViewSpace.w = 0.0f;
-        Ogre::Vector4 cameraDirInWorldSpace = invViewMat * cameraDirInViewSpace;
-        Ogre::Vector4 cameraDirCombined = invViewProj * cameraDir;
-        Ogre::Ray ray = mCamera->getCameraToViewportRay( 0.0f, 0.0f );
+//        Ogre::Vector4 cameraDirInWorldSpace = invViewMat * cameraDirInViewSpace;
+//        Ogre::Vector4 cameraDirCombined = invViewProj * cameraDir;
+//        Ogre::Ray ray = mCamera->getCameraToViewportRay( 0.0f, 0.0f );
         
-        float Px = 2 * ( 0.0f ) - 1;// * tan( in->fovY * 0.5 ) * imageAspectRatio;
-        float Py = 1 - 2 * ( 0.0f );// * tan( in->fovY * 0.5 );
+//        float Px = 2 * ( 0.0f ) - 1;// * tan( in->fovY * 0.5 ) * imageAspectRatio;
+//        float Py = 1 - 2 * ( 0.0f );// * tan( in->fovY * 0.5 );
 //        float3 rayOrigin = float3( in->cameraPos.xyz );
-        Ogre::Vector3 rayOrigin = ( invViewProj * Ogre::Vector3( Px, Py, -1 ) );
-        Ogre::Vector3 rayOrigNorm = rayOrigin.normalisedCopy();
-        Ogre::Vector3 rayOrigNormScreenSpace = ( rayOrigNorm + 1.0f ) * 0.5f;
-        Ogre::Vector3 midPoint = ( invViewProj * Ogre::Vector3( Px, Py, 0 ) );
-        Ogre::Vector3 midPointNorm = midPoint.normalisedCopy();
-        Ogre::Vector3 midPointNormScreenSpace = ( midPointNorm + 1.0f ) * 0.5f;
-        Ogre::Vector3 rayDirection = midPoint - rayOrigin;
-        rayDirection.normalise();
+//        Ogre::Vector3 rayOrigin = ( invViewProj * Ogre::Vector3( Px, Py, -1 ) );
+//        Ogre::Vector3 rayOrigNorm = rayOrigin.normalisedCopy();
+//        Ogre::Vector3 rayOrigNormScreenSpace = ( rayOrigNorm + 1.0f ) * 0.5f;
+//        Ogre::Vector3 midPoint = ( invViewProj * Ogre::Vector3( Px, Py, 0 ) );
+//        Ogre::Vector3 midPointNorm = midPoint.normalisedCopy();
+//        Ogre::Vector3 midPointNormScreenSpace = ( midPointNorm + 1.0f ) * 0.5f;
+//        Ogre::Vector3 rayDirection = midPoint - rayOrigin;
+//        rayDirection.normalise();
         
 //        Ogre::Vector3 cameraDirWS( rayDirection.x, rayDirection.y, rayDirection.z );
 //        cameraDirWS.normalise();
@@ -508,10 +508,10 @@ namespace Ogre
 //        rtInput->cameraDir[10] = cameraDirs[3].y;
 //        rtInput->cameraDir[11] = cameraDirs[3].z;
         
-        rtInput->width = mRenderWindow->getWidth();
-        rtInput->height = mRenderWindow->getHeight();
+        rtInput->width = static_cast<float>( mRenderWindow->getWidth() );
+        rtInput->height = static_cast<float>( mRenderWindow->getHeight() );
         rtInput->fovY = mCamera->getFOVy().valueRadians();
-        float aspectRatio = mCamera->getAspectRatio();
+//        float aspectRatio = mCamera->getAspectRatio();
         
         memcpy( rtInput->invProjectionMat, &invProjMat, 4 * 4 * sizeof( float ) );
         memcpy( rtInput->invViewMat, &invViewMat, 4 * 4 * sizeof( float ) );
