@@ -111,6 +111,9 @@ namespace Ogre
         uint32 mLastFullTierMeshletCount;
         uint32 mLastSimplifiedTierMeshletCount;
         uint32 mLastProxyTierMeshletCount;
+        uint32 mLastFullTierObjectCount;
+        uint32 mLastSimplifiedTierObjectCount;
+        uint32 mLastProxyTierObjectCount;
         uint32 mGeometryRevision;
         bool mRebuildBlas;
         bool mRebuildTlas;
@@ -151,6 +154,9 @@ namespace Ogre
         uint32 getLastFullTierMeshletCount() const { return mLastFullTierMeshletCount; }
         uint32 getLastSimplifiedTierMeshletCount() const { return mLastSimplifiedTierMeshletCount; }
         uint32 getLastProxyTierMeshletCount() const { return mLastProxyTierMeshletCount; }
+        uint32 getLastFullTierObjectCount() const { return mLastFullTierObjectCount; }
+        uint32 getLastSimplifiedTierObjectCount() const { return mLastSimplifiedTierObjectCount; }
+        uint32 getLastProxyTierObjectCount() const { return mLastProxyTierObjectCount; }
         const CandidateSubMeshInstanceArray &getCandidateSubMeshInstances() const
         {
             return mCandidateSubMeshInstances;

@@ -362,7 +362,13 @@ namespace Demo
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getActiveMeshletCount() : 0u );
         outText += " / ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getTotalMeshletCount() : 0u );
-        outText += "\nPath tracer meshlet tiers full/simplified/proxy: ";
+        outText += "\nPath tracer tier objects full/simplified/proxy: ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getFullTierObjectCount() : 0u );
+        outText += " / ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getSimplifiedTierObjectCount() : 0u );
+        outText += " / ";
+        outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getProxyTierObjectCount() : 0u );
+        outText += "\nPath tracer tier meshlets full/simplified/proxy: ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getFullTierMeshletCount() : 0u );
         outText += " / ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getSimplifiedTierMeshletCount() : 0u );

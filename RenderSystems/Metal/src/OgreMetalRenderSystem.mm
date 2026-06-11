@@ -140,8 +140,10 @@ namespace Ogre
         mAccelerationStructureInstanceCountBuffer( 0 ),
         mAccelerationStructureInstanceInputBuffer( 0 ),
         mAccelerationStructureResourceIdBuffer( 0 ),
+        mAccelerationStructureInstanceActiveBuffer( 0 ),
         mAccelerationStructureInstanceLibrary( 0 ),
-        mAccelerationStructureInstancePso( 0 ),
+        mAccelerationStructureInstanceClassifyPso( 0 ),
+        mAccelerationStructureInstanceCompactPso( 0 ),
         mIntersectionFunctionTable( 0 ),
         mPathTracerDenoiserScaler( 0 ),
         mPathTracerDenoiserInputWidth( 0u ),
@@ -3647,7 +3649,7 @@ namespace Ogre
 
         if( @available( macOS 14.0, iOS 17.0, * ) )
         {
-            if( !mAccelerationStructureInstancePso )
+            if( !mAccelerationStructureInstanceClassifyPso )
             {
                 String shaderSource;
                 try
@@ -3672,14 +3674,22 @@ namespace Ogre
                                         error:&error];
                     if( mAccelerationStructureInstanceLibrary && !error )
                     {
-                        id<MTLFunction> function = [mAccelerationStructureInstanceLibrary
+                        id<MTLFunction> classifyFunction = [mAccelerationStructureInstanceLibrary
+                            newFunctionWithName:@"pathtracer_classify_indirect_as_instances"];
+                        id<MTLFunction> compactFunction = [mAccelerationStructureInstanceLibrary
                             newFunctionWithName:@"pathtracer_write_indirect_as_instances"];
-                        mAccelerationStructureInstancePso = [device newComputePipelineStateWithFunction:function
-                                                                                                  error:&error];
+                        mAccelerationStructureInstanceClassifyPso =
+                            [device newComputePipelineStateWithFunction:classifyFunction error:&error];
+                        if( mAccelerationStructureInstanceClassifyPso && !error )
+                        {
+                            mAccelerationStructureInstanceCompactPso =
+                                [device newComputePipelineStateWithFunction:compactFunction error:&error];
+                        }
                     }
                 }
 
-                if( !mAccelerationStructureInstancePso || error )
+                if( !mAccelerationStructureInstanceClassifyPso ||
+                    !mAccelerationStructureInstanceCompactPso || error )
                 {
                     String errorDesc;
                     if( error )
@@ -3688,14 +3698,45 @@ namespace Ogre
                         "Path tracer GPU AS instance writer compile error:\n" + errorDesc,
                         LML_CRITICAL );
                     mAccelerationStructureInstanceLibrary = 0;
-                    mAccelerationStructureInstancePso = 0;
+                    mAccelerationStructureInstanceClassifyPso = 0;
+                    mAccelerationStructureInstanceCompactPso = 0;
                 }
             }
 
-            mAccelerationStructureInstanceInputBuffer = [device newBufferWithLength:sizeof(PathTracerAsInstanceInput) * instanceCount options:options];
-            mAccelerationStructureResourceIdBuffer = [device newBufferWithLength:sizeof(MTLResourceID) * mPrimitiveAccelerationStructures.count options:options];
-            mAccelerationStructureInstanceBuffer = [device newBufferWithLength:sizeof(MTLIndirectAccelerationStructureInstanceDescriptor) * instanceCount options:options];
+            const NSUInteger instanceCountAlloc = std::max<NSUInteger>( instanceCount, 1u );
+            NSUInteger threadsPerGroup = 1u;
+            if( mAccelerationStructureInstanceClassifyPso &&
+                mAccelerationStructureInstanceCompactPso )
+            {
+                const NSUInteger classifyWidth = std::max<NSUInteger>(
+                    mAccelerationStructureInstanceClassifyPso.threadExecutionWidth, 1u );
+                const NSUInteger maxThreadsPerGroup = std::min<NSUInteger>(
+                    mAccelerationStructureInstanceClassifyPso.maxTotalThreadsPerThreadgroup, 256u );
+                threadsPerGroup = std::min<NSUInteger>( classifyWidth, maxThreadsPerGroup );
+            }
+
+            mAccelerationStructureInstanceInputBuffer =
+                [device newBufferWithLength:sizeof(PathTracerAsInstanceInput) * instanceCountAlloc
+                                    options:options];
+            mAccelerationStructureResourceIdBuffer =
+                [device newBufferWithLength:sizeof(MTLResourceID) *
+                                               std::max<NSUInteger>( mPrimitiveAccelerationStructures.count, 1u )
+                                    options:options];
+            mAccelerationStructureInstanceBuffer =
+                [device newBufferWithLength:sizeof(MTLIndirectAccelerationStructureInstanceDescriptor) *
+                                               instanceCountAlloc
+                                    options:options];
             mAccelerationStructureInstanceCountBuffer = [device newBufferWithLength:sizeof(uint32_t) options:options];
+            if( mAccelerationStructureInstanceClassifyPso &&
+                mAccelerationStructureInstanceCompactPso )
+            {
+                mAccelerationStructureInstanceActiveBuffer =
+                    [device newBufferWithLength:sizeof(uint32_t) * instanceCountAlloc options:options];
+            }
+            else
+            {
+                mAccelerationStructureInstanceActiveBuffer = 0;
+            }
 
             PathTracerAsInstanceInput *instanceInputs =
                 (PathTracerAsInstanceInput *)mAccelerationStructureInstanceInputBuffer.contents;
@@ -3748,10 +3789,10 @@ namespace Ogre
             [mAccelerationStructureInstanceCountBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceCountBuffer.length)];
 #endif
 
-            if( mAccelerationStructureInstancePso )
+            if( mAccelerationStructureInstanceClassifyPso &&
+                mAccelerationStructureInstanceCompactPso )
             {
                 id<MTLCommandBuffer> commandBuffer = [mActiveDevice->mMainCommandQueue commandBuffer];
-                id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
                 uint32_t numInstances = static_cast<uint32_t>( instanceCount );
                 PathTracerAsCullParams metalCullParams;
                 for( size_t i = 0u; i < 4u; ++i )
@@ -3766,19 +3807,27 @@ namespace Ogre
                         static_cast<float>( cullParams.cameraUpAndTanHalfFovY[i] );
                     metalCullParams.cullOptions[i] = static_cast<float>( cullParams.cullOptions[i] );
                 }
-                [computeEncoder setComputePipelineState:mAccelerationStructureInstancePso];
-                [computeEncoder setBuffer:mAccelerationStructureInstanceInputBuffer offset:0 atIndex:0];
-                [computeEncoder setBuffer:mAccelerationStructureResourceIdBuffer offset:0 atIndex:1];
-                [computeEncoder setBuffer:mAccelerationStructureInstanceBuffer offset:0 atIndex:2];
-                [computeEncoder setBuffer:mAccelerationStructureInstanceCountBuffer offset:0 atIndex:3];
-                [computeEncoder setBytes:&numInstances length:sizeof(numInstances) atIndex:4];
-                [computeEncoder setBytes:&metalCullParams length:sizeof(metalCullParams) atIndex:5];
-
-                const NSUInteger threadsPerGroup = std::min<NSUInteger>(
-                    std::max<NSUInteger>( mAccelerationStructureInstancePso.threadExecutionWidth, 1u ), 256u );
                 MTLSize threadgroupSize = MTLSizeMake( threadsPerGroup, 1, 1 );
                 MTLSize gridSize = MTLSizeMake( std::max<NSUInteger>( instanceCount, 1u ), 1, 1 );
+                id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
+                [computeEncoder setComputePipelineState:mAccelerationStructureInstanceClassifyPso];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceInputBuffer offset:0 atIndex:0];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceActiveBuffer offset:0 atIndex:1];
+                [computeEncoder setBytes:&numInstances length:sizeof(numInstances) atIndex:2];
+                [computeEncoder setBytes:&metalCullParams length:sizeof(metalCullParams) atIndex:3];
                 [computeEncoder dispatchThreads:gridSize threadsPerThreadgroup:threadgroupSize];
+                [computeEncoder endEncoding];
+
+                computeEncoder = [commandBuffer computeCommandEncoder];
+                [computeEncoder setComputePipelineState:mAccelerationStructureInstanceCompactPso];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceInputBuffer offset:0 atIndex:0];
+                [computeEncoder setBuffer:mAccelerationStructureResourceIdBuffer offset:0 atIndex:1];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceActiveBuffer offset:0 atIndex:2];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceBuffer offset:0 atIndex:3];
+                [computeEncoder setBuffer:mAccelerationStructureInstanceCountBuffer offset:0 atIndex:4];
+                [computeEncoder setBytes:&numInstances length:sizeof(numInstances) atIndex:5];
+                [computeEncoder dispatchThreads:MTLSizeMake( 1u, 1u, 1u )
+                          threadsPerThreadgroup:MTLSizeMake( 1u, 1u, 1u )];
                 [computeEncoder endEncoding];
                 [commandBuffer commit];
             }

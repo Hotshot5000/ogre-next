@@ -611,6 +611,21 @@ namespace Ogre
         return mMeshCache ? mMeshCache->getLastProxyTierMeshletCount() : 0u;
     }
     //-------------------------------------------------------------------------
+    uint32 PathTracer::getFullTierObjectCount() const
+    {
+        return mMeshCache ? mMeshCache->getLastFullTierObjectCount() : 0u;
+    }
+    //-------------------------------------------------------------------------
+    uint32 PathTracer::getSimplifiedTierObjectCount() const
+    {
+        return mMeshCache ? mMeshCache->getLastSimplifiedTierObjectCount() : 0u;
+    }
+    //-------------------------------------------------------------------------
+    uint32 PathTracer::getProxyTierObjectCount() const
+    {
+        return mMeshCache ? mMeshCache->getLastProxyTierObjectCount() : 0u;
+    }
+    //-------------------------------------------------------------------------
     void PathTracer::setSkyColours( const ColourValue &zenith, const ColourValue &horizon )
     {
         if( mSkyZenith == zenith && mSkyHorizon == horizon )
