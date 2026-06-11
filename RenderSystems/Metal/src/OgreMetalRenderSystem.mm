@@ -3793,6 +3793,10 @@ namespace Ogre
                 instanceInputs[instanceIndex].accelerationStructureIndex = instanceMeshIndex[instanceIndex];
                 instanceInputs[instanceIndex].sourceInstanceIndex = static_cast<uint32_t>( instanceIndex );
                 instanceInputs[instanceIndex].active = 1u;
+                // instanceTiers carries packed per-candidate GPU LOD metadata:
+                // bits 0-1  = candidate tier
+                // bits 2-3  = previous frame's selected tier for hysteresis
+                // bits 4-6  = availability mask (full=bit0, simplified=bit1, proxy=bit2)
                 const uint32_t packedTierMetadata =
                     instanceTiers && instanceIndex < instanceTiers->size() ? ( *instanceTiers )[instanceIndex] :
                                                                              0u;

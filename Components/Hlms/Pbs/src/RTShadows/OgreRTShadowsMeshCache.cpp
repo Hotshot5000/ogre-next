@@ -1059,6 +1059,10 @@ namespace Ogre
             const uint32 previousTier =
                 prevTierIt != previousTierByItem.end() ? static_cast<uint32>( prevTierIt->second ) :
                                                          static_cast<uint32>( RtMeshletTierFull );
+            // instanceTiers is reused as a compact GPU metadata channel:
+            // bits 0-1  = candidate tier
+            // bits 2-3  = previous frame's selected tier for hysteresis
+            // bits 4-6  = availability mask (full=bit0, simplified=bit1, proxy=bit2)
             const uint32 packedTierMetadata =
                 static_cast<uint32>( candidateInstance.tier ) |
                 ( previousTier << 2u ) | ( candidateInstance.availableTiersMask << 4u );

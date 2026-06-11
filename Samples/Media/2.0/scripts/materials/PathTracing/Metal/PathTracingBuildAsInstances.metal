@@ -6,6 +6,7 @@ struct PathTracerAsInstanceInput
     uint accelerationStructureIndex;
     uint sourceInstanceIndex;
     uint active;
+    // Decoded from the packed instanceTiers metadata stream on the CPU side.
     uint tier;
     uint previousTier;
     uint availableTiersMask;
