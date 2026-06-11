@@ -85,50 +85,96 @@ static inline bool pathtracer_is_instance_active( constant PathTracerAsInstanceI
 kernel void pathtracer_classify_indirect_as_instances(
     constant PathTracerAsInstanceInput *inputs [[buffer(0)]],
     device uint *instanceActiveFlags [[buffer(1)]],
-    constant uint &numInstances [[buffer(2)]],
-    constant PathTracerAsCullParams &cullParams [[buffer(3)]],
-    uint tid [[thread_position_in_grid]] )
+    device uint *instanceLocalOffsets [[buffer(2)]],
+    device uint *threadgroupCounts [[buffer(3)]],
+    constant uint &numInstances [[buffer(4)]],
+    constant PathTracerAsCullParams &cullParams [[buffer(5)]],
+    uint3 threadPositionInGrid [[thread_position_in_grid]],
+    uint localTid [[thread_index_in_threadgroup]],
+    uint3 threadgroupPositionInGrid [[threadgroup_position_in_grid]],
+    uint3 threadsPerThreadgroup [[threads_per_threadgroup]] )
 {
-    if( tid < numInstances )
-        instanceActiveFlags[tid] = pathtracer_is_instance_active( inputs[tid], cullParams ) ? 1u : 0u;
+    threadgroup uint localScan[256];
+    const uint tid = threadPositionInGrid.x;
+    const uint threadgroupId = threadgroupPositionInGrid.x;
+    const uint threadsPerGroup = threadsPerThreadgroup.x;
+    const bool inRange = tid < numInstances;
+    const uint active = inRange && pathtracer_is_instance_active( inputs[tid], cullParams ) ? 1u : 0u;
+
+    localScan[localTid] = active;
+    threadgroup_barrier( mem_flags::mem_threadgroup );
+
+    for( uint offset = 1u; offset < threadsPerGroup; offset <<= 1u )
+    {
+        uint value = 0u;
+        if( localTid >= offset )
+            value = localScan[localTid - offset];
+        threadgroup_barrier( mem_flags::mem_threadgroup );
+        localScan[localTid] += value;
+        threadgroup_barrier( mem_flags::mem_threadgroup );
+    }
+
+    if( inRange )
+    {
+        instanceActiveFlags[tid] = active;
+        instanceLocalOffsets[tid] = active != 0u ? localScan[localTid] - 1u : 0u;
+    }
+
+    if( localTid + 1u == threadsPerGroup )
+        threadgroupCounts[threadgroupId] = localScan[localTid];
 }
 
-kernel void pathtracer_write_indirect_as_instances(
-    constant PathTracerAsInstanceInput *inputs [[buffer(0)]],
-    constant ulong *accelerationStructureIds [[buffer(1)]],
-    device const uint *instanceActiveFlags [[buffer(2)]],
-    device PathTracerIndirectInstanceDescriptor *descriptors [[buffer(3)]],
-    device atomic_uint *instanceCount [[buffer(4)]],
-    constant uint &numInstances [[buffer(5)]],
+kernel void pathtracer_prefix_indirect_as_threadgroups(
+    device const uint *threadgroupCounts [[buffer(0)]],
+    device uint *threadgroupOffsets [[buffer(1)]],
+    device atomic_uint *instanceCount [[buffer(2)]],
+    constant uint &numThreadgroups [[buffer(3)]],
     uint tid [[thread_position_in_grid]] )
 {
     if( tid != 0u )
         return;
 
-    uint outCount = 0u;
-    for( uint idx = 0u; idx < numInstances; ++idx )
+    uint prefix = 0u;
+    for( uint groupIdx = 0u; groupIdx < numThreadgroups; ++groupIdx )
     {
-        if( instanceActiveFlags[idx] == 0u )
-            continue;
-
-        constant PathTracerAsInstanceInput &src = inputs[idx];
-        device PathTracerIndirectInstanceDescriptor &dst = descriptors[outCount++];
-
-        dst.accelerationStructureID = accelerationStructureIds[src.accelerationStructureIndex];
-        dst.userID = src.sourceInstanceIndex;
-        dst.options = 4u; // MTLAccelerationStructureInstanceOptionOpaque
-        dst.mask = 1u;
-        dst.intersectionFunctionTableOffset = 0u;
-
-        dst.transformationMatrix.column0 = packed_float3( src.transformRow0.x, src.transformRow1.x,
-                                                          src.transformRow2.x );
-        dst.transformationMatrix.column1 = packed_float3( src.transformRow0.y, src.transformRow1.y,
-                                                          src.transformRow2.y );
-        dst.transformationMatrix.column2 = packed_float3( src.transformRow0.z, src.transformRow1.z,
-                                                          src.transformRow2.z );
-        dst.transformationMatrix.column3 = packed_float3( src.transformRow0.w, src.transformRow1.w,
-                                                          src.transformRow2.w );
+        threadgroupOffsets[groupIdx] = prefix;
+        prefix += threadgroupCounts[groupIdx];
     }
 
-    atomic_store_explicit( instanceCount, outCount, memory_order_relaxed );
+    atomic_store_explicit( instanceCount, prefix, memory_order_relaxed );
+}
+
+kernel void pathtracer_scatter_indirect_as_instances(
+    constant PathTracerAsInstanceInput *inputs [[buffer(0)]],
+    constant ulong *accelerationStructureIds [[buffer(1)]],
+    device const uint *instanceActiveFlags [[buffer(2)]],
+    device const uint *instanceLocalOffsets [[buffer(3)]],
+    device const uint *threadgroupOffsets [[buffer(4)]],
+    device PathTracerIndirectInstanceDescriptor *descriptors [[buffer(5)]],
+    constant uint &numInstances [[buffer(6)]],
+    uint3 threadPositionInGrid [[thread_position_in_grid]],
+    uint3 threadgroupPositionInGrid [[threadgroup_position_in_grid]] )
+{
+    const uint tid = threadPositionInGrid.x;
+    if( tid >= numInstances || instanceActiveFlags[tid] == 0u )
+        return;
+
+    const uint dstIndex = threadgroupOffsets[threadgroupPositionInGrid.x] + instanceLocalOffsets[tid];
+    constant PathTracerAsInstanceInput &src = inputs[tid];
+    device PathTracerIndirectInstanceDescriptor &dst = descriptors[dstIndex];
+
+    dst.accelerationStructureID = accelerationStructureIds[src.accelerationStructureIndex];
+    dst.userID = src.sourceInstanceIndex;
+    dst.options = 4u; // MTLAccelerationStructureInstanceOptionOpaque
+    dst.mask = 1u;
+    dst.intersectionFunctionTableOffset = 0u;
+
+    dst.transformationMatrix.column0 = packed_float3( src.transformRow0.x, src.transformRow1.x,
+                                                      src.transformRow2.x );
+    dst.transformationMatrix.column1 = packed_float3( src.transformRow0.y, src.transformRow1.y,
+                                                      src.transformRow2.y );
+    dst.transformationMatrix.column2 = packed_float3( src.transformRow0.z, src.transformRow1.z,
+                                                      src.transformRow2.z );
+    dst.transformationMatrix.column3 = packed_float3( src.transformRow0.w, src.transformRow1.w,
+                                                      src.transformRow2.w );
 }
