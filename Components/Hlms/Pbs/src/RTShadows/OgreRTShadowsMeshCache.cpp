@@ -686,7 +686,8 @@ namespace Ogre
                     a[i].localBounds.mCenter != b[i].localBounds.mCenter ||
                     a[i].localBounds.mHalfSize != b[i].localBounds.mHalfSize ||
                     a[i].subMeshIdx != b[i].subMeshIdx || a[i].lodLevel != b[i].lodLevel ||
-                    a[i].blasIndex != b[i].blasIndex || a[i].tier != b[i].tier )
+                    a[i].blasIndex != b[i].blasIndex || a[i].tier != b[i].tier ||
+                    a[i].availableTiersMask != b[i].availableTiersMask )
                 {
                     return true;
                 }
@@ -918,6 +919,8 @@ namespace Ogre
                 const uint32 proxyLod = hasProxy ? lastLod : lastLod + 1u;
                 const uint32 simplifiedLod =
                     hasSimplified ? ( hasProxy ? lastLod - 1u : lastLod ) : lastLod + 1u;
+                const uint32 availableTiersMask =
+                    0x1u | ( hasSimplified ? 0x2u : 0u ) | ( hasProxy ? 0x4u : 0u );
                 const ItemTierMap::iterator prevTierIt = previousTierByItem.find( item );
                 const RtMeshletTier previousTier =
                     prevTierIt != previousTierByItem.end() ? prevTierIt->second : RtMeshletTierFull;
@@ -952,6 +955,7 @@ namespace Ogre
                     candidateInstance.lodLevel = fullLodLevel;
                     candidateInstance.blasIndex = fullRange.blasStart + subMeshIdx;
                     candidateInstance.tier = RtMeshletTierFull;
+                    candidateInstance.availableTiersMask = availableTiersMask;
                     candidateSubMeshInstances.push_back( candidateInstance );
                 }
 
@@ -984,6 +988,7 @@ namespace Ogre
                         candidateInstance.lodLevel = 0u;
                         candidateInstance.blasIndex = simplifiedRange.blasStart + subMeshIdx;
                         candidateInstance.tier = RtMeshletTierSimplified;
+                        candidateInstance.availableTiersMask = availableTiersMask;
                         candidateSubMeshInstances.push_back( candidateInstance );
                     }
                 }
@@ -1014,6 +1019,7 @@ namespace Ogre
                         candidateInstance.lodLevel = 0u;
                         candidateInstance.blasIndex = proxyRange.blasStart + subMeshIdx;
                         candidateInstance.tier = RtMeshletTierProxy;
+                        candidateInstance.availableTiersMask = availableTiersMask;
                         candidateSubMeshInstances.push_back( candidateInstance );
                     }
                 }
@@ -1049,7 +1055,14 @@ namespace Ogre
                 Real( 1e-6 ) );
             instanceLodBounds.push_back( Vector4( sourceWorldCenter.x, sourceWorldCenter.y,
                                                   sourceWorldCenter.z, sourceWorldRadius ) );
-            instanceTiers.push_back( static_cast<uint32>( candidateInstance.tier ) );
+            const ItemTierMap::iterator prevTierIt = previousTierByItem.find( candidateInstance.item );
+            const uint32 previousTier =
+                prevTierIt != previousTierByItem.end() ? static_cast<uint32>( prevTierIt->second ) :
+                                                         static_cast<uint32>( RtMeshletTierFull );
+            const uint32 packedTierMetadata =
+                static_cast<uint32>( candidateInstance.tier ) |
+                ( previousTier << 2u ) | ( candidateInstance.availableTiersMask << 4u );
+            instanceTiers.push_back( packedTierMetadata );
         }
 
         mCandidateSubMeshInstances.swap( candidateSubMeshInstances );
@@ -1221,29 +1234,25 @@ namespace Ogre
 
         if( mRebuildBlas )
         {
-            renderSystem->createAccelerationStructure( mMeshes, meshVaos, selectedInstanceMeshIndex,
-                                                       selectedInstanceTransform, &selectedInstanceBounds,
-                                                       &selectedInstanceLodBounds, &selectedInstanceTiers,
+            renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex,
+                                                       instanceTransform, &instanceBounds,
+                                                       &instanceLodBounds, &instanceTiers,
                                                        cullParams );
             mRebuildBlas = false;
             mRebuildTlas = false;
         }
         else if( mRebuildTlas )
         {
-            renderSystem->rebuildAccelerationStructure( selectedInstanceMeshIndex,
-                                                        selectedInstanceTransform,
-                                                        &selectedInstanceBounds,
-                                                        &selectedInstanceLodBounds,
-                                                        &selectedInstanceTiers, cullParams );
+            renderSystem->rebuildAccelerationStructure( instanceMeshIndex, instanceTransform,
+                                                        &instanceBounds, &instanceLodBounds,
+                                                        &instanceTiers, cullParams );
             mRebuildTlas = false;
         }
         else
         {
-            renderSystem->refitAccelerationStructure( selectedInstanceMeshIndex,
-                                                      selectedInstanceTransform,
-                                                      &selectedInstanceBounds,
-                                                      &selectedInstanceLodBounds,
-                                                      &selectedInstanceTiers, cullParams );
+            renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform,
+                                                      &instanceBounds, &instanceLodBounds,
+                                                      &instanceTiers, cullParams );
         }
     }
 }

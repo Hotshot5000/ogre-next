@@ -79,6 +79,7 @@ namespace Ogre
             uint32        lodLevel;
             uint32        blasIndex;
             RtMeshletTier tier;
+            uint32        availableTiersMask;
         };
         typedef FastArray<CandidateSubMeshInstance> CandidateSubMeshInstanceArray;
 

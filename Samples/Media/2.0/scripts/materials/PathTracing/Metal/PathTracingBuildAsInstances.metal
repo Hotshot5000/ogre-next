@@ -7,6 +7,10 @@ struct PathTracerAsInstanceInput
     uint sourceInstanceIndex;
     uint active;
     uint tier;
+    uint previousTier;
+    uint availableTiersMask;
+    uint reserved0;
+    uint reserved1;
     float4 lodBoundsCenterRadius;
     float4 boundsCenterRadius;
     float4 transformRow0;
@@ -41,6 +45,48 @@ struct PathTracerAsCullParams
     float4 cameraUpAndTanHalfFovY;
     float4 cullOptions;
 };
+
+static inline uint pathtracer_choose_instance_tier( constant PathTracerAsInstanceInput &src,
+                                                    constant PathTracerAsCullParams &cullParams )
+{
+    const bool hasSimplified = ( src.availableTiersMask & 0x2u ) != 0u;
+    const bool hasProxy = ( src.availableTiersMask & 0x4u ) != 0u;
+    if( !hasSimplified && !hasProxy )
+        return 0u;
+
+    const float pixelDisplayRatio = cullParams.cullOptions.w;
+    if( pixelDisplayRatio <= 1e-6f )
+        return 0u;
+
+    const float3 cameraPos = cullParams.cameraPositionAndMaxDistance.xyz;
+    const float worldRadius = max( src.lodBoundsCenterRadius.w, 1e-4f );
+    const float cameraDistance = distance( src.lodBoundsCenterRadius.xyz, cameraPos );
+    const float projectedDistance = max( cameraDistance, 1e-4f );
+    const float projectedDiameterPixels = ( worldRadius * 2.0f ) / ( projectedDistance * pixelDisplayRatio );
+
+    const float proxyEnterPixels = 8.0f;
+    const float proxyExitPixels = 12.0f;
+    const float simplifiedEnterPixels = 32.0f;
+    const float simplifiedExitPixels = 48.0f;
+
+    if( hasProxy )
+    {
+        if( src.previousTier == 2u && projectedDiameterPixels < proxyExitPixels )
+            return 2u;
+        if( src.previousTier != 2u && projectedDiameterPixels < proxyEnterPixels )
+            return 2u;
+    }
+
+    if( hasSimplified )
+    {
+        if( src.previousTier == 1u && projectedDiameterPixels < simplifiedExitPixels )
+            return 1u;
+        if( src.previousTier != 1u && projectedDiameterPixels < simplifiedEnterPixels )
+            return 1u;
+    }
+
+    return 0u;
+}
 
 static inline bool pathtracer_is_instance_active( constant PathTracerAsInstanceInput &src,
                                                   constant PathTracerAsCullParams &cullParams )
@@ -79,7 +125,8 @@ static inline bool pathtracer_is_instance_active( constant PathTracerAsInstanceI
         coneVisible = depthVisible && horizontalVisible && verticalVisible;
     }
 
-    return src.active != 0u && distanceVisible && coneVisible;
+    const uint selectedTier = pathtracer_choose_instance_tier( src, cullParams );
+    return src.active != 0u && src.tier == selectedTier && distanceVisible && coneVisible;
 }
 
 kernel void pathtracer_classify_indirect_as_instances(

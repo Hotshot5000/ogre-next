@@ -80,6 +80,10 @@ namespace Ogre
             uint32_t sourceInstanceIndex;
             uint32_t active;
             uint32_t tier;
+            uint32_t previousTier;
+            uint32_t availableTiersMask;
+            uint32_t reserved0;
+            uint32_t reserved1;
             float lodBoundsCenterRadius[4];
             float boundsCenterRadius[4];
             float transform[16];
@@ -3789,9 +3793,14 @@ namespace Ogre
                 instanceInputs[instanceIndex].accelerationStructureIndex = instanceMeshIndex[instanceIndex];
                 instanceInputs[instanceIndex].sourceInstanceIndex = static_cast<uint32_t>( instanceIndex );
                 instanceInputs[instanceIndex].active = 1u;
-                instanceInputs[instanceIndex].tier =
-                    instanceTiers && instanceIndex < instanceTiers->size() ?
-                        ( *instanceTiers )[instanceIndex] : 0u;
+                const uint32_t packedTierMetadata =
+                    instanceTiers && instanceIndex < instanceTiers->size() ? ( *instanceTiers )[instanceIndex] :
+                                                                             0u;
+                instanceInputs[instanceIndex].tier = packedTierMetadata & 0x3u;
+                instanceInputs[instanceIndex].previousTier = ( packedTierMetadata >> 2u ) & 0x3u;
+                instanceInputs[instanceIndex].availableTiersMask = ( packedTierMetadata >> 4u ) & 0x7u;
+                instanceInputs[instanceIndex].reserved0 = 0u;
+                instanceInputs[instanceIndex].reserved1 = 0u;
                 const Vector4 bounds = instanceBounds && instanceIndex < instanceBounds->size() ?
                     ( *instanceBounds )[instanceIndex] : Vector4::ZERO;
                 const Vector4 lodBounds = instanceLodBounds && instanceIndex < instanceLodBounds->size() ?
