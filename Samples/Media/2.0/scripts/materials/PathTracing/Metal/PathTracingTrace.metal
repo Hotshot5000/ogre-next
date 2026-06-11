@@ -783,7 +783,8 @@ kernel void main_metal
                 break;
             }
 
-            const PathTracerGeometry geometry = load_geometry( hit.instance_id, geometryRecords );
+            const uint hitInstanceId = hit.instance_id;
+            const PathTracerGeometry geometry = load_geometry( hitInstanceId, geometryRecords );
             const PathTracerTriangle triangle = load_triangle( geometry, hit.primitive_id, triangleRecords );
             const float3 rawNormal = transform_normal( geometry,
                                                        load_triangle_normal( triangle,
@@ -791,7 +792,7 @@ kernel void main_metal
             const bool frontFacing = dot( pathRay.direction, rawNormal ) < 0.0f;
             const float3 geometricNormal = frontFacing ? rawNormal : -rawNormal;
             const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
-            const SurfaceMaterial material = load_surface_material( hit.instance_id, materials, geometryRecords );
+            const SurfaceMaterial material = load_surface_material( hitInstanceId, materials, geometryRecords );
 
             const float opacity = material.transparency;
             const float3 textureColour = sample_diffuse_texture( material, triangle,
@@ -833,7 +834,7 @@ kernel void main_metal
             {
                 directLighting = evaluate_direct_lighting( hitPosition, shadingNormal, geometricNormal,
                                                            viewDirection, materialFresnel,
-                                                           roughness, hit.instance_id, bounce,
+                                                           roughness, hitInstanceId, bounce,
                                                            lights, frame->numLights, seed,
                                                            frame->transparentShadowVisibilityEnabled != 0u,
                                                            accelerationStructure,

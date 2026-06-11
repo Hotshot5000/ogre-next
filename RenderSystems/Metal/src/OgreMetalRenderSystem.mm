@@ -79,7 +79,8 @@ namespace Ogre
             uint32_t accelerationStructureIndex;
             uint32_t sourceInstanceIndex;
             uint32_t active;
-            uint32_t padding;
+            uint32_t tier;
+            float lodBoundsCenterRadius[4];
             float boundsCenterRadius[4];
             float transform[16];
         };
@@ -3558,22 +3559,28 @@ namespace Ogre
     
     void MetalRenderSystem::refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                         std::vector<Vector4> *instanceBounds,
+                                                        std::vector<Vector4> *instanceLodBounds,
+                                                        std::vector<uint32> *instanceTiers,
                                                         const AccelerationStructureCullParams &cullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
         
         updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, true,
-                                            instanceBounds, cullParams);
+                                            instanceBounds, instanceLodBounds, instanceTiers,
+                                            cullParams);
     }
     //-------------------------------------------------------------------------
     void MetalRenderSystem::rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                           std::vector<Vector4> *instanceBounds,
+                                                          std::vector<Vector4> *instanceLodBounds,
+                                                          std::vector<uint32> *instanceTiers,
                                                           const AccelerationStructureCullParams &cullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
 
         updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, false,
-                                            instanceBounds, cullParams);
+                                            instanceBounds, instanceLodBounds, instanceTiers,
+                                            cullParams);
     }
     //-------------------------------------------------------------------------
     void MetalRenderSystem::clearAccelerationStructure()
@@ -3631,6 +3638,8 @@ namespace Ogre
     
     void MetalRenderSystem::updateInstanceAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure,
                                                                  std::vector<Vector4> *instanceBounds,
+                                                                 std::vector<Vector4> *instanceLodBounds,
+                                                                 std::vector<uint32> *instanceTiers,
                                                                  const AccelerationStructureCullParams &cullParams )
     {
         id<MTLDevice> device = mActiveDevice->mDevice;
@@ -3701,16 +3710,28 @@ namespace Ogre
 
             uint32_t *instanceCountPtr =
                 (uint32_t *)mAccelerationStructureInstanceCountBuffer.contents;
-            *instanceCountPtr = static_cast<uint32_t>( instanceCount );
+            *instanceCountPtr = 0u;
 
             for( NSUInteger instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex )
             {
                 instanceInputs[instanceIndex].accelerationStructureIndex = instanceMeshIndex[instanceIndex];
                 instanceInputs[instanceIndex].sourceInstanceIndex = static_cast<uint32_t>( instanceIndex );
                 instanceInputs[instanceIndex].active = 1u;
-                instanceInputs[instanceIndex].padding = 0u;
+                instanceInputs[instanceIndex].tier =
+                    instanceTiers && instanceIndex < instanceTiers->size() ?
+                        ( *instanceTiers )[instanceIndex] : 0u;
                 const Vector4 bounds = instanceBounds && instanceIndex < instanceBounds->size() ?
                     ( *instanceBounds )[instanceIndex] : Vector4::ZERO;
+                const Vector4 lodBounds = instanceLodBounds && instanceIndex < instanceLodBounds->size() ?
+                    ( *instanceLodBounds )[instanceIndex] : bounds;
+                instanceInputs[instanceIndex].lodBoundsCenterRadius[0] =
+                    static_cast<float>( lodBounds.x );
+                instanceInputs[instanceIndex].lodBoundsCenterRadius[1] =
+                    static_cast<float>( lodBounds.y );
+                instanceInputs[instanceIndex].lodBoundsCenterRadius[2] =
+                    static_cast<float>( lodBounds.z );
+                instanceInputs[instanceIndex].lodBoundsCenterRadius[3] =
+                    static_cast<float>( lodBounds.w );
                 instanceInputs[instanceIndex].boundsCenterRadius[0] = static_cast<float>( bounds.x );
                 instanceInputs[instanceIndex].boundsCenterRadius[1] = static_cast<float>( bounds.y );
                 instanceInputs[instanceIndex].boundsCenterRadius[2] = static_cast<float>( bounds.z );
@@ -3852,6 +3873,8 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void MetalRenderSystem::createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform,
                                                          std::vector<Vector4> *instanceBounds,
+                                                         std::vector<Vector4> *instanceLodBounds,
+                                                         std::vector<uint32> *instanceTiers,
                                                          const AccelerationStructureCullParams &cullParams )
     {
         MTLResourceOptions options = getManagedBufferStorageMode();
@@ -4002,6 +4025,7 @@ namespace Ogre
         // an instance of one of the primitive acceleration structures created above, with its own
         // transformation matrix.
         updateInstanceAccelerationStructure(instanceMeshIndex, instanceTransform, options, false,
-                                            instanceBounds, cullParams);
+                                            instanceBounds, instanceLodBounds, instanceTiers,
+                                            cullParams);
     }
 }

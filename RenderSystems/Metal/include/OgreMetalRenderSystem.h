@@ -404,19 +404,27 @@ namespace Ogre
         
         virtual void refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                  std::vector<Vector4> *instanceBounds = 0,
+                                                 std::vector<Vector4> *instanceLodBounds = 0,
+                                                 std::vector<uint32> *instanceTiers = 0,
                                                  const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) override;
         virtual void rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                    std::vector<Vector4> *instanceBounds = 0,
+                                                   std::vector<Vector4> *instanceLodBounds = 0,
+                                                   std::vector<uint32> *instanceTiers = 0,
                                                    const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) override;
         
         id<MTLAccelerationStructure> createAccelerationStructureWithDescriptor( MTLAccelerationStructureDescriptor *descriptor, bool refitAccelerationStructure = false );
         
         void updateInstanceAccelerationStructure(std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform, MTLResourceOptions options, bool refitAccelerationStructure = false,
                                                  std::vector<Vector4> *instanceBounds = 0,
+                                                 std::vector<Vector4> *instanceLodBounds = 0,
+                                                 std::vector<uint32> *instanceTiers = 0,
                                                  const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() );
         
         virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform,
                                                   std::vector<Vector4> *instanceBounds = 0,
+                                                  std::vector<Vector4> *instanceLodBounds = 0,
+                                                  std::vector<uint32> *instanceTiers = 0,
                                                   const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) override;
         virtual void clearAccelerationStructure() override;
     };

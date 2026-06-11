@@ -942,15 +942,16 @@ namespace Ogre
     {
         size_t numGeometryRecords = 0u;
         size_t numTriangleRecords = 0u;
-        const RTShadowsMeshCache::SelectedSubMeshInstanceArray &selectedInstances =
+        const RTShadowsMeshCache::CandidateSubMeshInstanceArray &candidateInstances =
             mMeshCache->getSelectedSubMeshInstances();
-        numGeometryRecords = selectedInstances.size();
-        for( size_t i = 0u; i < selectedInstances.size(); ++i )
+        numGeometryRecords = candidateInstances.size();
+        for( size_t i = 0u; i < candidateInstances.size(); ++i )
         {
-            const RTShadowsMeshCache::SelectedSubMeshInstance &selectedInstance = selectedInstances[i];
-            const size_t vaoLod = std::min<size_t>( selectedInstance.lodLevel,
-                                                    selectedInstance.subMesh->mVao[VpNormal].size() - 1u );
-            VertexArrayObject *vao = selectedInstance.subMesh->mVao[VpNormal][vaoLod];
+            const RTShadowsMeshCache::CandidateSubMeshInstance &candidateInstance =
+                candidateInstances[i];
+            const size_t vaoLod = std::min<size_t>( candidateInstance.lodLevel,
+                                                    candidateInstance.subMesh->mVao[VpNormal].size() - 1u );
+            VertexArrayObject *vao = candidateInstance.subMesh->mVao[VpNormal][vaoLod];
             numTriangleRecords += vao->getPrimitiveCount() / 3u;
         }
 
@@ -992,9 +993,10 @@ namespace Ogre
 
         size_t geometryIdx = 0u;
         size_t triangleIdx = 0u;
-        for( size_t selectedIdx = 0u; selectedIdx < selectedInstances.size(); ++selectedIdx )
+        for( size_t selectedIdx = 0u; selectedIdx < candidateInstances.size(); ++selectedIdx )
         {
-            const RTShadowsMeshCache::SelectedSubMeshInstance &selectedInstance = selectedInstances[selectedIdx];
+            const RTShadowsMeshCache::CandidateSubMeshInstance &selectedInstance =
+                candidateInstances[selectedIdx];
             Item *item = selectedInstance.item;
             const size_t subItemIdx = selectedInstance.subMeshIdx;
             const size_t vaoLod = std::min<size_t>( selectedInstance.lodLevel,

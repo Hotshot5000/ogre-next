@@ -62,17 +62,25 @@ namespace Ogre
             FastArray<MeshLodRange> lodRanges;
         };
 
-        struct SelectedSubMeshInstance
+        enum RtMeshletTier
         {
-            Item    *item;
-            Mesh    *mesh;
-            SubMesh *subMesh;
-            Aabb     localBounds;
-            uint32  subMeshIdx;
-            uint32  lodLevel;
-            uint32  blasIndex;
+            RtMeshletTierFull = 0u,
+            RtMeshletTierSimplified = 1u,
+            RtMeshletTierProxy = 2u
         };
-        typedef FastArray<SelectedSubMeshInstance> SelectedSubMeshInstanceArray;
+
+        struct CandidateSubMeshInstance
+        {
+            Item         *item;
+            Mesh         *mesh;
+            SubMesh      *subMesh;
+            Aabb          localBounds;
+            uint32        subMeshIdx;
+            uint32        lodLevel;
+            uint32        blasIndex;
+            RtMeshletTier tier;
+        };
+        typedef FastArray<CandidateSubMeshInstance> CandidateSubMeshInstanceArray;
 
         enum GpuCullMode
         {
@@ -92,9 +100,8 @@ namespace Ogre
         MeshCacheMap mMeshCaches;
         MeshPtrArray mMeshes;
         ItemArray mItems;
-        SelectedSubMeshInstanceArray mSelectedSubMeshInstances;
-        ItemSet mLastSelectedSimplifiedItems;
-        ItemSet mLastSelectedProxyItems;
+        CandidateSubMeshInstanceArray mCandidateSubMeshInstances;
+        CandidateSubMeshInstanceArray mSelectedSubMeshInstances;
         const Camera *mLodCamera;
         Real mGpuCullDistance;
         Real mGpuCullReflectionConeExpansion;
@@ -144,7 +151,11 @@ namespace Ogre
         uint32 getLastFullTierMeshletCount() const { return mLastFullTierMeshletCount; }
         uint32 getLastSimplifiedTierMeshletCount() const { return mLastSimplifiedTierMeshletCount; }
         uint32 getLastProxyTierMeshletCount() const { return mLastProxyTierMeshletCount; }
-        const SelectedSubMeshInstanceArray &getSelectedSubMeshInstances() const
+        const CandidateSubMeshInstanceArray &getCandidateSubMeshInstances() const
+        {
+            return mCandidateSubMeshInstances;
+        }
+        const CandidateSubMeshInstanceArray &getSelectedSubMeshInstances() const
         {
             return mSelectedSubMeshInstances;
         }

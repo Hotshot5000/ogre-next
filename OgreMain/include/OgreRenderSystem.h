@@ -1209,13 +1209,19 @@ namespace Ogre
 
         virtual void refitAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                  std::vector<Vector4> *instanceBounds = 0,
+                                                 std::vector<Vector4> *instanceLodBounds = 0,
+                                                 std::vector<uint32> *instanceTiers = 0,
                                                  const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) {}
         virtual void rebuildAccelerationStructure( std::vector<uint32> &instanceMeshIndex, std::vector<Matrix4> &instanceTransform,
                                                    std::vector<Vector4> *instanceBounds = 0,
+                                                   std::vector<Vector4> *instanceLodBounds = 0,
+                                                   std::vector<uint32> *instanceTiers = 0,
                                                    const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) {}
         
         virtual void createAccelerationStructure( FastArray<MeshPtr>& meshes, std::vector<VertexArrayObject *>& meshVaos, std::vector<uint32>& instanceMeshIndex, std::vector<Matrix4>& instanceTransform,
                                                   std::vector<Vector4> *instanceBounds = 0,
+                                                  std::vector<Vector4> *instanceLodBounds = 0,
+                                                  std::vector<uint32> *instanceTiers = 0,
                                                   const AccelerationStructureCullParams &cullParams = AccelerationStructureCullParams() ) {}
         virtual void clearAccelerationStructure() {}
 

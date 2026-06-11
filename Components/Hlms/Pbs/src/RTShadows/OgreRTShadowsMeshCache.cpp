@@ -673,9 +673,9 @@ namespace Ogre
             return lodLevel;
         }
 
-        bool selectedInstancesDiffer(
-            const RTShadowsMeshCache::SelectedSubMeshInstanceArray &a,
-            const RTShadowsMeshCache::SelectedSubMeshInstanceArray &b )
+        bool candidateInstancesDiffer(
+            const RTShadowsMeshCache::CandidateSubMeshInstanceArray &a,
+            const RTShadowsMeshCache::CandidateSubMeshInstanceArray &b )
         {
             if( a.size() != b.size() )
                 return true;
@@ -686,7 +686,7 @@ namespace Ogre
                     a[i].localBounds.mCenter != b[i].localBounds.mCenter ||
                     a[i].localBounds.mHalfSize != b[i].localBounds.mHalfSize ||
                     a[i].subMeshIdx != b[i].subMeshIdx || a[i].lodLevel != b[i].lodLevel ||
-                    a[i].blasIndex != b[i].blasIndex )
+                    a[i].blasIndex != b[i].blasIndex || a[i].tier != b[i].tier )
                 {
                     return true;
                 }
@@ -878,12 +878,12 @@ namespace Ogre
             }
         }
         
-        SelectedSubMeshInstanceArray selectedSubMeshInstances;
-        ItemSet selectedSimplifiedItems;
-        ItemSet selectedProxyItems;
+        CandidateSubMeshInstanceArray candidateSubMeshInstances;
         std::vector<uint32> instanceMeshIndex;
         std::vector<Matrix4> instanceTransform;
         std::vector<Vector4> instanceBounds;
+        std::vector<Vector4> instanceLodBounds;
+        std::vector<uint32> instanceTiers;
         mLastFullTierMeshletCount = 0u;
         mLastSimplifiedTierMeshletCount = 0u;
         mLastProxyTierMeshletCount = 0u;
@@ -898,106 +898,129 @@ namespace Ogre
             if( meshCacheIt != mMeshCaches.end() && !meshCacheIt->second.lodRanges.empty() )
             {
                 const ShadowsCachedMesh &cachedMesh = meshCacheIt->second;
-                const bool wasUsingSimplified =
-                    mLastSelectedSimplifiedItems.find( item ) != mLastSelectedSimplifiedItems.end();
-                const bool wasUsingProxy = mLastSelectedProxyItems.find( item ) != mLastSelectedProxyItems.end();
-                const uint32 lodLevel = chooseRtLodLevel( item, cachedMesh, mLodCamera,
-                                                          wasUsingSimplified, wasUsingProxy );
-                const MeshLodRange &lodRange = cachedMesh.lodRanges[lodLevel];
-                const bool usingProxy = cachedMesh.proxyMesh && lodLevel == cachedMesh.lodRanges.size() - 1u;
-                const bool usingSimplified = !usingProxy && cachedMesh.simplifiedMesh &&
-                    cachedMesh.lodRanges.size() >= 2u && lodLevel == cachedMesh.lodRanges.size() - 2u;
-                if( usingSimplified )
-                    selectedSimplifiedItems.insert( item );
-                if( usingProxy )
-                    selectedProxyItems.insert( item );
-                const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
-                uint32 numSubMeshes = std::min<uint32>( item->getNumSubItems(), lodRange.numBlas );
-                if( usingSimplified )
+                const uint32 reservedLodSlots = ( cachedMesh.simplifiedMesh ? 1u : 0u ) +
+                                                ( cachedMesh.proxyMesh ? 1u : 0u );
+                const uint32 maxFullLod = cachedMesh.lodRanges.size() > reservedLodSlots ?
+                    static_cast<uint32>( cachedMesh.lodRanges.size() - reservedLodSlots - 1u ) : 0u;
+                const uint32 fullLodLevel =
+                    std::min<uint32>( item->getCurrentMeshLod(), maxFullLod );
+                const MeshLodRange &fullRange = cachedMesh.lodRanges[fullLodLevel];
+                const uint32 fullSubMeshCount =
+                    std::min<uint32>( item->getNumSubItems(), fullRange.numBlas );
+                mLastFullTierMeshletCount += fullSubMeshCount;
+                for( uint32 subMeshIdx = 0u; subMeshIdx < fullSubMeshCount; ++subMeshIdx )
                 {
-                    numSubMeshes = std::min<uint32>(
+                    CandidateSubMeshInstance candidateInstance;
+                    candidateInstance.item = item;
+                    candidateInstance.mesh = mesh;
+                    candidateInstance.subMesh = mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) );
+                    candidateInstance.localBounds = mesh->getAabb();
+                    candidateInstance.subMeshIdx = subMeshIdx;
+                    candidateInstance.lodLevel = fullLodLevel;
+                    candidateInstance.blasIndex = fullRange.blasStart + subMeshIdx;
+                    candidateInstance.tier = RtMeshletTierFull;
+                    candidateSubMeshInstances.push_back( candidateInstance );
+                }
+
+                if( cachedMesh.simplifiedMesh && !cachedMesh.simplifiedSubMeshToSourceSubMesh.empty() &&
+                    !cachedMesh.simplifiedSubMeshBounds.empty() )
+                {
+                    const uint32 simplifiedLod =
+                        cachedMesh.proxyMesh ? static_cast<uint32>( cachedMesh.lodRanges.size() - 2u ) :
+                                               static_cast<uint32>( cachedMesh.lodRanges.size() - 1u );
+                    const MeshLodRange &simplifiedRange = cachedMesh.lodRanges[simplifiedLod];
+                    const uint32 simplifiedSubMeshCount = std::min<uint32>(
                         std::min<uint32>( cachedMesh.simplifiedMesh->getNumSubMeshes(),
                                           cachedMesh.simplifiedSubMeshToSourceSubMesh.size() ),
                         cachedMesh.simplifiedSubMeshBounds.size() );
+                    mLastSimplifiedTierMeshletCount += simplifiedSubMeshCount;
+                    for( uint32 subMeshIdx = 0u; subMeshIdx < simplifiedSubMeshCount; ++subMeshIdx )
+                    {
+                        const uint32 sourceSubMeshIdx =
+                            cachedMesh.simplifiedSubMeshToSourceSubMesh[subMeshIdx];
+                        if( sourceSubMeshIdx >= item->getNumSubItems() )
+                            continue;
+
+                        CandidateSubMeshInstance candidateInstance;
+                        candidateInstance.item = item;
+                        candidateInstance.mesh = cachedMesh.simplifiedMesh.get();
+                        candidateInstance.subMesh = cachedMesh.simplifiedMesh->getSubMesh(
+                            static_cast<unsigned>( subMeshIdx ) );
+                        candidateInstance.localBounds = cachedMesh.simplifiedSubMeshBounds[subMeshIdx];
+                        candidateInstance.subMeshIdx = sourceSubMeshIdx;
+                        candidateInstance.lodLevel = 0u;
+                        candidateInstance.blasIndex = simplifiedRange.blasStart + subMeshIdx;
+                        candidateInstance.tier = RtMeshletTierSimplified;
+                        candidateSubMeshInstances.push_back( candidateInstance );
+                    }
                 }
-                else if( usingProxy )
+
+                if( cachedMesh.proxyMesh && !cachedMesh.proxySubMeshToSourceSubMesh.empty() &&
+                    !cachedMesh.proxySubMeshBounds.empty() )
                 {
-                    numSubMeshes = std::min<uint32>(
+                    const MeshLodRange &proxyRange = cachedMesh.lodRanges.back();
+                    const uint32 proxySubMeshCount = std::min<uint32>(
                         std::min<uint32>( cachedMesh.proxyMesh->getNumSubMeshes(),
                                           cachedMesh.proxySubMeshToSourceSubMesh.size() ),
                         cachedMesh.proxySubMeshBounds.size() );
-                }
+                    mLastProxyTierMeshletCount += proxySubMeshCount;
+                    for( uint32 subMeshIdx = 0u; subMeshIdx < proxySubMeshCount; ++subMeshIdx )
+                    {
+                        const uint32 sourceSubMeshIdx =
+                            cachedMesh.proxySubMeshToSourceSubMesh[subMeshIdx];
+                        if( sourceSubMeshIdx >= item->getNumSubItems() )
+                            continue;
 
-                if( usingProxy )
-                    mLastProxyTierMeshletCount += numSubMeshes;
-                else if( usingSimplified )
-                    mLastSimplifiedTierMeshletCount += numSubMeshes;
-                else
-                    mLastFullTierMeshletCount += numSubMeshes;
-                for( uint32 subMeshIdx = 0u; subMeshIdx < numSubMeshes; ++subMeshIdx )
-                {
-                    // AS geometry may come from generated meshlets, but material lookup must stay
-                    // on the original Item subitem. Keep the generated submesh index separate from
-                    // the source submesh index used by PathTracer::uploadGeometryBuffer.
-                    const uint32 sourceSubMeshIdx = usingProxy ?
-                        cachedMesh.proxySubMeshToSourceSubMesh[subMeshIdx] :
-                        ( usingSimplified ? cachedMesh.simplifiedSubMeshToSourceSubMesh[subMeshIdx] :
-                                            subMeshIdx );
-                    if( sourceSubMeshIdx >= item->getNumSubItems() )
-                        continue;
-
-                    SelectedSubMeshInstance selectedInstance;
-                    selectedInstance.item = item;
-                    selectedInstance.mesh = usingProxy ? cachedMesh.proxyMesh.get() :
-                        ( usingSimplified ? cachedMesh.simplifiedMesh.get() : mesh );
-                    selectedInstance.subMesh = usingProxy ?
-                        cachedMesh.proxyMesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) ) :
-                        ( usingSimplified ?
-                              cachedMesh.simplifiedMesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) ) :
-                              mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) ) );
-                    selectedInstance.subMeshIdx = sourceSubMeshIdx;
-                    selectedInstance.localBounds = usingProxy ? cachedMesh.proxySubMeshBounds[subMeshIdx] :
-                        ( usingSimplified ? cachedMesh.simplifiedSubMeshBounds[subMeshIdx] : mesh->getAabb() );
-                    selectedInstance.lodLevel = ( usingProxy || usingSimplified ) ? 0u : lodLevel;
-                    selectedInstance.blasIndex = lodRange.blasStart + subMeshIdx;
-                    selectedSubMeshInstances.push_back( selectedInstance );
-
-                    instanceMeshIndex.push_back( selectedInstance.blasIndex );
-                    instanceTransform.push_back( transform );
-                    const Aabb &bounds = selectedInstance.localBounds;
-                    const Vector3 worldCenter = transform * bounds.mCenter;
-                    const Vector3 axisX( transform[0][0], transform[1][0], transform[2][0] );
-                    const Vector3 axisY( transform[0][1], transform[1][1], transform[2][1] );
-                    const Vector3 axisZ( transform[0][2], transform[1][2], transform[2][2] );
-                    const Real maxScale = std::max<Real>( axisX.length(),
-                        std::max<Real>( axisY.length(), axisZ.length() ) );
-                    const Real worldRadius = bounds.mHalfSize.length() * std::max<Real>( maxScale, Real( 1e-6 ) );
-                    instanceBounds.push_back( Vector4( worldCenter.x, worldCenter.y, worldCenter.z,
-                                                       worldRadius ) );
+                        CandidateSubMeshInstance candidateInstance;
+                        candidateInstance.item = item;
+                        candidateInstance.mesh = cachedMesh.proxyMesh.get();
+                        candidateInstance.subMesh = cachedMesh.proxyMesh->getSubMesh(
+                            static_cast<unsigned>( subMeshIdx ) );
+                        candidateInstance.localBounds = cachedMesh.proxySubMeshBounds[subMeshIdx];
+                        candidateInstance.subMeshIdx = sourceSubMeshIdx;
+                        candidateInstance.lodLevel = 0u;
+                        candidateInstance.blasIndex = proxyRange.blasStart + subMeshIdx;
+                        candidateInstance.tier = RtMeshletTierProxy;
+                        candidateSubMeshInstances.push_back( candidateInstance );
+                    }
                 }
             }
             
             ++itemItor;
         }
 
-        const bool selectionChanged = selectedInstancesDiffer( mSelectedSubMeshInstances, selectedSubMeshInstances );
-        if( selectionChanged )
+        for( size_t i = 0u; i < candidateSubMeshInstances.size(); ++i )
         {
-            mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
-            mRebuildTlas = true;
-            ++mGeometryRevision;
-        }
-        else
-        {
-            mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
+            const CandidateSubMeshInstance &candidateInstance = candidateSubMeshInstances[i];
+            instanceMeshIndex.push_back( candidateInstance.blasIndex );
+            const Matrix4 transform =
+                candidateInstance.item->getParentSceneNode()->_getFullTransformUpdated();
+            instanceTransform.push_back( transform );
+            const Aabb &bounds = candidateInstance.localBounds;
+            const Vector3 worldCenter = transform * bounds.mCenter;
+            const Vector3 axisX( transform[0][0], transform[1][0], transform[2][0] );
+            const Vector3 axisY( transform[0][1], transform[1][1], transform[2][1] );
+            const Vector3 axisZ( transform[0][2], transform[1][2], transform[2][2] );
+            const Real maxScale = std::max<Real>( axisX.length(),
+                                                  std::max<Real>( axisY.length(), axisZ.length() ) );
+            const Real worldRadius =
+                bounds.mHalfSize.length() * std::max<Real>( maxScale, Real( 1e-6 ) );
+            instanceBounds.push_back( Vector4( worldCenter.x, worldCenter.y, worldCenter.z,
+                                               worldRadius ) );
+
+            const Mesh *sourceMesh = candidateInstance.item->getMesh().get();
+            const Aabb &sourceBounds = sourceMesh->getAabb();
+            const Vector3 sourceWorldCenter = transform * sourceBounds.mCenter;
+            const Real sourceWorldRadius = std::max<Real>(
+                sourceMesh->getBoundingSphereRadius() * std::max<Real>( maxScale, Real( 1e-6 ) ),
+                Real( 1e-6 ) );
+            instanceLodBounds.push_back( Vector4( sourceWorldCenter.x, sourceWorldCenter.y,
+                                                  sourceWorldCenter.z, sourceWorldRadius ) );
+            instanceTiers.push_back( static_cast<uint32>( candidateInstance.tier ) );
         }
 
-        mLastSelectedSimplifiedItems.swap( selectedSimplifiedItems );
-        mLastSelectedProxyItems.swap( selectedProxyItems );
+        mCandidateSubMeshInstances.swap( candidateSubMeshInstances );
 
-        if( wasRebuildingBlas )
-            ++mGeometryRevision;
-        
         RenderSystem *renderSystem = Root::getSingleton().getRenderSystem();
         if( instanceMeshIndex.empty() )
         {
@@ -1024,8 +1047,9 @@ namespace Ogre
         Real tanHalfFovY = Real( 0 );
         Real nearDistance = Real( 0 );
         Real farDistance = Real( 0 );
+        Real pixelDisplayRatio = Real( 0 );
 
-        if( mLodCamera && effectiveCullMode != GpuCullOff )
+        if( mLodCamera )
         {
             cameraForward = mLodCamera->getDerivedDirection().normalisedCopy();
             cameraRight = mLodCamera->getDerivedRight().normalisedCopy();
@@ -1034,6 +1058,7 @@ namespace Ogre
             tanHalfFovX = tanHalfFovY * mLodCamera->getAspectRatio();
             nearDistance = mLodCamera->getNearClipDistance();
             farDistance = mLodCamera->getFarClipDistance();
+            pixelDisplayRatio = mLodCamera->getPixelDisplayRatio();
 
             cullParams.cameraForwardAndNear = Vector4( cameraForward.x, cameraForward.y,
                                                        cameraForward.z, nearDistance );
@@ -1043,13 +1068,19 @@ namespace Ogre
                                                          cameraUp.z, tanHalfFovY );
         }
         cullParams.cullOptions = Vector4( static_cast<Real>( effectiveCullMode ),
-                                          mGpuCullReflectionConeExpansion, farDistance, 0.0f );
+                                          mGpuCullReflectionConeExpansion, farDistance,
+                                          pixelDisplayRatio );
 
-        mLastTotalMeshletCount = static_cast<uint32>( instanceBounds.size() );
-        mLastActiveMeshletCount = 0u;
-        for( size_t i = 0u; i < instanceBounds.size(); ++i )
+        CandidateSubMeshInstanceArray selectedSubMeshInstances;
+        selectedSubMeshInstances.reserve( mCandidateSubMeshInstances.size() );
+        const bool canEvaluateProjectedSize = mLodCamera != 0 && cullParams.cullOptions.w > Real( 1e-6 );
+        const Real proxyThreshold = Real( 8 );
+        const Real simplifiedThreshold = Real( 32 );
+        for( size_t i = 0u; i < mCandidateSubMeshInstances.size(); ++i )
         {
+            const CandidateSubMeshInstance &candidateInstance = mCandidateSubMeshInstances[i];
             const Vector4 &bounds = instanceBounds[i];
+            const Vector4 &lodBounds = instanceLodBounds[i];
             const Vector3 toBounds( bounds.x - cameraPos.x, bounds.y - cameraPos.y,
                                     bounds.z - cameraPos.z );
             const Real radius = bounds.w;
@@ -1071,36 +1102,76 @@ namespace Ogre
                 const Real horizontalDistance = Math::Abs( toBounds.dotProduct( cameraRight ) );
                 const Real verticalDistance = Math::Abs( toBounds.dotProduct( cameraUp ) );
 
-                const bool depthVisible = depth + radius >= nearDistance &&
+                const bool depthPass = depth + radius >= nearDistance &&
                     ( farDistance <= 0.0f || depth - radius <= farDistance );
                 const bool horizontalVisible =
                     horizontalDistance <= projectedDepth * expandedTanHalfFovX + radius;
                 const bool verticalVisible =
                     verticalDistance <= projectedDepth * expandedTanHalfFovY + radius;
-                frustumVisible = depthVisible && horizontalVisible && verticalVisible;
+                frustumVisible = depthPass && horizontalVisible && verticalVisible;
             }
 
-            if( distanceVisible && frustumVisible )
-                ++mLastActiveMeshletCount;
+            bool tierVisible = true;
+            if( canEvaluateProjectedSize )
+            {
+                const Vector3 toLodBounds( lodBounds.x - cameraPos.x, lodBounds.y - cameraPos.y,
+                                           lodBounds.z - cameraPos.z );
+                const Real lodDepth =
+                    std::max<Real>( toLodBounds.dotProduct( cameraForward ), Real( 1e-4 ) );
+                const Real projectedDiameterPixels =
+                    ( lodBounds.w * Real( 2 ) ) / ( lodDepth * cullParams.cullOptions.w );
+                tierVisible = candidateInstance.tier == RtMeshletTierProxy ?
+                    projectedDiameterPixels < proxyThreshold :
+                    ( candidateInstance.tier == RtMeshletTierSimplified ?
+                        projectedDiameterPixels >= proxyThreshold &&
+                            projectedDiameterPixels < simplifiedThreshold :
+                        projectedDiameterPixels >= simplifiedThreshold );
+            }
+
+            if( distanceVisible && frustumVisible && tierVisible )
+                selectedSubMeshInstances.push_back( candidateInstance );
         }
+
+        mLastTotalMeshletCount = static_cast<uint32>( instanceBounds.size() );
+        mLastActiveMeshletCount = static_cast<uint32>( selectedSubMeshInstances.size() );
+
+        const bool selectionChanged =
+            candidateInstancesDiffer( mSelectedSubMeshInstances, selectedSubMeshInstances );
+        if( selectionChanged )
+        {
+            mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
+            mRebuildTlas = true;
+            ++mGeometryRevision;
+        }
+        else
+        {
+            mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
+        }
+
+        if( wasRebuildingBlas )
+            ++mGeometryRevision;
 
         if( mRebuildBlas )
         {
-            renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex, instanceTransform,
-                                                       &instanceBounds, cullParams );
+            renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex,
+                                                       instanceTransform, &instanceBounds,
+                                                       &instanceLodBounds, &instanceTiers,
+                                                       cullParams );
             mRebuildBlas = false;
             mRebuildTlas = false;
         }
         else if( mRebuildTlas )
         {
             renderSystem->rebuildAccelerationStructure( instanceMeshIndex, instanceTransform,
-                                                        &instanceBounds, cullParams );
+                                                        &instanceBounds, &instanceLodBounds,
+                                                        &instanceTiers, cullParams );
             mRebuildTlas = false;
         }
         else
         {
             renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform,
-                                                      &instanceBounds, cullParams );
+                                                      &instanceBounds, &instanceLodBounds,
+                                                      &instanceTiers, cullParams );
         }
     }
 }
