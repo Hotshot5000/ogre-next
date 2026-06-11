@@ -3330,6 +3330,9 @@ namespace Ogre
                     mActiveDevice->getComputeEncoder();
                 [computeEncoder setAccelerationStructure:mInstanceAccelerationStructure atBufferIndex:2];
                 [computeEncoder setIntersectionFunctionTable:mIntersectionFunctionTable atBufferIndex:3];
+                // Buffer index 4 gives the path tracing kernel an indirection from compacted TLAS
+                // instance slots back to stable candidate IDs. Geometry/material records are indexed
+                // by candidate ID, not by the post-compaction TLAS slot.
                 if( mAccelerationStructureSelectedCandidateBuffer )
                     [computeEncoder setBuffer:mAccelerationStructureSelectedCandidateBuffer offset:0 atIndex:4];
                 // Also mark primitive acceleration structures as used since only the instance acceleration
@@ -3756,6 +3759,9 @@ namespace Ogre
                                                instanceCountAlloc
                                     options:options];
             mAccelerationStructureInstanceCountBuffer = [device newBufferWithLength:sizeof(uint32_t) options:options];
+            // Parallel compaction rewrites TLAS instance order. This companion buffer preserves the
+            // compacted-slot -> original candidate-ID mapping so shading can remain keyed by the
+            // stable candidate list produced by RTShadowsMeshCache.
             mAccelerationStructureSelectedCandidateBuffer =
                 [device newBufferWithLength:sizeof(uint32_t) * instanceCountAlloc options:options];
             if( mAccelerationStructureInstanceClassifyPso &&

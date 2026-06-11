@@ -957,6 +957,9 @@ namespace Ogre
     {
         size_t numGeometryRecords = 0u;
         size_t numTriangleRecords = 0u;
+        // Geometry records are keyed by the stable candidate list, not by the compacted TLAS order.
+        // The trace shader uses a GPU-generated indirection buffer to map hit.instance_id back to
+        // these candidate indices before loading geometry/material data.
         const RTShadowsMeshCache::CandidateSubMeshInstanceArray &candidateInstances =
             mMeshCache->getCandidateSubMeshInstances();
         numGeometryRecords = candidateInstances.size();

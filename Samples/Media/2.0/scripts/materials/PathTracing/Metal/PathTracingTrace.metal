@@ -148,6 +148,8 @@ static SurfaceMaterial load_surface_material( uint instanceId,
                                               device const PathTracerMaterial *materials,
                                               device const PathTracerGeometry *geometryRecords )
 {
+    // Ray tracing returns a compacted TLAS instance slot. Resolve that slot back to the stable
+    // candidate ID so all geometry/material fetches remain independent from GPU compaction order.
     const uint candidateId = selectedCandidateIndices[instanceId];
     const PathTracerGeometry geometry = geometryRecords[candidateId];
     const uint materialIdx = (uint)( geometry.material_subMesh.x + 0.5f );

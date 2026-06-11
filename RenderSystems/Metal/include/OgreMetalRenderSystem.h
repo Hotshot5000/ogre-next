@@ -128,6 +128,7 @@ namespace Ogre
         
         id<MTLBuffer> mAccelerationStructureInstanceBuffer;
         id<MTLBuffer> mAccelerationStructureInstanceCountBuffer;
+        /// Compacted TLAS-slot -> stable candidate-ID mapping used by the trace shader.
         id<MTLBuffer> mAccelerationStructureSelectedCandidateBuffer;
         id<MTLBuffer> mAccelerationStructureInstanceInputBuffer;
         id<MTLBuffer> mAccelerationStructureResourceIdBuffer;

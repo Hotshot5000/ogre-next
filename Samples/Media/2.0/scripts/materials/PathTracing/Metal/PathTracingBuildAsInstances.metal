@@ -214,6 +214,9 @@ kernel void pathtracer_scatter_indirect_as_instances(
 
     dst.accelerationStructureID = accelerationStructureIds[src.accelerationStructureIndex];
     dst.userID = src.sourceInstanceIndex;
+    // Store the stable candidate ID alongside the compacted descriptor. The TLAS instance slot may
+    // change every frame after compaction, while candidate IDs are the durable keys for geometry,
+    // triangle and material records uploaded by the CPU.
     selectedCandidateIndices[dstIndex] = src.sourceInstanceIndex;
     dst.options = 4u; // MTLAccelerationStructureInstanceOptionOpaque
     dst.mask = 1u;
