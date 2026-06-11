@@ -128,6 +128,7 @@ namespace Ogre
         
         id<MTLBuffer> mAccelerationStructureInstanceBuffer;
         id<MTLBuffer> mAccelerationStructureInstanceCountBuffer;
+        id<MTLBuffer> mAccelerationStructureSelectedCandidateBuffer;
         id<MTLBuffer> mAccelerationStructureInstanceInputBuffer;
         id<MTLBuffer> mAccelerationStructureResourceIdBuffer;
         id<MTLBuffer> mAccelerationStructureInstanceActiveBuffer;

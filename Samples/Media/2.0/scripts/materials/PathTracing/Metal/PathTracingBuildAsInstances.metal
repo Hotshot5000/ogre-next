@@ -199,7 +199,8 @@ kernel void pathtracer_scatter_indirect_as_instances(
     device const uint *instanceLocalOffsets [[buffer(3)]],
     device const uint *threadgroupOffsets [[buffer(4)]],
     device PathTracerIndirectInstanceDescriptor *descriptors [[buffer(5)]],
-    constant uint &numInstances [[buffer(6)]],
+    device uint *selectedCandidateIndices [[buffer(6)]],
+    constant uint &numInstances [[buffer(7)]],
     uint3 threadPositionInGrid [[thread_position_in_grid]],
     uint3 threadgroupPositionInGrid [[threadgroup_position_in_grid]] )
 {
@@ -213,6 +214,7 @@ kernel void pathtracer_scatter_indirect_as_instances(
 
     dst.accelerationStructureID = accelerationStructureIds[src.accelerationStructureIndex];
     dst.userID = src.sourceInstanceIndex;
+    selectedCandidateIndices[dstIndex] = src.sourceInstanceIndex;
     dst.options = 4u; // MTLAccelerationStructureInstanceOptionOpaque
     dst.mask = 1u;
     dst.intersectionFunctionTableOffset = 0u;

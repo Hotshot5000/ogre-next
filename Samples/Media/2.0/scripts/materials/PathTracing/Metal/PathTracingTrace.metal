@@ -144,10 +144,12 @@ struct SurfaceMaterial
 };
 
 static SurfaceMaterial load_surface_material( uint instanceId,
+                                              device const uint *selectedCandidateIndices,
                                               device const PathTracerMaterial *materials,
                                               device const PathTracerGeometry *geometryRecords )
 {
-    const PathTracerGeometry geometry = geometryRecords[instanceId];
+    const uint candidateId = selectedCandidateIndices[instanceId];
+    const PathTracerGeometry geometry = geometryRecords[candidateId];
     const uint materialIdx = (uint)( geometry.material_subMesh.x + 0.5f );
     const PathTracerMaterial material = materials[materialIdx];
 
@@ -185,9 +187,10 @@ static SurfaceMaterial load_surface_material( uint instanceId,
 }
 
 static PathTracerGeometry load_geometry( uint instanceId,
+                                         device const uint *selectedCandidateIndices,
                                          device const PathTracerGeometry *geometryRecords )
 {
-    return geometryRecords[instanceId];
+    return geometryRecords[selectedCandidateIndices[instanceId]];
 }
 
 static PathTracerTriangle load_triangle( const PathTracerGeometry geometry,
@@ -507,6 +510,7 @@ static float evaluate_transparent_light_visibility( float3 surfacePosition,
                                                    float maxDistance,
                                                    uint currentInstanceId,
                                                    instance_acceleration_structure accelerationStructure,
+                                                   device const uint *selectedCandidateIndices,
                                                    device const PathTracerMaterial *materials,
                                                    device const PathTracerGeometry *geometryRecords )
 {
@@ -540,6 +544,7 @@ static float evaluate_transparent_light_visibility( float3 surfacePosition,
         }
 
         const SurfaceMaterial blocker = load_surface_material( shadowHit.instance_id,
+                                                               selectedCandidateIndices,
                                                                materials, geometryRecords );
         if( !is_transparent_surface( blocker ) )
             return 0.0f;
@@ -577,6 +582,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                                                 thread uint &seed,
                                                 bool transparentShadowVisibilityEnabled,
                                                 instance_acceleration_structure accelerationStructure,
+                                                device const uint *selectedCandidateIndices,
                                                 device const PathTracerMaterial *materials,
                                                 device const PathTracerGeometry *geometryRecords )
 {
@@ -664,6 +670,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                                                        lightDirection, maxDistance,
                                                        currentInstanceId,
                                                        accelerationStructure,
+                                                       selectedCandidateIndices,
                                                        materials, geometryRecords ) :
                 evaluate_opaque_light_visibility( surfacePosition, shadowNormal,
                                                   lightDirection, maxDistance,
@@ -713,6 +720,7 @@ kernel void main_metal
 
     constant PathTracerFrame *frame [[buffer(0)]],
     constant PathTracerLight *lights [[buffer(1)]],
+    device const uint *selectedCandidateIndices [[buffer(4)]],
     device const PathTracerMaterial *materials [[buffer(TEX_SLOT_START + 0)]],
     device const PathTracerGeometry *geometryRecords [[buffer(TEX_SLOT_START + 1)]],
     device const PathTracerTriangle *triangleRecords [[buffer(TEX_SLOT_START + 2)]],
@@ -784,7 +792,8 @@ kernel void main_metal
             }
 
             const uint hitInstanceId = hit.instance_id;
-            const PathTracerGeometry geometry = load_geometry( hitInstanceId, geometryRecords );
+            const PathTracerGeometry geometry = load_geometry( hitInstanceId, selectedCandidateIndices,
+                                                               geometryRecords );
             const PathTracerTriangle triangle = load_triangle( geometry, hit.primitive_id, triangleRecords );
             const float3 rawNormal = transform_normal( geometry,
                                                        load_triangle_normal( triangle,
@@ -792,7 +801,9 @@ kernel void main_metal
             const bool frontFacing = dot( pathRay.direction, rawNormal ) < 0.0f;
             const float3 geometricNormal = frontFacing ? rawNormal : -rawNormal;
             const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
-            const SurfaceMaterial material = load_surface_material( hitInstanceId, materials, geometryRecords );
+            const SurfaceMaterial material =
+                load_surface_material( hitInstanceId, selectedCandidateIndices, materials,
+                                       geometryRecords );
 
             const float opacity = material.transparency;
             const float3 textureColour = sample_diffuse_texture( material, triangle,
@@ -838,6 +849,7 @@ kernel void main_metal
                                                            lights, frame->numLights, seed,
                                                            frame->transparentShadowVisibilityEnabled != 0u,
                                                            accelerationStructure,
+                                                           selectedCandidateIndices,
                                                            materials, geometryRecords );
             }
             const float specularLuminance = luminance( fresnelColor );

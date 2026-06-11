@@ -142,6 +142,7 @@ namespace Ogre
         mAccelerationStructureVertexBuffers( 0 ),
         mAccelerationStructureInstanceBuffer( 0 ),
         mAccelerationStructureInstanceCountBuffer( 0 ),
+        mAccelerationStructureSelectedCandidateBuffer( 0 ),
         mAccelerationStructureInstanceInputBuffer( 0 ),
         mAccelerationStructureResourceIdBuffer( 0 ),
         mAccelerationStructureInstanceActiveBuffer( 0 ),
@@ -3329,6 +3330,8 @@ namespace Ogre
                     mActiveDevice->getComputeEncoder();
                 [computeEncoder setAccelerationStructure:mInstanceAccelerationStructure atBufferIndex:2];
                 [computeEncoder setIntersectionFunctionTable:mIntersectionFunctionTable atBufferIndex:3];
+                if( mAccelerationStructureSelectedCandidateBuffer )
+                    [computeEncoder setBuffer:mAccelerationStructureSelectedCandidateBuffer offset:0 atIndex:4];
                 // Also mark primitive acceleration structures as used since only the instance acceleration
                 // structure references them.
                 for ( id<MTLAccelerationStructure> primitiveAccelerationStructure in mPrimitiveAccelerationStructures )
@@ -3600,6 +3603,7 @@ namespace Ogre
         mAccelerationStructureVertexBuffers = 0;
         mAccelerationStructureInstanceBuffer = 0;
         mAccelerationStructureInstanceCountBuffer = 0;
+        mAccelerationStructureSelectedCandidateBuffer = 0;
         mAccelerationStructureInstanceInputBuffer = 0;
         mAccelerationStructureResourceIdBuffer = 0;
         mIntersectionFunctionTable = 0;
@@ -3752,6 +3756,8 @@ namespace Ogre
                                                instanceCountAlloc
                                     options:options];
             mAccelerationStructureInstanceCountBuffer = [device newBufferWithLength:sizeof(uint32_t) options:options];
+            mAccelerationStructureSelectedCandidateBuffer =
+                [device newBufferWithLength:sizeof(uint32_t) * instanceCountAlloc options:options];
             if( mAccelerationStructureInstanceClassifyPso &&
                 mAccelerationStructureInstancePrefixPso &&
                 mAccelerationStructureInstanceScatterPso )
@@ -3831,6 +3837,7 @@ namespace Ogre
             [mAccelerationStructureInstanceInputBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceInputBuffer.length)];
             [mAccelerationStructureResourceIdBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureResourceIdBuffer.length)];
             [mAccelerationStructureInstanceCountBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceCountBuffer.length)];
+            [mAccelerationStructureSelectedCandidateBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureSelectedCandidateBuffer.length)];
 #endif
 
             if( mAccelerationStructureInstanceClassifyPso &&
@@ -3884,7 +3891,8 @@ namespace Ogre
                 [computeEncoder setBuffer:mAccelerationStructureInstanceLocalOffsetBuffer offset:0 atIndex:3];
                 [computeEncoder setBuffer:mAccelerationStructureThreadgroupOffsetBuffer offset:0 atIndex:4];
                 [computeEncoder setBuffer:mAccelerationStructureInstanceBuffer offset:0 atIndex:5];
-                [computeEncoder setBytes:&numInstances length:sizeof(numInstances) atIndex:6];
+                [computeEncoder setBuffer:mAccelerationStructureSelectedCandidateBuffer offset:0 atIndex:6];
+                [computeEncoder setBytes:&numInstances length:sizeof(numInstances) atIndex:7];
                 [computeEncoder dispatchThreads:gridSize threadsPerThreadgroup:threadgroupSize];
                 [computeEncoder endEncoding];
                 [commandBuffer commit];
@@ -3895,6 +3903,8 @@ namespace Ogre
                     (MTLIndirectAccelerationStructureInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
                 uint32_t *instanceCountPtr =
                     (uint32_t *)mAccelerationStructureInstanceCountBuffer.contents;
+                uint32_t *selectedCandidateIds =
+                    (uint32_t *)mAccelerationStructureSelectedCandidateBuffer.contents;
                 *instanceCountPtr = static_cast<uint32_t>( instanceCount );
 
                 for( NSUInteger instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex )
@@ -3909,6 +3919,7 @@ namespace Ogre
                     instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
                     instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
                     instanceDescriptors[instanceIndex].mask = (uint32_t)GEOMETRY_MASK_TRIANGLE;
+                    selectedCandidateIds[instanceIndex] = static_cast<uint32_t>( instanceIndex );
 
                     const Matrix4 &matTrans = instanceTransform[instanceIndex];
                     for( int column = 0; column < 4; ++column )
@@ -3920,6 +3931,7 @@ namespace Ogre
 #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
                 [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
                 [mAccelerationStructureInstanceCountBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceCountBuffer.length)];
+                [mAccelerationStructureSelectedCandidateBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureSelectedCandidateBuffer.length)];
 #endif
             }
 
@@ -3940,9 +3952,13 @@ namespace Ogre
         {
             mAccelerationStructureInstanceBuffer = [device newBufferWithLength:sizeof(MTLAccelerationStructureUserIDInstanceDescriptor) * instanceCount options:options];
             mAccelerationStructureInstanceCountBuffer = 0;
+            mAccelerationStructureSelectedCandidateBuffer =
+                [device newBufferWithLength:sizeof(uint32_t) * std::max<NSUInteger>( instanceCount, 1u ) options:options];
 
             MTLAccelerationStructureUserIDInstanceDescriptor *instanceDescriptors =
                 (MTLAccelerationStructureUserIDInstanceDescriptor *)mAccelerationStructureInstanceBuffer.contents;
+            uint32_t *selectedCandidateIds =
+                (uint32_t *)mAccelerationStructureSelectedCandidateBuffer.contents;
 
             for( NSUInteger instanceIndex = 0; instanceIndex < instanceCount; ++instanceIndex )
             {
@@ -3952,6 +3968,7 @@ namespace Ogre
                 instanceDescriptors[instanceIndex].options = MTLAccelerationStructureInstanceOptionOpaque;
                 instanceDescriptors[instanceIndex].intersectionFunctionTableOffset = 0;
                 instanceDescriptors[instanceIndex].mask = (uint32_t)GEOMETRY_MASK_TRIANGLE;
+                selectedCandidateIds[instanceIndex] = static_cast<uint32_t>( instanceIndex );
 
                 const Matrix4 &matTrans = instanceTransform[instanceIndex];
                 for( int column = 0; column < 4; ++column )
@@ -3962,6 +3979,7 @@ namespace Ogre
 
 #if OGRE_PLATFORM != OGRE_PLATFORM_APPLE_IOS
             [mAccelerationStructureInstanceBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureInstanceBuffer.length)];
+            [mAccelerationStructureSelectedCandidateBuffer didModifyRange:NSMakeRange(0, mAccelerationStructureSelectedCandidateBuffer.length)];
 #endif
 
             MTLInstanceAccelerationStructureDescriptor *accelDescriptor =

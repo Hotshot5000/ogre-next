@@ -1069,6 +1069,8 @@ namespace Ogre
             instanceTiers.push_back( packedTierMetadata );
         }
 
+        const bool candidateListChanged =
+            candidateInstancesDiffer( mCandidateSubMeshInstances, candidateSubMeshInstances );
         mCandidateSubMeshInstances.swap( candidateSubMeshInstances );
 
         RenderSystem *renderSystem = Root::getSingleton().getRenderSystem();
@@ -1226,14 +1228,13 @@ namespace Ogre
         {
             mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
             mRebuildTlas = true;
-            ++mGeometryRevision;
         }
         else
         {
             mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
         }
 
-        if( wasRebuildingBlas )
+        if( candidateListChanged || wasRebuildingBlas )
             ++mGeometryRevision;
 
         if( mRebuildBlas )

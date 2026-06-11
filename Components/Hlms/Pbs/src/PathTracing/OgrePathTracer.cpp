@@ -958,7 +958,7 @@ namespace Ogre
         size_t numGeometryRecords = 0u;
         size_t numTriangleRecords = 0u;
         const RTShadowsMeshCache::CandidateSubMeshInstanceArray &candidateInstances =
-            mMeshCache->getSelectedSubMeshInstances();
+            mMeshCache->getCandidateSubMeshInstances();
         numGeometryRecords = candidateInstances.size();
         for( size_t i = 0u; i < candidateInstances.size(); ++i )
         {
@@ -1008,10 +1008,10 @@ namespace Ogre
 
         size_t geometryIdx = 0u;
         size_t triangleIdx = 0u;
-        for( size_t selectedIdx = 0u; selectedIdx < candidateInstances.size(); ++selectedIdx )
+        for( size_t candidateIdx = 0u; candidateIdx < candidateInstances.size(); ++candidateIdx )
         {
             const RTShadowsMeshCache::CandidateSubMeshInstance &selectedInstance =
-                candidateInstances[selectedIdx];
+                candidateInstances[candidateIdx];
             Item *item = selectedInstance.item;
             const size_t subItemIdx = selectedInstance.subMeshIdx;
             const size_t vaoLod = std::min<size_t>( selectedInstance.lodLevel,
@@ -1025,7 +1025,7 @@ namespace Ogre
                 }
 
                 dst[geometryIdx].material_subMesh[0] = static_cast<float>( materialIdx );
-                dst[geometryIdx].material_subMesh[1] = static_cast<float>( selectedIdx );
+                dst[geometryIdx].material_subMesh[1] = static_cast<float>( candidateIdx );
                 dst[geometryIdx].material_subMesh[2] = static_cast<float>( subItemIdx );
                 dst[geometryIdx].material_subMesh[3] = static_cast<float>( triangleIdx );
 
