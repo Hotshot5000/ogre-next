@@ -1216,13 +1216,6 @@ namespace Ogre
             mSelectedSubMeshInstances.swap( selectedSubMeshInstances );
         }
 
-        if( selectedInstanceMeshIndex.empty() )
-        {
-            renderSystem->clearAccelerationStructure();
-            mRebuildTlas = true;
-            return;
-        }
-
         if( wasRebuildingBlas )
             ++mGeometryRevision;
 

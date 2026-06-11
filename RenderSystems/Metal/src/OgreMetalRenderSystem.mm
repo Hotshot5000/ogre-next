@@ -3912,7 +3912,7 @@ namespace Ogre
 
             MTLIndirectInstanceAccelerationStructureDescriptor *accelDescriptor =
                 [MTLIndirectInstanceAccelerationStructureDescriptor descriptor];
-            accelDescriptor.maxInstanceCount = instanceCount;
+            accelDescriptor.maxInstanceCount = std::max<NSUInteger>( instanceCount, 1u );
             accelDescriptor.instanceCountBuffer = mAccelerationStructureInstanceCountBuffer;
             accelDescriptor.instanceCountBufferOffset = 0;
             accelDescriptor.instanceDescriptorBuffer = mAccelerationStructureInstanceBuffer;
