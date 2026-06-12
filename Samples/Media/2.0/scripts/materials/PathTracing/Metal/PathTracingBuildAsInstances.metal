@@ -100,11 +100,23 @@ static inline uint pathtracer_choose_instance_tier( constant PathTracerAsInstanc
 static inline bool pathtracer_is_instance_active( constant PathTracerAsInstanceInput &src,
                                                   constant PathTracerAsCullParams &cullParams )
 {
+    if( src.active == 0u )
+        return false;
+
+    // Most candidates are rejected because they belong to a non-selected tier. Resolve the tier
+    // first so we can avoid the more expensive distance/frustum math for those losers.
+    const uint selectedTier = pathtracer_choose_instance_tier( src, cullParams );
+    if( src.tier != selectedTier )
+        return false;
+
     const float3 cameraPos = cullParams.cameraPositionAndMaxDistance.xyz;
     const float maxCullDistance = cullParams.cameraPositionAndMaxDistance.w;
     const uint cullMode = uint( cullParams.cullOptions.x + 0.5f );
     const bool useDistanceCull = cullMode == 1u || cullMode == 3u;
     const bool useFrustumCull = cullMode == 2u || cullMode == 3u;
+    if( !useDistanceCull && !useFrustumCull )
+        return true;
+
     const float3 toBounds = src.boundsCenterRadius.xyz - cameraPos;
     const float radius = src.boundsCenterRadius.w;
     const float cullDistance = maxCullDistance + radius;
@@ -134,8 +146,7 @@ static inline bool pathtracer_is_instance_active( constant PathTracerAsInstanceI
         coneVisible = depthVisible && horizontalVisible && verticalVisible;
     }
 
-    const uint selectedTier = pathtracer_choose_instance_tier( src, cullParams );
-    return src.active != 0u && src.tier == selectedTier && distanceVisible && coneVisible;
+    return distanceVisible && coneVisible;
 }
 
 kernel void pathtracer_classify_indirect_as_instances(

@@ -143,14 +143,10 @@ struct SurfaceMaterial
     float specularWeight;
 };
 
-static SurfaceMaterial load_surface_material( uint instanceId,
-                                              device const uint *selectedCandidateIndices,
-                                              device const PathTracerMaterial *materials,
-                                              device const PathTracerGeometry *geometryRecords )
+static SurfaceMaterial load_surface_material_from_candidate( uint candidateId,
+                                                             device const PathTracerMaterial *materials,
+                                                             device const PathTracerGeometry *geometryRecords )
 {
-    // Ray tracing returns a compacted TLAS instance slot. Resolve that slot back to the stable
-    // candidate ID so all geometry/material fetches remain independent from GPU compaction order.
-    const uint candidateId = selectedCandidateIndices[instanceId];
     const PathTracerGeometry geometry = geometryRecords[candidateId];
     const uint materialIdx = (uint)( geometry.material_subMesh.x + 0.5f );
     const PathTracerMaterial material = materials[materialIdx];
@@ -188,11 +184,28 @@ static SurfaceMaterial load_surface_material( uint instanceId,
     return surface;
 }
 
+static SurfaceMaterial load_surface_material( uint instanceId,
+                                              device const uint *selectedCandidateIndices,
+                                              device const PathTracerMaterial *materials,
+                                              device const PathTracerGeometry *geometryRecords )
+{
+    // Ray tracing returns a compacted TLAS instance slot. Resolve that slot back to the stable
+    // candidate ID so all geometry/material fetches remain independent from GPU compaction order.
+    return load_surface_material_from_candidate( selectedCandidateIndices[instanceId], materials,
+                                                 geometryRecords );
+}
+
+static PathTracerGeometry load_geometry_by_candidate( uint candidateId,
+                                                      device const PathTracerGeometry *geometryRecords )
+{
+    return geometryRecords[candidateId];
+}
+
 static PathTracerGeometry load_geometry( uint instanceId,
                                          device const uint *selectedCandidateIndices,
                                          device const PathTracerGeometry *geometryRecords )
 {
-    return geometryRecords[selectedCandidateIndices[instanceId]];
+    return load_geometry_by_candidate( selectedCandidateIndices[instanceId], geometryRecords );
 }
 
 static PathTracerTriangle load_triangle( const PathTracerGeometry geometry,
@@ -794,8 +807,9 @@ kernel void main_metal
             }
 
             const uint hitInstanceId = hit.instance_id;
-            const PathTracerGeometry geometry = load_geometry( hitInstanceId, selectedCandidateIndices,
-                                                               geometryRecords );
+            const uint hitCandidateId = selectedCandidateIndices[hitInstanceId];
+            const PathTracerGeometry geometry = load_geometry_by_candidate( hitCandidateId,
+                                                                            geometryRecords );
             const PathTracerTriangle triangle = load_triangle( geometry, hit.primitive_id, triangleRecords );
             const float3 rawNormal = transform_normal( geometry,
                                                        load_triangle_normal( triangle,
@@ -804,8 +818,7 @@ kernel void main_metal
             const float3 geometricNormal = frontFacing ? rawNormal : -rawNormal;
             const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
             const SurfaceMaterial material =
-                load_surface_material( hitInstanceId, selectedCandidateIndices, materials,
-                                       geometryRecords );
+                load_surface_material_from_candidate( hitCandidateId, materials, geometryRecords );
 
             const float opacity = material.transparency;
             const float3 textureColour = sample_diffuse_texture( material, triangle,
