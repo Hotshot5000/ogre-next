@@ -356,6 +356,7 @@ namespace Ogre
         mLastGeometryRevision( 0u ),
         mMaxBounces( DefaultBounces ),
         mSamplesPerPixel( DefaultSamplesPerPixel ),
+        mMaxAccumulatedSamples( 0u ),
         mUpscaleInputScale( 1.0f ),
         mInternalWidth( 1u ),
         mInternalHeight( 1u ),
@@ -519,6 +520,18 @@ namespace Ogre
             return;
 
         mSamplesPerPixel = samplesPerPixel;
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
+    void PathTracer::setMaxAccumulatedSamples( uint32 maxAccumulatedSamples )
+    {
+        if( maxAccumulatedSamples > 0u )
+            maxAccumulatedSamples = std::max( maxAccumulatedSamples, mSamplesPerPixel );
+
+        if( mMaxAccumulatedSamples == maxAccumulatedSamples )
+            return;
+
+        mMaxAccumulatedSamples = maxAccumulatedSamples;
         resetAccumulation();
     }
     //-------------------------------------------------------------------------
@@ -1435,6 +1448,9 @@ namespace Ogre
 
         if( mRenderSystem )
             mRenderSystem->setPathTracerUpscaleInputResolution( mInternalWidth, mInternalHeight );
+
+        if( mMaxAccumulatedSamples > 0u && mAccumulatedSamples >= mMaxAccumulatedSamples )
+            resetAccumulation();
 
         ++mRngFrameIndex;
         mAccumulatedSamples += mSamplesPerPixel;

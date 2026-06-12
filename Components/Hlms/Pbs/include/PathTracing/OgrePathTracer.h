@@ -89,6 +89,7 @@ namespace Ogre
         uint32               mLastGeometryRevision;
         uint32               mMaxBounces;
         uint32               mSamplesPerPixel;
+        uint32               mMaxAccumulatedSamples;
         Real                 mUpscaleInputScale;
         uint32               mInternalWidth;
         uint32               mInternalHeight;
@@ -133,6 +134,9 @@ namespace Ogre
 
         void setSamplesPerPixel( uint32 samplesPerPixel );
         uint32 getSamplesPerPixel() const { return mSamplesPerPixel; }
+
+        void setMaxAccumulatedSamples( uint32 maxAccumulatedSamples );
+        uint32 getMaxAccumulatedSamples() const { return mMaxAccumulatedSamples; }
 
         void setUpscaleInputScale( Real inputScale );
         Real getUpscaleInputScale() const { return mUpscaleInputScale; }

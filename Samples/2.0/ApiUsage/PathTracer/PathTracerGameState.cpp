@@ -40,6 +40,7 @@ namespace
     const char *cPathTracerGpuCullModeNames[] = { "Off", "Distance", "Frustum", "Frustum+Distance" };
     const Ogre::uint32 cPathTracerForcedLodOverrides[] = { 0u, 1u, 2u, 3u };
     const char *cPathTracerForcedLodOverrideNames[] = { "Auto", "Full", "Simplified", "Proxy" };
+    const Ogre::uint32 cPathTracerAccumulationLimits[] = { 0u, 1u, 2u, 4u, 8u, 16u, 32u, 64u };
 }
 
 namespace Demo
@@ -56,6 +57,7 @@ namespace Demo
         mGpuCullReflectionConeIdx( 2u ),
         mGpuCullModeIdx( 0u ),
         mForcedLodOverrideIdx( 0u ),
+        mAccumulationLimitIdx( 0u ),
         mLastGeneratedFrameCount( 0u ),
         mDisplayFpsRealFrames( 0u ),
         mDisplayFpsGeneratedFrames( 0u ),
@@ -83,6 +85,7 @@ namespace Demo
             cPathTracerGpuCullReflectionCones[mGpuCullReflectionConeIdx] );
         mPathTracer->setGpuCullMode( cPathTracerGpuCullModes[mGpuCullModeIdx] );
         mPathTracer->setForcedLodOverride( cPathTracerForcedLodOverrides[mForcedLodOverrideIdx] );
+        mPathTracer->setMaxAccumulatedSamples( cPathTracerAccumulationLimits[mAccumulationLimitIdx] );
         mPathTracer->setEnabled( true );
 
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
@@ -339,6 +342,13 @@ namespace Demo
         TutorialGameState::generateDebugText( timeSinceLast, outText );
         outText += "\nPath tracer accumulated samples: ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getAccumulatedSamples() : 0u );
+        outText += "\nPath tracer accumulation limit: ";
+        const Ogre::uint32 accumulationLimit =
+            mPathTracer ? mPathTracer->getMaxAccumulatedSamples() : 0u;
+        if( accumulationLimit > 0u )
+            outText += Ogre::StringConverter::toString( accumulationLimit );
+        else
+            outText += "Unlimited";
         outText += "\nPath tracer bounces: ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getMaxBounces() :
                                                                 Ogre::PathTracer::DefaultBounces );
@@ -396,6 +406,7 @@ namespace Demo
         outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
+        outText += "\nPress N to cycle accumulation limit.";
         outText += "\nPress B to cycle GPU meshlet culling mode.";
         outText += "\nPress C to cycle GPU meshlet culling distance.";
         outText += "\nPress V to cycle GPU reflection cone expansion.";
@@ -515,6 +526,14 @@ namespace Demo
             const size_t numScales = sizeof( cPathTracerUpscaleScales ) / sizeof( cPathTracerUpscaleScales[0] );
             mUpscaleScaleIdx = ( mUpscaleScaleIdx + 1u ) % numScales;
             mPathTracer->setUpscaleInputScale( cPathTracerUpscaleScales[mUpscaleScaleIdx] );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_N )
+        {
+            const size_t numAccumulationLimits = sizeof( cPathTracerAccumulationLimits ) /
+                                                 sizeof( cPathTracerAccumulationLimits[0] );
+            mAccumulationLimitIdx = ( mAccumulationLimitIdx + 1u ) % numAccumulationLimits;
+            mPathTracer->setMaxAccumulatedSamples(
+                cPathTracerAccumulationLimits[mAccumulationLimitIdx] );
         }
         else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_B )
         {
