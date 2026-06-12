@@ -1075,7 +1075,8 @@ namespace Ogre
 
                 dst[geometryIdx].material_subMesh[0] = static_cast<float>( materialIdx );
                 dst[geometryIdx].material_subMesh[1] = static_cast<float>( candidateIdx );
-                dst[geometryIdx].material_subMesh[2] = static_cast<float>( subItemIdx );
+                dst[geometryIdx].material_subMesh[2] =
+                    item->getMesh()->getName() == "Cube_d.mesh" ? 1.0f : 0.0f;
                 dst[geometryIdx].material_subMesh[3] = static_cast<float>( triangleIdx );
 
                 const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
@@ -1216,8 +1217,6 @@ namespace Ogre
                         if( faceNormal.squaredLength() > 1e-8f )
                         {
                             faceNormal.normalise();
-                            if( hasValidVertexNormal && faceNormal.dotProduct( averagedVertexNormal ) < 0.0f )
-                                faceNormal = -faceNormal;
                             fallbackNormal = faceNormal;
                         }
 

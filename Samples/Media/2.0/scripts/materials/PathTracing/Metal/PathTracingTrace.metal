@@ -515,9 +515,9 @@ static float evaluate_opaque_light_visibility( float3 surfacePosition,
         if( shadowHit.type != intersection_type::triangle )
             return 1.0f;
 
-        if( shadowHit.instance_id == currentInstanceId && shadowHit.distance <= kSelfHitSkipDistance )
+        if( shadowHit.instance_id == currentInstanceId )
         {
-            const float consumedDistance = shadowHit.distance + kSelfHitSkipDistance;
+            const float consumedDistance = max( shadowHit.distance, 0.0f ) + kSelfHitSkipDistance;
             if( consumedDistance >= shadowRay.max_distance )
                 return 1.0f;
 
@@ -560,9 +560,9 @@ static float evaluate_transparent_light_visibility( float3 surfacePosition,
         if( shadowHit.type != intersection_type::triangle )
             return visibility;
 
-        if( shadowHit.instance_id == currentInstanceId && shadowHit.distance <= kSelfHitSkipDistance )
+        if( shadowHit.instance_id == currentInstanceId )
         {
-            const float consumedDistance = shadowHit.distance + kSelfHitSkipDistance;
+            const float consumedDistance = max( shadowHit.distance, 0.0f ) + kSelfHitSkipDistance;
             if( consumedDistance >= shadowRay.max_distance )
                 return visibility;
 
@@ -829,10 +829,20 @@ kernel void main_metal
             const PathTracerGeometry geometry = load_geometry_by_candidate( hitCandidateId,
                                                                             geometryRecords );
             const PathTracerTriangle triangle = load_triangle( geometry, hit.primitive_id, triangleRecords );
-            const float3 rawGeometricNormal = transform_normal( geometry,
-                                                                triangle_face_normal(
-                                                                    triangle,
-                                                                    float3( 0.0f, 1.0f, 0.0f ) ) );
+            float3 rawShadingBaseNormal = transform_normal( geometry,
+                                                            interpolate_triangle_normal(
+                                                                triangle,
+                                                                hit.triangle_barycentric_coord,
+                                                                float3( 0.0f, 1.0f, 0.0f ) ) );
+            float3 rawGeometricNormal = transform_normal( geometry,
+                                                          triangle_face_normal(
+                                                              triangle,
+                                                              float3( 0.0f, 1.0f, 0.0f ) ) );
+            // Some imported meshes have inconsistent triangle winding on otherwise smooth/flat surfaces.
+            // Use the per-hit interpolated normal only to pick the face-normal hemisphere, but keep
+            // the face normal itself for geometric lighting, shadowing and ray offsets.
+            if( dot( rawGeometricNormal, rawShadingBaseNormal ) < 0.0f )
+                rawGeometricNormal = -rawGeometricNormal;
             const bool frontFacing = dot( pathRay.direction, rawGeometricNormal ) < 0.0f;
             const float3 geometricNormal = frontFacing ? rawGeometricNormal : -rawGeometricNormal;
             const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
@@ -849,18 +859,16 @@ kernel void main_metal
             const float mappedRoughness = material.hasRoughnessTexture ?
                 max( material.roughness, roughnessTexture ) : material.roughness;
             const float roughness = clamp( mappedRoughness, kMinRoughness, 1.0f );
-            float3 shadingBaseNormal = transform_normal( geometry,
-                                                         interpolate_triangle_normal(
-                                                             triangle,
-                                                             hit.triangle_barycentric_coord,
-                                                             geometricNormal ) );
+            const bool isCubeMesh = geometry.material_subMesh.z >= 0.5f;
+            float3 shadingBaseNormal = rawShadingBaseNormal;
             if( dot( shadingBaseNormal, geometricNormal ) < 0.0f )
                 shadingBaseNormal = -shadingBaseNormal;
-            const float3 shadingNormal = apply_normal_texture( material, geometry, triangle,
-                                                               hit.triangle_barycentric_coord,
-                                                               shadingBaseNormal,
-                                                               geometricNormal, normalTextures,
-                                                               diffuseSampler );
+            const float3 shadingNormal = isCubeMesh ? geometricNormal :
+                apply_normal_texture( material, geometry, triangle,
+                                      hit.triangle_barycentric_coord,
+                                      shadingBaseNormal,
+                                      geometricNormal, normalTextures,
+                                      diffuseSampler );
             const float3 baseColor = material.baseColour * textureColour * opacity;
             const float3 emissiveTexture = sample_emissive_texture( material, triangle,
                                                                     hit.triangle_barycentric_coord,
@@ -869,6 +877,7 @@ kernel void main_metal
 
             const float3 viewDirection = -pathRay.direction;
             const float3 bounceNormal = shadingNormal;
+            const float3 directLightingNormal = shadingNormal;
             const float nDotV = saturate( dot( shadingNormal, viewDirection ) );
             const float bounceNDotV = saturate( dot( bounceNormal, viewDirection ) );
             const float3 materialFresnel = material.fresnel * material.specularWeight;
@@ -885,7 +894,7 @@ kernel void main_metal
             directLighting.specular = float3( 0.0f );
             if( bounce < 2u )
             {
-                directLighting = evaluate_direct_lighting( hitPosition, shadingNormal, geometricNormal,
+                directLighting = evaluate_direct_lighting( hitPosition, directLightingNormal, geometricNormal,
                                                            viewDirection, materialFresnel,
                                                            roughness, hitInstanceId, bounce,
                                                            lights, frame->numLights, seed,
