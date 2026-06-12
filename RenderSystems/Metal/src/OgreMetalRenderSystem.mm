@@ -3908,6 +3908,21 @@ namespace Ogre
 
                 while( true )
                 {
+                    // Build the scan hierarchy entirely on GPU.
+                    //
+                    // Two-level example with threadgroupCounts = [3, 0, 5, 2, 1, 4, 0, 2]
+                    // and prefixThreadsPerGroup = 4:
+                    //
+                    // Level 0 input:  [3, 0, 5, 2, 1, 4, 0, 2]
+                    // Level 0 output: [0, 3, 3, 8, 0, 1, 5, 5]
+                    // Level 0 block sums: [10, 7]
+                    //
+                    // Level 1 input:  [10, 7]
+                    // Level 1 output: [0, 10]
+                    // Level 1 block sums: [17]
+                    //
+                    // Because level 1 collapses to one block, the prefix kernel can also write the
+                    // final compacted instance count = 17 into mAccelerationStructureInstanceCountBuffer.
                     const NSUInteger numPrefixBlocks =
                         std::max<NSUInteger>( ( levelValueCount + prefixThreadsPerGroup - 1u ) /
                                                   prefixThreadsPerGroup,
@@ -3948,6 +3963,10 @@ namespace Ogre
                 for( NSInteger level = static_cast<NSInteger>( prefixOffsetBuffers.count ) - 2; level >= 0;
                      --level )
                 {
+                    // Walk the hierarchy back down and inject parent block offsets into each lower
+                    // level. Continuing the example above, level 1 produced [0, 10], so level 0's
+                    // second block receives +10 and becomes:
+                    //   [0, 3, 3, 8, 10, 11, 15, 15]
                     const uint32_t levelValueCountU32 =
                         static_cast<uint32_t>( [prefixValueCounts[level] unsignedIntegerValue] );
                     const MTLSize addGridSize =

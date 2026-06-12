@@ -211,6 +211,25 @@ kernel void pathtracer_prefix_indirect_as_threadgroups(
     uint3 threadgroupPositionInGrid [[threadgroup_position_in_grid]],
     uint3 threadsPerThreadgroup [[threads_per_threadgroup]] )
 {
+    // This kernel scans one "level" of the hierarchy.
+    //
+    // Example with threadgroupCounts = [3, 0, 5, 2, 1, 4, 0, 2] and localSize = 4:
+    //
+    //   block 0 input: [3, 0, 5, 2]
+    //   block 0 exclusive output: [0, 3, 3, 8]
+    //   block 0 sum: 10
+    //
+    //   block 1 input: [1, 4, 0, 2]
+    //   block 1 exclusive output: [0, 1, 5, 5]
+    //   block 1 sum: 7
+    //
+    // After this dispatch:
+    //   threadgroupOffsets = [0, 3, 3, 8, 0, 1, 5, 5]
+    //   blockSums          = [10, 7]
+    //
+    // The per-block offsets are correct, but block 1 still needs to be shifted by the
+    // contribution of block 0. The next level scans blockSums, producing [0, 10], and the
+    // add-offset kernel later injects those parent block offsets back into this level.
     threadgroup uint localScan[256];
     const uint tid = threadPositionInGrid.x;
     const uint localSize = threadsPerThreadgroup.x;
@@ -252,6 +271,19 @@ kernel void pathtracer_add_indirect_as_block_offsets(
     uint3 threadPositionInGrid [[thread_position_in_grid]],
     uint3 threadgroupPositionInGrid [[threadgroup_position_in_grid]] )
 {
+    // Continue the example above.
+    //
+    // If the next level scanned blockSums = [10, 7], then blockOffsets = [0, 10].
+    // This kernel adds:
+    //   +0  to block 0 => [0, 3, 3, 8]
+    //   +10 to block 1 => [10, 11, 15, 15]
+    //
+    // Final global exclusive scan:
+    //   threadgroupOffsets = [0, 3, 3, 8, 10, 11, 15, 15]
+    //
+    // Scatter then computes:
+    //   dstIndex = threadgroupOffsets[group] + instanceLocalOffsets[tid]
+    // so each surviving candidate gets a stable compacted slot in the TLAS input buffer.
     const uint tid = threadPositionInGrid.x;
     if( tid >= numThreadgroups )
         return;
@@ -275,6 +307,10 @@ kernel void pathtracer_scatter_indirect_as_instances(
     if( tid >= numInstances || instanceActiveFlags[tid] == 0u )
         return;
 
+    // threadgroupOffsets already contains the final global exclusive scan of threadgroupCounts.
+    // Example: if the scanned offsets are [0, 3, 3, 8, 10, 11, 15, 15], then survivors in
+    // threadgroup 4 start at compacted slot 10, and their per-instance local offsets fill from
+    // there: dstIndex = 10 + instanceLocalOffsets[tid].
     const uint dstIndex = threadgroupOffsets[threadgroupPositionInGrid.x] + instanceLocalOffsets[tid];
     constant PathTracerAsInstanceInput &src = inputs[tid];
     device PathTracerIndirectInstanceDescriptor &dst = descriptors[dstIndex];
