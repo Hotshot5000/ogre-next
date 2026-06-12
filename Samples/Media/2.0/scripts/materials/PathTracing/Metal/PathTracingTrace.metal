@@ -624,10 +624,14 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
             float3 lightDirection = float3( 0.0f, 1.0f, 0.0f );
             float maxDistance = INFINITY;
             float attenuation = 1.0f;
+            float geometricNDotL = 0.0f;
 
             if( lightType == 0u )
             {
                 lightDirection = normalize( light.position.xyz );
+                geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
+                if( geometricNDotL <= 0.0f )
+                    continue;
             }
             else if( lightType == 1u || lightType == 2u || isAreaLight )
             {
@@ -647,6 +651,9 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                     continue;
 
                 lightDirection = toLight / lightDistance;
+                geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
+                if( geometricNDotL <= 0.0f )
+                    continue;
                 maxDistance = max( lightDistance - kRayMinDistance, 0.0f );
                 attenuation = 1.0f / ( 0.5f + ( light.attenuation.y + light.attenuation.z * lightDistance ) * lightDistance );
 
@@ -680,10 +687,6 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
             {
                 continue;
             }
-
-            const float geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
-            if( geometricNDotL <= 0.0f )
-                continue;
 
             const float visibility = transparentShadowVisibilityEnabled ?
                 evaluate_transparent_light_visibility( surfacePosition, shadowNormal,
