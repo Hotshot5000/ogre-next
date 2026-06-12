@@ -26,7 +26,7 @@ constexpr constant float kPi = 3.14159265359f;
 constexpr constant float kInvPi = 0.318309886f;
 constexpr constant float kMaxSpecularTerm = 4.0f;
 constexpr constant float kMaxRadiance = 32.0f;
-constexpr constant float kMinRoughness = 0.02f;
+constexpr constant float kMinRoughness = 0.004f;
 constexpr constant float kTransparentReflectProbabilityMin = 0.01f;
 constexpr constant float kTransparentReflectProbabilityMax = 0.55f;
 constexpr constant float kSpecularProbabilityMin = 0.005f;
@@ -831,7 +831,7 @@ kernel void main_metal
                                                                      roughnessTextures, diffuseSampler );
             const float mappedRoughness = material.hasRoughnessTexture ?
                 max( material.roughness, roughnessTexture ) : material.roughness;
-            const float roughness = clamp( mappedRoughness, 0.35f, 1.0f );
+            const float roughness = clamp( mappedRoughness, kMinRoughness, 1.0f );
             const float3 shadingNormal = apply_normal_texture( material, geometry, triangle,
                                                                hit.triangle_barycentric_coord,
                                                                geometricNormal, normalTextures,
