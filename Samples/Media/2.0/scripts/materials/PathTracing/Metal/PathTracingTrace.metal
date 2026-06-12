@@ -37,6 +37,7 @@ constexpr constant float kTransparentDiffuseScale = 0.25f;
 constexpr constant float kReflectionTextureScale = 0.20f;
 constexpr constant float kDiffuseBounceScale = 0.88f;
 constexpr constant uint kDirectAreaLightSamples = 4u;
+constexpr constant uint kSecondaryBounceAreaLightSamples = 1u;
 
 struct PathTracerFrame
 {
@@ -614,7 +615,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
         const uint lightType = (uint)( light.spotParams.w + 0.5f );
         const bool isAreaLight = lightType == 4u || lightType == 5u;
         const uint areaLightSampleCount = bounce == 0u ? kDirectAreaLightSamples :
-                                          ( bounce == 1u ? 2u : 1u );
+                                          kSecondaryBounceAreaLightSamples;
         const uint lightSampleCount = isAreaLight ? areaLightSampleCount : 1u;
         const float invLightSampleCount = 1.0f / float( lightSampleCount );
 
@@ -680,6 +681,10 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                 continue;
             }
 
+            const float geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
+            if( geometricNDotL <= 0.0f )
+                continue;
+
             const float visibility = transparentShadowVisibilityEnabled ?
                 evaluate_transparent_light_visibility( surfacePosition, shadowNormal,
                                                        lightDirection, maxDistance,
@@ -691,9 +696,6 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                                                   lightDirection, maxDistance,
                                                   currentInstanceId,
                                                   accelerationStructure );
-            const float geometricNDotL = saturate( dot( shadowNormal, lightDirection ) );
-            if( geometricNDotL <= 0.0f )
-                continue;
 
             // Avoid normal-map/tangent discontinuities completely removing a light on surfaces
             // that geometrically face it. Reflections and path bounces still use surfaceNormal.
@@ -703,8 +705,7 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
             const float lightScale = attenuation * visibility * invLightSampleCount;
             const float3 halfVector = normalize( lightDirection + viewDirection );
             const float geometricNDotV = saturate( dot( shadowNormal, viewDirection ) );
-            const float nDotV = max( saturate( dot( surfaceNormal, viewDirection ) ),
-                                     geometricNDotV * 0.5f );
+            const float nDotV = max( saturate( dot( surfaceNormal, viewDirection ) ), geometricNDotV * 0.5f );
             const float nDotH = saturate( dot( surfaceNormal, halfVector ) );
             const float vDotH = saturate( dot( viewDirection, halfVector ) );
             const float3 fresnel = fresnel_schlick( fresnelColor, vDotH );
@@ -714,7 +715,8 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
             const float specularTerm = min( ggx_distribution( nDotH, roughness ) *
                                             smith_ggx_visibility( nDotV, nDotL, roughness ) * nDotL,
                                             kMaxSpecularTerm );
-            result.specular += light.specular.xyz * lightScale * specularTerm * fresnel * kDirectSpecularScale;
+            result.specular += light.specular.xyz * lightScale * specularTerm * fresnel *
+                               kDirectSpecularScale;
         }
     }
 
