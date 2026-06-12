@@ -153,6 +153,7 @@ namespace Ogre
         mAccelerationStructureInstanceLibrary( 0 ),
         mAccelerationStructureInstanceClassifyPso( 0 ),
         mAccelerationStructureInstancePrefixPso( 0 ),
+        mAccelerationStructureInstanceAddOffsetsPso( 0 ),
         mAccelerationStructureInstanceScatterPso( 0 ),
         mIntersectionFunctionTable( 0 ),
         mPathTracerDenoiserScaler( 0 ),
@@ -3694,6 +3695,8 @@ namespace Ogre
                             newFunctionWithName:@"pathtracer_classify_indirect_as_instances"];
                         id<MTLFunction> prefixFunction = [mAccelerationStructureInstanceLibrary
                             newFunctionWithName:@"pathtracer_prefix_indirect_as_threadgroups"];
+                        id<MTLFunction> addOffsetsFunction = [mAccelerationStructureInstanceLibrary
+                            newFunctionWithName:@"pathtracer_add_indirect_as_block_offsets"];
                         id<MTLFunction> scatterFunction = [mAccelerationStructureInstanceLibrary
                             newFunctionWithName:@"pathtracer_scatter_indirect_as_instances"];
                         mAccelerationStructureInstanceClassifyPso =
@@ -3705,6 +3708,11 @@ namespace Ogre
                         }
                         if( mAccelerationStructureInstancePrefixPso && !error )
                         {
+                            mAccelerationStructureInstanceAddOffsetsPso =
+                                [device newComputePipelineStateWithFunction:addOffsetsFunction error:&error];
+                        }
+                        if( mAccelerationStructureInstanceAddOffsetsPso && !error )
+                        {
                             mAccelerationStructureInstanceScatterPso =
                                 [device newComputePipelineStateWithFunction:scatterFunction error:&error];
                         }
@@ -3713,6 +3721,7 @@ namespace Ogre
 
                 if( !mAccelerationStructureInstanceClassifyPso ||
                     !mAccelerationStructureInstancePrefixPso ||
+                    !mAccelerationStructureInstanceAddOffsetsPso ||
                     !mAccelerationStructureInstanceScatterPso || error )
                 {
                     String errorDesc;
@@ -3724,6 +3733,7 @@ namespace Ogre
                     mAccelerationStructureInstanceLibrary = 0;
                     mAccelerationStructureInstanceClassifyPso = 0;
                     mAccelerationStructureInstancePrefixPso = 0;
+                    mAccelerationStructureInstanceAddOffsetsPso = 0;
                     mAccelerationStructureInstanceScatterPso = 0;
                 }
             }
@@ -3733,6 +3743,7 @@ namespace Ogre
             NSUInteger numThreadgroups = 1u;
             if( mAccelerationStructureInstanceClassifyPso &&
                 mAccelerationStructureInstancePrefixPso &&
+                mAccelerationStructureInstanceAddOffsetsPso &&
                 mAccelerationStructureInstanceScatterPso )
             {
                 const NSUInteger classifyWidth = std::max<NSUInteger>(
@@ -3767,6 +3778,7 @@ namespace Ogre
                 [device newBufferWithLength:sizeof(uint32_t) * instanceCountAlloc options:options];
             if( mAccelerationStructureInstanceClassifyPso &&
                 mAccelerationStructureInstancePrefixPso &&
+                mAccelerationStructureInstanceAddOffsetsPso &&
                 mAccelerationStructureInstanceScatterPso )
             {
                 mAccelerationStructureInstanceActiveBuffer =
@@ -3849,11 +3861,11 @@ namespace Ogre
 
             if( mAccelerationStructureInstanceClassifyPso &&
                 mAccelerationStructureInstancePrefixPso &&
+                mAccelerationStructureInstanceAddOffsetsPso &&
                 mAccelerationStructureInstanceScatterPso )
             {
                 id<MTLCommandBuffer> commandBuffer = [mActiveDevice->mMainCommandQueue commandBuffer];
                 uint32_t numInstances = static_cast<uint32_t>( instanceCount );
-                uint32_t numThreadgroupsU32 = static_cast<uint32_t>( numThreadgroups );
                 PathTracerAsCullParams metalCullParams;
                 for( size_t i = 0u; i < 4u; ++i )
                 {
@@ -3881,15 +3893,76 @@ namespace Ogre
                 [computeEncoder dispatchThreads:gridSize threadsPerThreadgroup:threadgroupSize];
                 [computeEncoder endEncoding];
 
-                computeEncoder = [commandBuffer computeCommandEncoder];
-                [computeEncoder setComputePipelineState:mAccelerationStructureInstancePrefixPso];
-                [computeEncoder setBuffer:mAccelerationStructureThreadgroupCountBuffer offset:0 atIndex:0];
-                [computeEncoder setBuffer:mAccelerationStructureThreadgroupOffsetBuffer offset:0 atIndex:1];
-                [computeEncoder setBuffer:mAccelerationStructureInstanceCountBuffer offset:0 atIndex:2];
-                [computeEncoder setBytes:&numThreadgroupsU32 length:sizeof(numThreadgroupsU32) atIndex:3];
-                [computeEncoder dispatchThreads:MTLSizeMake( 1u, 1u, 1u )
-                          threadsPerThreadgroup:MTLSizeMake( 1u, 1u, 1u )];
-                [computeEncoder endEncoding];
+                const NSUInteger prefixThreadsPerGroup = std::min<NSUInteger>(
+                    std::max<NSUInteger>( mAccelerationStructureInstancePrefixPso.threadExecutionWidth, 1u ),
+                    256u );
+                const MTLSize prefixThreadgroupSize = MTLSizeMake( prefixThreadsPerGroup, 1u, 1u );
+
+                NSMutableArray *prefixOffsetBuffers = [NSMutableArray array];
+                NSMutableArray *prefixBlockSumBuffers = [NSMutableArray array];
+                NSMutableArray *prefixValueCounts = [NSMutableArray array];
+
+                id<MTLBuffer> levelInputBuffer = mAccelerationStructureThreadgroupCountBuffer;
+                id<MTLBuffer> levelOutputBuffer = mAccelerationStructureThreadgroupOffsetBuffer;
+                NSUInteger levelValueCount = numThreadgroups;
+
+                while( true )
+                {
+                    const NSUInteger numPrefixBlocks =
+                        std::max<NSUInteger>( ( levelValueCount + prefixThreadsPerGroup - 1u ) /
+                                                  prefixThreadsPerGroup,
+                                              1u );
+                    id<MTLBuffer> blockSumsBuffer =
+                        [device newBufferWithLength:sizeof(uint32_t) * numPrefixBlocks options:options];
+                    const uint32_t levelValueCountU32 = static_cast<uint32_t>( levelValueCount );
+                    const uint32_t writeTotalCount = numPrefixBlocks == 1u ? 1u : 0u;
+                    const MTLSize prefixGridSize =
+                        MTLSizeMake( numPrefixBlocks * prefixThreadsPerGroup, 1u, 1u );
+
+                    computeEncoder = [commandBuffer computeCommandEncoder];
+                    [computeEncoder setComputePipelineState:mAccelerationStructureInstancePrefixPso];
+                    [computeEncoder setBuffer:levelInputBuffer offset:0 atIndex:0];
+                    [computeEncoder setBuffer:levelOutputBuffer offset:0 atIndex:1];
+                    [computeEncoder setBuffer:blockSumsBuffer offset:0 atIndex:2];
+                    [computeEncoder setBuffer:mAccelerationStructureInstanceCountBuffer offset:0 atIndex:3];
+                    [computeEncoder setBytes:&levelValueCountU32 length:sizeof(levelValueCountU32)
+                                     atIndex:4];
+                    [computeEncoder setBytes:&writeTotalCount length:sizeof(writeTotalCount) atIndex:5];
+                    [computeEncoder dispatchThreads:prefixGridSize
+                              threadsPerThreadgroup:prefixThreadgroupSize];
+                    [computeEncoder endEncoding];
+
+                    [prefixOffsetBuffers addObject:levelOutputBuffer];
+                    [prefixBlockSumBuffers addObject:blockSumsBuffer];
+                    [prefixValueCounts addObject:@( levelValueCount )];
+
+                    if( numPrefixBlocks == 1u )
+                        break;
+
+                    levelInputBuffer = blockSumsBuffer;
+                    levelValueCount = numPrefixBlocks;
+                    levelOutputBuffer =
+                        [device newBufferWithLength:sizeof(uint32_t) * levelValueCount options:options];
+                }
+
+                for( NSInteger level = static_cast<NSInteger>( prefixOffsetBuffers.count ) - 2; level >= 0;
+                     --level )
+                {
+                    const uint32_t levelValueCountU32 =
+                        static_cast<uint32_t>( [prefixValueCounts[level] unsignedIntegerValue] );
+                    const MTLSize addGridSize =
+                        MTLSizeMake( std::max<NSUInteger>( levelValueCountU32, 1u ), 1u, 1u );
+
+                    computeEncoder = [commandBuffer computeCommandEncoder];
+                    [computeEncoder setComputePipelineState:mAccelerationStructureInstanceAddOffsetsPso];
+                    [computeEncoder setBuffer:prefixOffsetBuffers[level] offset:0 atIndex:0];
+                    [computeEncoder setBuffer:prefixOffsetBuffers[level + 1] offset:0 atIndex:1];
+                    [computeEncoder setBytes:&levelValueCountU32 length:sizeof(levelValueCountU32)
+                                     atIndex:2];
+                    [computeEncoder dispatchThreads:addGridSize
+                              threadsPerThreadgroup:prefixThreadgroupSize];
+                    [computeEncoder endEncoding];
+                }
 
                 computeEncoder = [commandBuffer computeCommandEncoder];
                 [computeEncoder setComputePipelineState:mAccelerationStructureInstanceScatterPso];

@@ -202,21 +202,61 @@ kernel void pathtracer_classify_indirect_as_instances(
 kernel void pathtracer_prefix_indirect_as_threadgroups(
     device const uint *threadgroupCounts [[buffer(0)]],
     device uint *threadgroupOffsets [[buffer(1)]],
-    device atomic_uint *instanceCount [[buffer(2)]],
-    constant uint &numThreadgroups [[buffer(3)]],
-    uint tid [[thread_position_in_grid]] )
+    device uint *blockSums [[buffer(2)]],
+    device atomic_uint *instanceCount [[buffer(3)]],
+    constant uint &numThreadgroups [[buffer(4)]],
+    constant uint &writeTotalCount [[buffer(5)]],
+    uint3 threadPositionInGrid [[thread_position_in_grid]],
+    uint localTid [[thread_index_in_threadgroup]],
+    uint3 threadgroupPositionInGrid [[threadgroup_position_in_grid]],
+    uint3 threadsPerThreadgroup [[threads_per_threadgroup]] )
 {
-    if( tid != 0u )
-        return;
+    threadgroup uint localScan[256];
+    const uint tid = threadPositionInGrid.x;
+    const uint localSize = threadsPerThreadgroup.x;
+    const uint blockId = threadgroupPositionInGrid.x;
+    const uint blockBase = blockId * localSize;
+    const uint validCount = blockBase < numThreadgroups ? min( localSize, numThreadgroups - blockBase ) : 0u;
+    const bool inRange = tid < numThreadgroups;
+    const uint value = inRange ? threadgroupCounts[tid] : 0u;
 
-    uint prefix = 0u;
-    for( uint groupIdx = 0u; groupIdx < numThreadgroups; ++groupIdx )
+    localScan[localTid] = value;
+    threadgroup_barrier( mem_flags::mem_threadgroup );
+
+    for( uint offset = 1u; offset < localSize; offset <<= 1u )
     {
-        threadgroupOffsets[groupIdx] = prefix;
-        prefix += threadgroupCounts[groupIdx];
+        uint addend = 0u;
+        if( localTid >= offset )
+            addend = localScan[localTid - offset];
+        threadgroup_barrier( mem_flags::mem_threadgroup );
+        localScan[localTid] += addend;
+        threadgroup_barrier( mem_flags::mem_threadgroup );
     }
 
-    atomic_store_explicit( instanceCount, prefix, memory_order_relaxed );
+    if( inRange )
+        threadgroupOffsets[tid] = localScan[localTid] - value;
+
+    if( validCount > 0u && localTid + 1u == validCount )
+    {
+        const uint blockSum = localScan[localTid];
+        blockSums[blockId] = blockSum;
+        if( writeTotalCount != 0u )
+            atomic_store_explicit( instanceCount, blockSum, memory_order_relaxed );
+    }
+}
+
+kernel void pathtracer_add_indirect_as_block_offsets(
+    device uint *threadgroupOffsets [[buffer(0)]],
+    device const uint *blockOffsets [[buffer(1)]],
+    constant uint &numThreadgroups [[buffer(2)]],
+    uint3 threadPositionInGrid [[thread_position_in_grid]],
+    uint3 threadgroupPositionInGrid [[threadgroup_position_in_grid]] )
+{
+    const uint tid = threadPositionInGrid.x;
+    if( tid >= numThreadgroups )
+        return;
+
+    threadgroupOffsets[tid] += blockOffsets[threadgroupPositionInGrid.x];
 }
 
 kernel void pathtracer_scatter_indirect_as_instances(

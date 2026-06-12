@@ -139,6 +139,7 @@ namespace Ogre
         id<MTLLibrary> mAccelerationStructureInstanceLibrary;
         id<MTLComputePipelineState> mAccelerationStructureInstanceClassifyPso;
         id<MTLComputePipelineState> mAccelerationStructureInstancePrefixPso;
+        id<MTLComputePipelineState> mAccelerationStructureInstanceAddOffsetsPso;
         id<MTLComputePipelineState> mAccelerationStructureInstanceScatterPso;
         
         id<MTLIntersectionFunctionTable> mIntersectionFunctionTable;
