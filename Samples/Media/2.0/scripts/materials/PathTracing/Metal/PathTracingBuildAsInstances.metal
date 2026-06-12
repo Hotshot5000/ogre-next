@@ -69,28 +69,36 @@ static inline uint pathtracer_choose_instance_tier( constant PathTracerAsInstanc
 
     const float3 cameraPos = cullParams.cameraPositionAndMaxDistance.xyz;
     const float worldRadius = max( src.lodBoundsCenterRadius.w, 1e-4f );
-    const float cameraDistance = distance( src.lodBoundsCenterRadius.xyz, cameraPos );
-    const float projectedDistance = max( cameraDistance, 1e-4f );
-    const float projectedDiameterPixels = ( worldRadius * 2.0f ) / ( projectedDistance * pixelDisplayRatio );
+    const float3 toLodBounds = src.lodBoundsCenterRadius.xyz - cameraPos;
+    const float cameraDistanceSq = max( dot( toLodBounds, toLodBounds ), 1e-8f );
 
     const float proxyEnterPixels = 8.0f;
     const float proxyExitPixels = 12.0f;
     const float simplifiedEnterPixels = 32.0f;
     const float simplifiedExitPixels = 48.0f;
+    const float diameterScale = ( worldRadius * 2.0f ) / pixelDisplayRatio;
+    const float proxyEnterDistanceSq =
+        ( diameterScale / proxyEnterPixels ) * ( diameterScale / proxyEnterPixels );
+    const float proxyExitDistanceSq =
+        ( diameterScale / proxyExitPixels ) * ( diameterScale / proxyExitPixels );
+    const float simplifiedEnterDistanceSq =
+        ( diameterScale / simplifiedEnterPixels ) * ( diameterScale / simplifiedEnterPixels );
+    const float simplifiedExitDistanceSq =
+        ( diameterScale / simplifiedExitPixels ) * ( diameterScale / simplifiedExitPixels );
 
     if( hasProxy )
     {
-        if( src.previousTier == 2u && projectedDiameterPixels < proxyExitPixels )
+        if( src.previousTier == 2u && cameraDistanceSq > proxyExitDistanceSq )
             return 2u;
-        if( src.previousTier != 2u && projectedDiameterPixels < proxyEnterPixels )
+        if( src.previousTier != 2u && cameraDistanceSq > proxyEnterDistanceSq )
             return 2u;
     }
 
     if( hasSimplified )
     {
-        if( src.previousTier == 1u && projectedDiameterPixels < simplifiedExitPixels )
+        if( src.previousTier == 1u && cameraDistanceSq > simplifiedExitDistanceSq )
             return 1u;
-        if( src.previousTier != 1u && projectedDiameterPixels < simplifiedEnterPixels )
+        if( src.previousTier != 1u && cameraDistanceSq > simplifiedEnterDistanceSq )
             return 1u;
     }
 
