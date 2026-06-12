@@ -859,11 +859,10 @@ kernel void main_metal
             const float mappedRoughness = material.hasRoughnessTexture ?
                 max( material.roughness, roughnessTexture ) : material.roughness;
             const float roughness = clamp( mappedRoughness, kMinRoughness, 1.0f );
-            const bool isCubeMesh = geometry.material_subMesh.z >= 0.5f;
             float3 shadingBaseNormal = rawShadingBaseNormal;
             if( dot( shadingBaseNormal, geometricNormal ) < 0.0f )
                 shadingBaseNormal = -shadingBaseNormal;
-            const float3 shadingNormal = isCubeMesh ? geometricNormal :
+            const float3 shadingNormal =
                 apply_normal_texture( material, geometry, triangle,
                                       hit.triangle_barycentric_coord,
                                       shadingBaseNormal,
