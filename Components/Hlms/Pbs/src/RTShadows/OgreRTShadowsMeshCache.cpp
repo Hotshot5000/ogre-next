@@ -612,6 +612,7 @@ namespace Ogre
         uint32 chooseRtLodLevel( const Item *item,
                                  const RTShadowsMeshCache::ShadowsCachedMesh &cachedMesh,
                                  const Camera *lodCamera,
+                                 RTShadowsMeshCache::RtMeshletTierOverride forcedLodOverride,
                                  bool wasUsingSimplified,
                                  bool wasUsingProxy )
         {
@@ -626,6 +627,12 @@ namespace Ogre
             const uint32 maxFullLod = hasSimplified ? simplifiedLod - 1u :
                 ( hasProxy && proxyLod > 0u ? proxyLod - 1u : lastLod );
             uint32 lodLevel = std::min<uint32>( item->getCurrentMeshLod(), maxFullLod );
+            if( forcedLodOverride == RTShadowsMeshCache::RtMeshletTierOverrideProxy )
+                return hasProxy ? proxyLod : lodLevel;
+            if( forcedLodOverride == RTShadowsMeshCache::RtMeshletTierOverrideSimplified )
+                return hasSimplified ? simplifiedLod : lodLevel;
+            if( forcedLodOverride == RTShadowsMeshCache::RtMeshletTierOverrideFull )
+                return lodLevel;
             if( lodCamera && ( hasSimplified || hasProxy ) )
             {
                 const Mesh *mesh = item->getMesh().get();
@@ -702,6 +709,7 @@ namespace Ogre
         mGpuCullDistance( 0 ),
         mGpuCullReflectionConeExpansion( 2.5f ),
         mGpuCullMode( GpuCullOff ),
+        mForcedLodOverride( RtMeshletTierOverrideAuto ),
         mLastActiveMeshletCount( 0u ),
         mLastTotalMeshletCount( 0u ),
         mLastFullTierMeshletCount( 0u ),
@@ -751,6 +759,17 @@ namespace Ogre
             return;
 
         mGpuCullMode = mode;
+        mRebuildTlas = true;
+    }
+    //-------------------------------------------------------------------------
+    void RTShadowsMeshCache::setForcedLodOverride( RtMeshletTierOverride forcedLodOverride )
+    {
+        if( forcedLodOverride > RtMeshletTierOverrideProxy )
+            forcedLodOverride = RtMeshletTierOverrideAuto;
+        if( mForcedLodOverride == forcedLodOverride )
+            return;
+
+        mForcedLodOverride = forcedLodOverride;
         mRebuildTlas = true;
     }
     //-------------------------------------------------------------------------
@@ -925,6 +944,7 @@ namespace Ogre
                 const RtMeshletTier previousTier =
                     prevTierIt != previousTierByItem.end() ? prevTierIt->second : RtMeshletTierFull;
                 const uint32 selectedLod = chooseRtLodLevel( item, cachedMesh, mLodCamera,
+                                                             mForcedLodOverride,
                                                              previousTier == RtMeshletTierSimplified,
                                                              previousTier == RtMeshletTierProxy );
                 RtMeshletTier selectedTier = RtMeshletTierFull;
@@ -1128,6 +1148,7 @@ namespace Ogre
         cullParams.cullOptions = Vector4( static_cast<Real>( effectiveCullMode ),
                                           mGpuCullReflectionConeExpansion, farDistance,
                                           pixelDisplayRatio );
+        cullParams.lodOptions = Vector4( static_cast<Real>( mForcedLodOverride ), 0.0f, 0.0f, 0.0f );
 
         CandidateSubMeshInstanceArray selectedSubMeshInstances;
         std::vector<uint32> selectedInstanceMeshIndex;

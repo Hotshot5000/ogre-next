@@ -96,6 +96,7 @@ namespace Ogre
             float cameraRightAndTanHalfFovX[4];
             float cameraUpAndTanHalfFovY[4];
             float cullOptions[4];
+            float lodOptions[4];
         };
 
     }
@@ -3865,6 +3866,7 @@ namespace Ogre
                     metalCullParams.cameraUpAndTanHalfFovY[i] =
                         static_cast<float>( cullParams.cameraUpAndTanHalfFovY[i] );
                     metalCullParams.cullOptions[i] = static_cast<float>( cullParams.cullOptions[i] );
+                    metalCullParams.lodOptions[i] = static_cast<float>( cullParams.lodOptions[i] );
                 }
                 MTLSize threadgroupSize = MTLSizeMake( threadsPerGroup, 1, 1 );
                 MTLSize gridSize = MTLSizeMake( std::max<NSUInteger>( instanceCount, 1u ), 1, 1 );

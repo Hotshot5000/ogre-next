@@ -1196,13 +1196,15 @@ namespace Ogre
             Vector4 cameraRightAndTanHalfFovX;
             Vector4 cameraUpAndTanHalfFovY;
             Vector4 cullOptions;
+            Vector4 lodOptions;
 
             AccelerationStructureCullParams() :
                 cameraPositionAndMaxDistance( Vector4::ZERO ),
                 cameraForwardAndNear( Vector4::ZERO ),
                 cameraRightAndTanHalfFovX( Vector4::ZERO ),
                 cameraUpAndTanHalfFovY( Vector4::ZERO ),
-                cullOptions( Vector4::ZERO )
+                cullOptions( Vector4::ZERO ),
+                lodOptions( Vector4( -1.0f, 0.0f, 0.0f, 0.0f ) )
             {
             }
         };

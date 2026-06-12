@@ -46,6 +46,7 @@ namespace Demo
         size_t mGpuCullDistanceIdx;
         size_t mGpuCullReflectionConeIdx;
         size_t mGpuCullModeIdx;
+        size_t mForcedLodOverrideIdx;
         Ogre::uint64 mLastGeneratedFrameCount;
         Ogre::uint32 mDisplayFpsRealFrames;
         Ogre::uint32 mDisplayFpsGeneratedFrames;

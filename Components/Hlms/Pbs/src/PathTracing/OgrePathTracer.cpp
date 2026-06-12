@@ -586,6 +586,27 @@ namespace Ogre
         return mMeshCache ? static_cast<uint32>( mMeshCache->getGpuCullMode() ) : 0u;
     }
     //-------------------------------------------------------------------------
+    void PathTracer::setForcedLodOverride( uint32 forcedLodOverride )
+    {
+        if( forcedLodOverride > RTShadowsMeshCache::RtMeshletTierOverrideProxy )
+            forcedLodOverride = RTShadowsMeshCache::RtMeshletTierOverrideAuto;
+        if( !mMeshCache ||
+            static_cast<uint32>( mMeshCache->getForcedLodOverride() ) == forcedLodOverride )
+        {
+            return;
+        }
+
+        mMeshCache->setForcedLodOverride(
+            static_cast<RTShadowsMeshCache::RtMeshletTierOverride>( forcedLodOverride ) );
+        mMeshCache->markInstancesDirty();
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
+    uint32 PathTracer::getForcedLodOverride() const
+    {
+        return mMeshCache ? static_cast<uint32>( mMeshCache->getForcedLodOverride() ) : 0u;
+    }
+    //-------------------------------------------------------------------------
     uint32 PathTracer::getActiveMeshletCount() const
     {
         return mMeshCache ? mMeshCache->getLastActiveMeshletCount() : 0u;

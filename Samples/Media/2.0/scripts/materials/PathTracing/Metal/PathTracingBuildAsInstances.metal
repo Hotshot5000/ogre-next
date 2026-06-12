@@ -45,6 +45,7 @@ struct PathTracerAsCullParams
     float4 cameraRightAndTanHalfFovX;
     float4 cameraUpAndTanHalfFovY;
     float4 cullOptions;
+    float4 lodOptions;
 };
 
 static inline uint pathtracer_choose_instance_tier( constant PathTracerAsInstanceInput &src,
@@ -52,6 +53,13 @@ static inline uint pathtracer_choose_instance_tier( constant PathTracerAsInstanc
 {
     const bool hasSimplified = ( src.availableTiersMask & 0x2u ) != 0u;
     const bool hasProxy = ( src.availableTiersMask & 0x4u ) != 0u;
+    const uint forcedLodOverride = uint( cullParams.lodOptions.x + 0.5f );
+    if( forcedLodOverride == 3u )
+        return hasProxy ? 2u : 0u;
+    if( forcedLodOverride == 2u )
+        return hasSimplified ? 1u : 0u;
+    if( forcedLodOverride == 1u )
+        return 0u;
     if( !hasSimplified && !hasProxy )
         return 0u;
 

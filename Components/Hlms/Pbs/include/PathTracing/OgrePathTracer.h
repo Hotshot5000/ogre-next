@@ -145,6 +145,8 @@ namespace Ogre
         Real getGpuCullReflectionConeExpansion() const;
         void setGpuCullMode( uint32 mode );
         uint32 getGpuCullMode() const;
+        void setForcedLodOverride( uint32 forcedLodOverride );
+        uint32 getForcedLodOverride() const;
         uint32 getActiveMeshletCount() const;
         uint32 getTotalMeshletCount() const;
         uint32 getFullTierMeshletCount() const;

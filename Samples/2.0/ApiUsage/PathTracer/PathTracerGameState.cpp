@@ -38,6 +38,8 @@ namespace
     const Ogre::Real cPathTracerGpuCullReflectionCones[] = { 1.0f, 1.5f, 2.5f, 4.0f, 6.0f };
     const Ogre::uint32 cPathTracerGpuCullModes[] = { 0u, 1u, 2u, 3u };
     const char *cPathTracerGpuCullModeNames[] = { "Off", "Distance", "Frustum", "Frustum+Distance" };
+    const Ogre::uint32 cPathTracerForcedLodOverrides[] = { 0u, 1u, 2u, 3u };
+    const char *cPathTracerForcedLodOverrideNames[] = { "Auto", "Full", "Simplified", "Proxy" };
 }
 
 namespace Demo
@@ -53,6 +55,7 @@ namespace Demo
         mGpuCullDistanceIdx( 0u ),
         mGpuCullReflectionConeIdx( 2u ),
         mGpuCullModeIdx( 0u ),
+        mForcedLodOverrideIdx( 0u ),
         mLastGeneratedFrameCount( 0u ),
         mDisplayFpsRealFrames( 0u ),
         mDisplayFpsGeneratedFrames( 0u ),
@@ -79,6 +82,7 @@ namespace Demo
         mPathTracer->setGpuCullReflectionConeExpansion(
             cPathTracerGpuCullReflectionCones[mGpuCullReflectionConeIdx] );
         mPathTracer->setGpuCullMode( cPathTracerGpuCullModes[mGpuCullModeIdx] );
+        mPathTracer->setForcedLodOverride( cPathTracerForcedLodOverrides[mForcedLodOverrideIdx] );
         mPathTracer->setEnabled( true );
 
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
@@ -358,6 +362,9 @@ namespace Demo
         outText += "\nPath tracer GPU cull mode: ";
         const Ogre::uint32 gpuCullMode = mPathTracer ? mPathTracer->getGpuCullMode() : 0u;
         outText += cPathTracerGpuCullModeNames[std::min<Ogre::uint32>( gpuCullMode, 3u )];
+        outText += "\nPath tracer forced LOD: ";
+        const Ogre::uint32 forcedLodOverride = mPathTracer ? mPathTracer->getForcedLodOverride() : 0u;
+        outText += cPathTracerForcedLodOverrideNames[std::min<Ogre::uint32>( forcedLodOverride, 3u )];
         outText += "\nPath tracer GPU active meshlets: ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getActiveMeshletCount() : 0u );
         outText += " / ";
@@ -392,6 +399,7 @@ namespace Demo
         outText += "\nPress B to cycle GPU meshlet culling mode.";
         outText += "\nPress C to cycle GPU meshlet culling distance.";
         outText += "\nPress V to cycle GPU reflection cone expansion.";
+        outText += "\nPress L to cycle forced path tracer LOD override.";
         outText += "\nPress F6 to toggle MetalFX frame generation. ";
         outText += mPathTracer && mPathTracer->getFrameGenerationEnabled() ? "[On]" : "[Off]";
         outText += "\nPress F2 to toggle animation. ";
@@ -521,6 +529,14 @@ namespace Demo
                                             sizeof( cPathTracerGpuCullDistances[0] );
             mGpuCullDistanceIdx = ( mGpuCullDistanceIdx + 1u ) % numCullDistances;
             mPathTracer->setGpuCullDistance( cPathTracerGpuCullDistances[mGpuCullDistanceIdx] );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_L )
+        {
+            const size_t numForcedLodOverrides = sizeof( cPathTracerForcedLodOverrides ) /
+                                                 sizeof( cPathTracerForcedLodOverrides[0] );
+            mForcedLodOverrideIdx = ( mForcedLodOverrideIdx + 1u ) % numForcedLodOverrides;
+            mPathTracer->setForcedLodOverride(
+                cPathTracerForcedLodOverrides[mForcedLodOverrideIdx] );
         }
         else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_V )
         {

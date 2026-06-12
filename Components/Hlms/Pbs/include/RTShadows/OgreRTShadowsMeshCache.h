@@ -69,6 +69,14 @@ namespace Ogre
             RtMeshletTierProxy = 2u
         };
 
+        enum RtMeshletTierOverride
+        {
+            RtMeshletTierOverrideAuto = 0u,
+            RtMeshletTierOverrideFull = 1u,
+            RtMeshletTierOverrideSimplified = 2u,
+            RtMeshletTierOverrideProxy = 3u
+        };
+
         struct CandidateSubMeshInstance
         {
             Item         *item;
@@ -107,6 +115,7 @@ namespace Ogre
         Real mGpuCullDistance;
         Real mGpuCullReflectionConeExpansion;
         GpuCullMode mGpuCullMode;
+        RtMeshletTierOverride mForcedLodOverride;
         uint32 mLastActiveMeshletCount;
         uint32 mLastTotalMeshletCount;
         uint32 mLastFullTierMeshletCount;
@@ -150,6 +159,8 @@ namespace Ogre
         Real getGpuCullReflectionConeExpansion() const { return mGpuCullReflectionConeExpansion; }
         void setGpuCullMode( GpuCullMode mode );
         GpuCullMode getGpuCullMode() const { return mGpuCullMode; }
+        void setForcedLodOverride( RtMeshletTierOverride forcedLodOverride );
+        RtMeshletTierOverride getForcedLodOverride() const { return mForcedLodOverride; }
         uint32 getLastActiveMeshletCount() const { return mLastActiveMeshletCount; }
         uint32 getLastTotalMeshletCount() const { return mLastTotalMeshletCount; }
         uint32 getLastFullTierMeshletCount() const { return mLastFullTierMeshletCount; }
