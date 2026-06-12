@@ -46,7 +46,9 @@ Copyright (c) 2000-2016 Torus Knot Software Ltd
 #include "OgreMetalRenderPassDescriptor.h"
 #include "OgreMetalTextureGpu.h"
 #include "OgreResourceGroupManager.h"
+#include "OgreFrameStats.h"
 #include "OgreMetalTextureGpuManager.h"
+#include "OgreRoot.h"
 #include "OgreMetalWindow.h"
 #include "OgreViewport.h"
 #include "Vao/OgreIndirectBufferPacked.h"
@@ -2804,6 +2806,14 @@ namespace Ogre
 
         if( mPathTracerFrameGenerationHasHistory && !mPathTracerFrameGenerationResetPending )
         {
+            float deltaTime = 1.0f / 60.0f;
+            if( Root::getSingletonPtr() )
+            {
+                const FrameStats *frameStats = Root::getSingleton().getFrameStats();
+                if( frameStats )
+                    deltaTime = std::max( frameStats->getLastTime() * 0.001f, 1.0f / 240.0f );
+            }
+
             frameInterpolator.prevColorTexture = previousColourTexture;
             frameInterpolator.colorTexture = currentColourCopyTexture;
             frameInterpolator.depthTexture = depthTexture;
@@ -2813,7 +2823,7 @@ namespace Ogre
             frameInterpolator.motionVectorScaleY = 1.0f;
             frameInterpolator.depthReversed = true;
             frameInterpolator.shouldResetHistory = false;
-            frameInterpolator.deltaTime = 1.0f / 60.0f;
+            frameInterpolator.deltaTime = deltaTime;
             frameInterpolator.nearPlane = static_cast<float>( mPathTracerFrameGenNearPlane );
             frameInterpolator.farPlane = static_cast<float>( mPathTracerFrameGenFarPlane );
             frameInterpolator.fieldOfView = static_cast<float>( mPathTracerFrameGenFovY );
