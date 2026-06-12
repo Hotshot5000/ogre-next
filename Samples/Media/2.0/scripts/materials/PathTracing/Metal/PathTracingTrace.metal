@@ -110,8 +110,10 @@ struct PathTracerGeometry
 struct PathTracerTriangle
 {
     float4 uv0_uv1;
-    float4 uv2_normalX_normalY;
-    float4 normalZ_flags;
+    float4 uv2_flags;
+    float4 normal0;
+    float4 normal1;
+    float4 normal2;
     float4 tangent;
     float4 bitangent;
 };
@@ -238,14 +240,24 @@ static float2 interpolate_uv( const PathTracerTriangle triangle, float2 barycent
     const float w = 1.0f - barycentric.x - barycentric.y;
     const float2 uv0 = triangle.uv0_uv1.xy;
     const float2 uv1 = triangle.uv0_uv1.zw;
-    const float2 uv2 = triangle.uv2_normalX_normalY.xy;
+    const float2 uv2 = triangle.uv2_flags.xy;
     return uv0 * w + uv1 * barycentric.x + uv2 * barycentric.y;
 }
 
-static float3 load_triangle_normal( const PathTracerTriangle triangle, float3 fallbackNormal )
+static float3 interpolate_triangle_normal( const PathTracerTriangle triangle, float2 barycentric,
+                                           float3 fallbackNormal )
 {
-    const float3 normal = normalize( float3( triangle.uv2_normalX_normalY.zw,
-                                             triangle.normalZ_flags.x ) );
+    const float w = 1.0f - barycentric.x - barycentric.y;
+    const float3 normal = normalize( triangle.normal0.xyz * w +
+                                     triangle.normal1.xyz * barycentric.x +
+                                     triangle.normal2.xyz * barycentric.y );
+    return all( isfinite( normal ) ) ? normal : fallbackNormal;
+}
+
+static float3 triangle_face_normal( const PathTracerTriangle triangle, float3 fallbackNormal )
+{
+    const float3 normal = normalize( float3( triangle.uv2_flags.w, triangle.normal0.w,
+                                             triangle.normal1.w ) );
     return all( isfinite( normal ) ) ? normal : fallbackNormal;
 }
 
@@ -271,7 +283,7 @@ static float3 sample_diffuse_texture( const SurfaceMaterial material,
                                       sampler diffuseSampler )
 {
     if( !material.hasDiffuseTexture || material.diffuseTextureIdx < 0 || material.diffuseTextureIdx >= int( kTextureArraySlots ) ||
-        triangle.normalZ_flags.y < 0.5f )
+        triangle.uv2_flags.z < 0.5f )
     {
         return float3( 1.0f );
     }
@@ -289,7 +301,7 @@ static float sample_roughness_texture( const SurfaceMaterial material,
                                        sampler roughnessSampler )
 {
     if( !material.hasRoughnessTexture || material.roughnessTextureIdx < 0 ||
-        material.roughnessTextureIdx >= int( kTextureArraySlots ) || triangle.normalZ_flags.y < 0.5f )
+        material.roughnessTextureIdx >= int( kTextureArraySlots ) || triangle.uv2_flags.z < 0.5f )
     {
         return 1.0f;
     }
@@ -306,7 +318,7 @@ static float3 sample_emissive_texture( const SurfaceMaterial material,
                                        sampler emissiveSampler )
 {
     if( !material.hasEmissiveTexture || material.emissiveTextureIdx < 0 ||
-        material.emissiveTextureIdx >= int( kTextureArraySlots ) || triangle.normalZ_flags.y < 0.5f )
+        material.emissiveTextureIdx >= int( kTextureArraySlots ) || triangle.uv2_flags.z < 0.5f )
     {
         return float3( 1.0f );
     }
@@ -320,14 +332,15 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
                                     const PathTracerGeometry geometry,
                                     const PathTracerTriangle triangle,
                                     float2 barycentric,
+                                    float3 shadingBaseNormal,
                                     float3 geometricNormal,
                                     array<texture2d_array<float>, kTextureArraySlots> normalTextures,
                                     sampler normalSampler )
 {
     if( !material.hasNormalTexture || material.normalTextureIdx < 0 || material.normalTextureIdx >= int( kTextureArraySlots ) ||
-        triangle.normalZ_flags.y < 0.5f || material.normalMapWeight <= 0.0f )
+        triangle.uv2_flags.z < 0.5f || material.normalMapWeight <= 0.0f )
     {
-        return geometricNormal;
+        return shadingBaseNormal;
     }
 
     const float4 normalSample = normalTextures[material.normalTextureIdx].sample(
@@ -336,28 +349,28 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
     const float normalY = normalSample.w < 0.999f ? normalSample.w : normalSample.y;
     const float2 tangentSampleXY = float2( normalSample.x, normalY ) * 2.0f - 1.0f;
     if( dot( tangentSampleXY, tangentSampleXY ) > 0.98f )
-        return geometricNormal;
+        return shadingBaseNormal;
     const float3 tangentSample = normalize(
         float3( tangentSampleXY, sqrt( max( 0.0f, 1.0f - dot( tangentSampleXY, tangentSampleXY ) ) ) ) );
 
     float3 tangent = normalize( transform_direction( geometry, triangle.tangent.xyz ) );
     if( !all( isfinite( tangent ) ) || dot( tangent, tangent ) < kMinFiniteDenominator )
-        return geometricNormal;
-    tangent = normalize( tangent - geometricNormal * dot( tangent, geometricNormal ) );
+        return shadingBaseNormal;
+    tangent = normalize( tangent - shadingBaseNormal * dot( tangent, shadingBaseNormal ) );
 
     float3 bitangent = normalize( transform_direction( geometry, triangle.bitangent.xyz ) );
     if( !all( isfinite( bitangent ) ) || dot( bitangent, bitangent ) < kMinFiniteDenominator )
-        bitangent = normalize( cross( geometricNormal, tangent ) );
-    bitangent = dot( bitangent, cross( geometricNormal, tangent ) ) < 0.0f ? -bitangent : bitangent;
+        bitangent = normalize( cross( shadingBaseNormal, tangent ) );
+    bitangent = dot( bitangent, cross( shadingBaseNormal, tangent ) ) < 0.0f ? -bitangent : bitangent;
 
     const float3 mappedNormal = normalize( tangent * tangentSample.x + bitangent * tangentSample.y +
-                                           geometricNormal * tangentSample.z );
+                                           shadingBaseNormal * tangentSample.z );
     if( !all( isfinite( mappedNormal ) ) || dot( mappedNormal, geometricNormal ) <= 0.0f )
-        return geometricNormal;
+        return shadingBaseNormal;
 
-    const float3 blendedNormal = normalize( mix( geometricNormal, mappedNormal,
+    const float3 blendedNormal = normalize( mix( shadingBaseNormal, mappedNormal,
                                                 material.normalMapWeight ) );
-    return dot( blendedNormal, geometricNormal ) > 0.0f ? blendedNormal : geometricNormal;
+    return dot( blendedNormal, geometricNormal ) > 0.0f ? blendedNormal : shadingBaseNormal;
 }
 
 static float3 sample_reflection_texture( const SurfaceMaterial material,
@@ -816,11 +829,12 @@ kernel void main_metal
             const PathTracerGeometry geometry = load_geometry_by_candidate( hitCandidateId,
                                                                             geometryRecords );
             const PathTracerTriangle triangle = load_triangle( geometry, hit.primitive_id, triangleRecords );
-            const float3 rawNormal = transform_normal( geometry,
-                                                       load_triangle_normal( triangle,
-                                                                             float3( 0.0f, 1.0f, 0.0f ) ) );
-            const bool frontFacing = dot( pathRay.direction, rawNormal ) < 0.0f;
-            const float3 geometricNormal = frontFacing ? rawNormal : -rawNormal;
+            const float3 rawGeometricNormal = transform_normal( geometry,
+                                                                triangle_face_normal(
+                                                                    triangle,
+                                                                    float3( 0.0f, 1.0f, 0.0f ) ) );
+            const bool frontFacing = dot( pathRay.direction, rawGeometricNormal ) < 0.0f;
+            const float3 geometricNormal = frontFacing ? rawGeometricNormal : -rawGeometricNormal;
             const float3 hitPosition = pathRay.origin + pathRay.direction * hit.distance;
             const SurfaceMaterial material =
                 load_surface_material_from_candidate( hitCandidateId, materials, geometryRecords );
@@ -835,8 +849,16 @@ kernel void main_metal
             const float mappedRoughness = material.hasRoughnessTexture ?
                 max( material.roughness, roughnessTexture ) : material.roughness;
             const float roughness = clamp( mappedRoughness, kMinRoughness, 1.0f );
+            float3 shadingBaseNormal = transform_normal( geometry,
+                                                         interpolate_triangle_normal(
+                                                             triangle,
+                                                             hit.triangle_barycentric_coord,
+                                                             geometricNormal ) );
+            if( dot( shadingBaseNormal, geometricNormal ) < 0.0f )
+                shadingBaseNormal = -shadingBaseNormal;
             const float3 shadingNormal = apply_normal_texture( material, geometry, triangle,
                                                                hit.triangle_barycentric_coord,
+                                                               shadingBaseNormal,
                                                                geometricNormal, normalTextures,
                                                                diffuseSampler );
             const float3 baseColor = material.baseColour * textureColour * opacity;

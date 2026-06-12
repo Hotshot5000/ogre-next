@@ -143,8 +143,10 @@ namespace Ogre
         struct PathTracerTriangleGpu
         {
             float uv0_uv1[4];
-            float uv2_normalX_normalY[4];
-            float normalZ_flags[4];
+            float uv2_flags[4];
+            float normal0[4];
+            float normal1[4];
+            float normal2[4];
             float tangent[4];
             float bitangent[4];
         };
@@ -1181,24 +1183,27 @@ namespace Ogre
                         readFloat2At( readRequests[uvRequestIdx], vertexIdx2, uv2 );
                     }
 
-                    Vector3 normal( 0.0f, 1.0f, 0.0f );
-                    Vector3 vertexNormal( 0.0f, 1.0f, 0.0f );
+                    Vector3 normal0( 0.0f, 1.0f, 0.0f );
+                    Vector3 normal1( 0.0f, 1.0f, 0.0f );
+                    Vector3 normal2( 0.0f, 1.0f, 0.0f );
+                    Vector3 averagedVertexNormal( 0.0f, 1.0f, 0.0f );
                     bool hasValidVertexNormal = false;
                     if( hasNormal )
                     {
-                        vertexNormal = readNormalAt( readRequests[normalRequestIdx], vertexIdx0 ) +
-                                       readNormalAt( readRequests[normalRequestIdx], vertexIdx1 ) +
-                                       readNormalAt( readRequests[normalRequestIdx], vertexIdx2 );
-                        if( vertexNormal.squaredLength() > 1e-8f )
+                        normal0 = readNormalAt( readRequests[normalRequestIdx], vertexIdx0 );
+                        normal1 = readNormalAt( readRequests[normalRequestIdx], vertexIdx1 );
+                        normal2 = readNormalAt( readRequests[normalRequestIdx], vertexIdx2 );
+                        averagedVertexNormal = normal0 + normal1 + normal2;
+                        if( averagedVertexNormal.squaredLength() > 1e-8f )
                         {
-                            vertexNormal.normalise();
-                            normal = vertexNormal;
+                            averagedVertexNormal.normalise();
                             hasValidVertexNormal = true;
                         }
                     }
 
                     Vector3 tangent( 1.0f, 0.0f, 0.0f );
                     Vector3 bitangent( 0.0f, 0.0f, 1.0f );
+                    Vector3 fallbackNormal( 0.0f, 1.0f, 0.0f );
                     if( hasPosition )
                     {
                         const Vector3 localPos0 = readFloat3At( readRequests[positionRequestIdx], vertexIdx0 );
@@ -1211,9 +1216,16 @@ namespace Ogre
                         if( faceNormal.squaredLength() > 1e-8f )
                         {
                             faceNormal.normalise();
-                            if( hasValidVertexNormal && faceNormal.dotProduct( vertexNormal ) < 0.0f )
+                            if( hasValidVertexNormal && faceNormal.dotProduct( averagedVertexNormal ) < 0.0f )
                                 faceNormal = -faceNormal;
-                            normal = faceNormal;
+                            fallbackNormal = faceNormal;
+                        }
+
+                        if( !hasValidVertexNormal )
+                        {
+                            normal0 = fallbackNormal;
+                            normal1 = fallbackNormal;
+                            normal2 = fallbackNormal;
                         }
 
                         if( hasUv )
@@ -1228,26 +1240,46 @@ namespace Ogre
                                 const float invDeterminant = 1.0f / determinant;
                                 tangent = ( edge1 * dv2 - edge2 * dv1 ) * invDeterminant;
                                 bitangent = ( edge2 * du1 - edge1 * du2 ) * invDeterminant;
-                                tangent -= normal * tangent.dotProduct( normal );
+                                const Vector3 tangentReferenceNormal =
+                                    hasValidVertexNormal ? averagedVertexNormal : fallbackNormal;
+                                tangent -= tangentReferenceNormal *
+                                           tangent.dotProduct( tangentReferenceNormal );
                                 if( tangent.squaredLength() > 1e-8f )
                                     tangent.normalise();
-                                bitangent -= normal * bitangent.dotProduct( normal );
+                                bitangent -= tangentReferenceNormal *
+                                             bitangent.dotProduct( tangentReferenceNormal );
                                 if( bitangent.squaredLength() > 1e-8f )
                                     bitangent.normalise();
                             }
                         }
+                    }
+                    else if( !hasValidVertexNormal )
+                    {
+                        normal0 = fallbackNormal;
+                        normal1 = fallbackNormal;
+                        normal2 = fallbackNormal;
                     }
 
                     triangleDst[triangleIdx].uv0_uv1[0] = uv0[0];
                     triangleDst[triangleIdx].uv0_uv1[1] = uv0[1];
                     triangleDst[triangleIdx].uv0_uv1[2] = uv1[0];
                     triangleDst[triangleIdx].uv0_uv1[3] = uv1[1];
-                    triangleDst[triangleIdx].uv2_normalX_normalY[0] = uv2[0];
-                    triangleDst[triangleIdx].uv2_normalX_normalY[1] = uv2[1];
-                    triangleDst[triangleIdx].uv2_normalX_normalY[2] = normal.x;
-                    triangleDst[triangleIdx].uv2_normalX_normalY[3] = normal.y;
-                    triangleDst[triangleIdx].normalZ_flags[0] = normal.z;
-                    triangleDst[triangleIdx].normalZ_flags[1] = hasUv ? 1.0f : 0.0f;
+                    triangleDst[triangleIdx].uv2_flags[0] = uv2[0];
+                    triangleDst[triangleIdx].uv2_flags[1] = uv2[1];
+                    triangleDst[triangleIdx].uv2_flags[2] = hasUv ? 1.0f : 0.0f;
+                    triangleDst[triangleIdx].uv2_flags[3] = fallbackNormal.x;
+                    triangleDst[triangleIdx].normal0[0] = normal0.x;
+                    triangleDst[triangleIdx].normal0[1] = normal0.y;
+                    triangleDst[triangleIdx].normal0[2] = normal0.z;
+                    triangleDst[triangleIdx].normal0[3] = fallbackNormal.y;
+                    triangleDst[triangleIdx].normal1[0] = normal1.x;
+                    triangleDst[triangleIdx].normal1[1] = normal1.y;
+                    triangleDst[triangleIdx].normal1[2] = normal1.z;
+                    triangleDst[triangleIdx].normal1[3] = fallbackNormal.z;
+                    triangleDst[triangleIdx].normal2[0] = normal2.x;
+                    triangleDst[triangleIdx].normal2[1] = normal2.y;
+                    triangleDst[triangleIdx].normal2[2] = normal2.z;
+                    triangleDst[triangleIdx].normal2[3] = 0.0f;
                     triangleDst[triangleIdx].tangent[0] = tangent.x;
                     triangleDst[triangleIdx].tangent[1] = tangent.y;
                     triangleDst[triangleIdx].tangent[2] = tangent.z;
