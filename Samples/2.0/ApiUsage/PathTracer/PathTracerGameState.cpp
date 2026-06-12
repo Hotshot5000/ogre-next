@@ -349,6 +349,8 @@ namespace Demo
             outText += Ogre::StringConverter::toString( accumulationLimit );
         else
             outText += "Unlimited";
+        outText += "\nPath tracer fixed RNG pattern: ";
+        outText += mPathTracer && mPathTracer->getFreezeRngPattern() ? "On" : "Off";
         outText += "\nPath tracer bounces: ";
         outText += Ogre::StringConverter::toString( mPathTracer ? mPathTracer->getMaxBounces() :
                                                                 Ogre::PathTracer::DefaultBounces );
@@ -407,6 +409,7 @@ namespace Demo
         outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
         outText += "\nPress N to cycle accumulation limit.";
+        outText += "\nPress R to toggle fixed RNG pattern.";
         outText += "\nPress B to cycle GPU meshlet culling mode.";
         outText += "\nPress C to cycle GPU meshlet culling distance.";
         outText += "\nPress V to cycle GPU reflection cone expansion.";
@@ -534,6 +537,10 @@ namespace Demo
             mAccumulationLimitIdx = ( mAccumulationLimitIdx + 1u ) % numAccumulationLimits;
             mPathTracer->setMaxAccumulatedSamples(
                 cPathTracerAccumulationLimits[mAccumulationLimitIdx] );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_R )
+        {
+            mPathTracer->setFreezeRngPattern( !mPathTracer->getFreezeRngPattern() );
         }
         else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_B )
         {

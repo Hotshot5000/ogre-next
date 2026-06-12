@@ -365,6 +365,7 @@ namespace Ogre
         mOpaqueSkyDiffuseScale( 0.11f ),
         mTransparentSkyDiffuseScale( 0.045f ),
         mTransparentShadowVisibilityEnabled( false ),
+        mFreezeRngPattern( false ),
         mFrameGenerationEnabled( false ),
         mHasLastCameraState( false ),
         mEnabled( false ),
@@ -532,6 +533,15 @@ namespace Ogre
             return;
 
         mMaxAccumulatedSamples = maxAccumulatedSamples;
+        resetAccumulation();
+    }
+    //-------------------------------------------------------------------------
+    void PathTracer::setFreezeRngPattern( bool enabled )
+    {
+        if( mFreezeRngPattern == enabled )
+            return;
+
+        mFreezeRngPattern = enabled;
         resetAccumulation();
     }
     //-------------------------------------------------------------------------
@@ -1452,7 +1462,8 @@ namespace Ogre
         if( mMaxAccumulatedSamples > 0u && mAccumulatedSamples >= mMaxAccumulatedSamples )
             resetAccumulation();
 
-        ++mRngFrameIndex;
+        if( !mFreezeRngPattern )
+            ++mRngFrameIndex;
         mAccumulatedSamples += mSamplesPerPixel;
     }
 }

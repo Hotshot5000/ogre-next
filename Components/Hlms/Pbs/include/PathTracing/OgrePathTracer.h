@@ -98,6 +98,7 @@ namespace Ogre
         Real                 mOpaqueSkyDiffuseScale;
         Real                 mTransparentSkyDiffuseScale;
         bool                 mTransparentShadowVisibilityEnabled;
+        bool                 mFreezeRngPattern;
         bool                 mFrameGenerationEnabled;
         bool                 mHasLastCameraState;
         bool                 mEnabled;
@@ -170,6 +171,9 @@ namespace Ogre
 
         void setTransparentShadowVisibilityEnabled( bool enabled );
         bool getTransparentShadowVisibilityEnabled() const { return mTransparentShadowVisibilityEnabled; }
+
+        void setFreezeRngPattern( bool enabled );
+        bool getFreezeRngPattern() const { return mFreezeRngPattern; }
 
         void setFrameGenerationEnabled( bool enabled );
         bool getFrameGenerationEnabled() const { return mFrameGenerationEnabled; }
