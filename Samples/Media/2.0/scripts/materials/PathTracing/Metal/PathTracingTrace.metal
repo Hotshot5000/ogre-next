@@ -713,15 +713,11 @@ static DirectLighting evaluate_direct_lighting( float3 surfacePosition,
                                                   currentInstanceId,
                                                   accelerationStructure );
 
-            // Avoid normal-map/tangent discontinuities completely removing a light on surfaces
-            // that geometrically face it. Reflections and path bounces still use surfaceNormal.
-            const float shadingNDotL = saturate( dot( surfaceNormal, lightDirection ) );
-            const float nDotL = max( shadingNDotL, geometricNDotL * 0.5f );
+            const float nDotL = saturate( dot( surfaceNormal, lightDirection ) );
 
             const float lightScale = attenuation * visibility * invLightSampleCount;
             const float3 halfVector = normalize( lightDirection + viewDirection );
-            const float geometricNDotV = saturate( dot( shadowNormal, viewDirection ) );
-            const float nDotV = max( saturate( dot( surfaceNormal, viewDirection ) ), geometricNDotV * 0.5f );
+            const float nDotV = saturate( dot( surfaceNormal, viewDirection ) );
             const float nDotH = saturate( dot( surfaceNormal, halfVector ) );
             const float vDotH = saturate( dot( viewDirection, halfVector ) );
             const float3 fresnel = fresnel_schlick( fresnelColor, vDotH );
@@ -862,12 +858,11 @@ kernel void main_metal
             float3 shadingBaseNormal = rawShadingBaseNormal;
             if( dot( shadingBaseNormal, geometricNormal ) < 0.0f )
                 shadingBaseNormal = -shadingBaseNormal;
-            const float3 shadingNormal =
-                apply_normal_texture( material, geometry, triangle,
-                                      hit.triangle_barycentric_coord,
-                                      shadingBaseNormal,
-                                      geometricNormal, normalTextures,
-                                      diffuseSampler );
+            const float3 shadingNormal = apply_normal_texture( material, geometry, triangle,
+                                                               hit.triangle_barycentric_coord,
+                                                               shadingBaseNormal,
+                                                               geometricNormal, normalTextures,
+                                                               diffuseSampler );
             const float3 baseColor = material.baseColour * textureColour * opacity;
             const float3 emissiveTexture = sample_emissive_texture( material, triangle,
                                                                     hit.triangle_barycentric_coord,
@@ -893,7 +888,8 @@ kernel void main_metal
             directLighting.specular = float3( 0.0f );
             if( bounce < 2u )
             {
-                directLighting = evaluate_direct_lighting( hitPosition, directLightingNormal, geometricNormal,
+                directLighting = evaluate_direct_lighting( hitPosition, directLightingNormal,
+                                                           geometricNormal,
                                                            viewDirection, materialFresnel,
                                                            roughness, hitInstanceId, bounce,
                                                            lights, frame->numLights, seed,

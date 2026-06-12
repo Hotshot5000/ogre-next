@@ -49,6 +49,7 @@ namespace Demo
         TutorialGameState( helpDescription ),
         mPathTracer( 0 ),
         mAnimateObjects( true ),
+        mForceOpaqueSpheresDebug( false ),
         mNumSpheres( 0u ),
         mTransparencyMode( Ogre::HlmsPbsDatablock::Transparent ),
         mTransparencyValue( 1.0f ),
@@ -424,6 +425,8 @@ namespace Demo
         outText += ( visibilityMask & 0x000000002 ) ? "[On]" : "[Off]";
         outText += "\nPress F5 to toggle transparency mode. ";
         outText += mTransparencyMode == Ogre::HlmsPbsDatablock::Fade ? "[Fade]" : "[Transparent]";
+        outText += "\nPress F7 to force sphere palette opaque. ";
+        outText += mForceOpaqueSpheresDebug ? "[On]" : "[Off]";
         outText += "\n+/- to change transparency. [";
         outText += Ogre::StringConverter::toString( mTransparencyValue ) + "]";
     }
@@ -438,12 +441,19 @@ namespace Demo
 
         Ogre::HlmsPbsDatablock::TransparencyModes mode =
             static_cast<Ogre::HlmsPbsDatablock::TransparencyModes>( mTransparencyMode );
+        float transparencyValue = mTransparencyValue;
 
-        if( mTransparencyValue >= 1.0f )
+        if( transparencyValue >= 1.0f )
             mode = Ogre::HlmsPbsDatablock::None;
 
         if( mTransparencyMode < 1.0f && mode == Ogre::HlmsPbsDatablock::None )
             mode = Ogre::HlmsPbsDatablock::Transparent;
+
+        if( mForceOpaqueSpheresDebug )
+        {
+            transparencyValue = 1.0f;
+            mode = Ogre::HlmsPbsDatablock::None;
+        }
 
         for( size_t i = 0; i < mNumSpheres; ++i )
         {
@@ -451,7 +461,7 @@ namespace Demo
             Ogre::HlmsPbsDatablock *datablock =
                 static_cast<Ogre::HlmsPbsDatablock *>( hlmsPbs->getDatablock( datablockName ) );
 
-            datablock->setTransparency( mTransparencyValue, mode );
+            datablock->setTransparency( transparencyValue, mode );
         }
 
         if( mPathTracer )
@@ -499,6 +509,11 @@ namespace Demo
         else if( mPathTracer && arg.keysym.sym == SDLK_F6 )
         {
             mPathTracer->setFrameGenerationEnabled( !mPathTracer->getFrameGenerationEnabled() );
+        }
+        else if( arg.keysym.sym == SDLK_F7 )
+        {
+            mForceOpaqueSpheresDebug = !mForceOpaqueSpheresDebug;
+            setTransparencyToMaterials();
         }
         else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_LEFTBRACKET )
         {

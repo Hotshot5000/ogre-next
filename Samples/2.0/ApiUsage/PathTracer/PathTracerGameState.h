@@ -38,6 +38,7 @@ namespace Demo
         Ogre::SceneNode *mLightNodes[4];
 
         bool mAnimateObjects;
+        bool mForceOpaqueSpheresDebug;
 
         size_t mNumSpheres;
         Ogre::uint8 mTransparencyMode;
