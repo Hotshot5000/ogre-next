@@ -35,6 +35,16 @@ if( APPLE )
     endif()
 
     if( CMAKE_GENERATOR STREQUAL "Xcode" )
+        # Xcode only enables full Metal language services when the shader files belong to a real
+        # native target with a Sources build phase. Adding these files as plain resources or under
+        # a custom target makes them visible in the navigator, but code completion, symbol lookup
+        # and call hierarchy stay disabled. We therefore attach the shared PathTracing Metal files
+        # to a tiny editor-only target.
+        #
+        # The helper target must also remain valid for Xcode's indexer. These OGRE shaders rely on
+        # slot macros that are normally supplied by OGRE's runtime shader pipeline, so we provide
+        # the Metal slot values here as compile definitions to keep indexing healthy without
+        # affecting the normal sample/app targets.
         set( PATH_TRACING_METAL_EDITOR_FILES
              ${CMAKE_SOURCE_DIR}/Samples/Media/2.0/scripts/materials/PathTracing/Metal/PathTracingBuildAsInstances.metal
              ${CMAKE_SOURCE_DIR}/Samples/Media/2.0/scripts/materials/PathTracing/Metal/PathTracingCopy_ps.metal
