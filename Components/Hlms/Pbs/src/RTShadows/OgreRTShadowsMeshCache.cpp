@@ -702,6 +702,31 @@ namespace Ogre
 
             return false;
         }
+
+        template <typename T>
+        bool vectorValuesDiffer( const std::vector<T> &a, const std::vector<T> &b )
+        {
+            if( a.size() != b.size() )
+                return true;
+
+            for( size_t i = 0u; i < a.size(); ++i )
+            {
+                if( a[i] != b[i] )
+                    return true;
+            }
+
+            return false;
+        }
+
+        bool cullParamsDiffer( const RenderSystem::AccelerationStructureCullParams &a,
+                               const RenderSystem::AccelerationStructureCullParams &b )
+        {
+            return a.cameraPositionAndMaxDistance != b.cameraPositionAndMaxDistance ||
+                   a.cameraForwardAndNear != b.cameraForwardAndNear ||
+                   a.cameraRightAndTanHalfFovX != b.cameraRightAndTanHalfFovX ||
+                   a.cameraUpAndTanHalfFovY != b.cameraUpAndTanHalfFovY ||
+                   a.cullOptions != b.cullOptions || a.lodOptions != b.lodOptions;
+        }
     }
 
     RTShadowsMeshCache::RTShadowsMeshCache() :
@@ -719,6 +744,13 @@ namespace Ogre
         mLastSimplifiedTierObjectCount( 0u ),
         mLastProxyTierObjectCount( 0u ),
         mGeometryRevision( 1u ),
+        mLastAsCameraPositionAndMaxDistance( Vector4::ZERO ),
+        mLastAsCameraForwardAndNear( Vector4::ZERO ),
+        mLastAsCameraRightAndTanHalfFovX( Vector4::ZERO ),
+        mLastAsCameraUpAndTanHalfFovY( Vector4::ZERO ),
+        mLastAsCullOptions( Vector4::ZERO ),
+        mLastAsLodOptions( Vector4::ZERO ),
+        mHasCachedAsState( false ),
         mRebuildBlas( true ),
         mRebuildTlas( true ),
         mEnabled( true )
@@ -1104,6 +1136,12 @@ namespace Ogre
             mLastFullTierObjectCount = 0u;
             mLastSimplifiedTierObjectCount = 0u;
             mLastProxyTierObjectCount = 0u;
+            mLastAsInstanceMeshIndex.clear();
+            mLastAsInstanceTransform.clear();
+            mLastAsInstanceBounds.clear();
+            mLastAsInstanceLodBounds.clear();
+            mLastAsInstanceTiers.clear();
+            mHasCachedAsState = false;
             renderSystem->clearAccelerationStructure();
             mRebuildTlas = true;
             return;
@@ -1258,6 +1296,23 @@ namespace Ogre
         if( candidateListChanged || wasRebuildingBlas )
             ++mGeometryRevision;
 
+        const bool instancePayloadChanged =
+            !mHasCachedAsState ||
+            vectorValuesDiffer( mLastAsInstanceMeshIndex, instanceMeshIndex ) ||
+            vectorValuesDiffer( mLastAsInstanceTransform, instanceTransform ) ||
+            vectorValuesDiffer( mLastAsInstanceBounds, instanceBounds ) ||
+            vectorValuesDiffer( mLastAsInstanceLodBounds, instanceLodBounds ) ||
+            vectorValuesDiffer( mLastAsInstanceTiers, instanceTiers );
+        RenderSystem::AccelerationStructureCullParams previousCullParams;
+        previousCullParams.cameraPositionAndMaxDistance = mLastAsCameraPositionAndMaxDistance;
+        previousCullParams.cameraForwardAndNear = mLastAsCameraForwardAndNear;
+        previousCullParams.cameraRightAndTanHalfFovX = mLastAsCameraRightAndTanHalfFovX;
+        previousCullParams.cameraUpAndTanHalfFovY = mLastAsCameraUpAndTanHalfFovY;
+        previousCullParams.cullOptions = mLastAsCullOptions;
+        previousCullParams.lodOptions = mLastAsLodOptions;
+        const bool cullParamsChanged =
+            !mHasCachedAsState || cullParamsDiffer( previousCullParams, cullParams );
+
         if( mRebuildBlas )
         {
             renderSystem->createAccelerationStructure( mMeshes, meshVaos, instanceMeshIndex,
@@ -1274,11 +1329,24 @@ namespace Ogre
                                                         &instanceTiers, cullParams );
             mRebuildTlas = false;
         }
-        else
+        else if( instancePayloadChanged || cullParamsChanged )
         {
             renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform,
                                                       &instanceBounds, &instanceLodBounds,
                                                       &instanceTiers, cullParams );
         }
+
+        mLastAsInstanceMeshIndex.swap( instanceMeshIndex );
+        mLastAsInstanceTransform.swap( instanceTransform );
+        mLastAsInstanceBounds.swap( instanceBounds );
+        mLastAsInstanceLodBounds.swap( instanceLodBounds );
+        mLastAsInstanceTiers.swap( instanceTiers );
+        mLastAsCameraPositionAndMaxDistance = cullParams.cameraPositionAndMaxDistance;
+        mLastAsCameraForwardAndNear = cullParams.cameraForwardAndNear;
+        mLastAsCameraRightAndTanHalfFovX = cullParams.cameraRightAndTanHalfFovX;
+        mLastAsCameraUpAndTanHalfFovY = cullParams.cameraUpAndTanHalfFovY;
+        mLastAsCullOptions = cullParams.cullOptions;
+        mLastAsLodOptions = cullParams.lodOptions;
+        mHasCachedAsState = true;
     }
 }

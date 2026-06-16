@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include "OgreMesh2.h"
 #include <ogrestd/map.h>
 #include <set>
+#include <vector>
 
 #include "OgreHeaderPrefix.h"
 
@@ -125,6 +126,18 @@ namespace Ogre
         uint32 mLastSimplifiedTierObjectCount;
         uint32 mLastProxyTierObjectCount;
         uint32 mGeometryRevision;
+        std::vector<uint32> mLastAsInstanceMeshIndex;
+        std::vector<Matrix4> mLastAsInstanceTransform;
+        std::vector<Vector4> mLastAsInstanceBounds;
+        std::vector<Vector4> mLastAsInstanceLodBounds;
+        std::vector<uint32> mLastAsInstanceTiers;
+        Vector4 mLastAsCameraPositionAndMaxDistance;
+        Vector4 mLastAsCameraForwardAndNear;
+        Vector4 mLastAsCameraRightAndTanHalfFovX;
+        Vector4 mLastAsCameraUpAndTanHalfFovY;
+        Vector4 mLastAsCullOptions;
+        Vector4 mLastAsLodOptions;
+        bool mHasCachedAsState;
         bool mRebuildBlas;
         bool mRebuildTlas;
         bool mEnabled;
