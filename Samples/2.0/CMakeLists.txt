@@ -34,6 +34,30 @@ if( APPLE )
         set( SAMPLE_COMMON_STORYBOARD_RESOURCE ${CMAKE_CURRENT_SOURCE_DIR}/Common/src/System/iOS/Resources/Main.storyboard )
     endif()
 
+    if( CMAKE_GENERATOR STREQUAL "Xcode" )
+        set( PATH_TRACING_METAL_EDITOR_FILES
+             ${CMAKE_SOURCE_DIR}/Samples/Media/2.0/scripts/materials/PathTracing/Metal/PathTracingBuildAsInstances.metal
+             ${CMAKE_SOURCE_DIR}/Samples/Media/2.0/scripts/materials/PathTracing/Metal/PathTracingCopy_ps.metal
+             ${CMAKE_SOURCE_DIR}/Samples/Media/2.0/scripts/materials/PathTracing/Metal/PathTracingFrameGenerationComposite.metal
+             ${CMAKE_SOURCE_DIR}/Samples/Media/2.0/scripts/materials/PathTracing/Metal/PathTracingResolve_ps.metal
+             ${CMAKE_SOURCE_DIR}/Samples/Media/2.0/scripts/materials/PathTracing/Metal/PathTracingTrace.metal )
+
+        set( PATH_TRACING_METAL_EDITOR_STUB
+             ${CMAKE_CURRENT_BINARY_DIR}/PathTracingMetalEditorStub.cpp )
+        file( WRITE ${PATH_TRACING_METAL_EDITOR_STUB}
+              "// Xcode editor-only stub target for PathTracing Metal sources.\nint ogrePathTracingMetalEditorStub() { return 0; }\n" )
+
+        set_source_files_properties( ${PATH_TRACING_METAL_EDITOR_FILES}
+            PROPERTIES
+                LANGUAGE METAL
+                XCODE_EXPLICIT_FILE_TYPE sourcecode.metal )
+
+        add_library( OgrePathTracingMetalEditor STATIC EXCLUDE_FROM_ALL
+                     ${PATH_TRACING_METAL_EDITOR_STUB}
+                     ${PATH_TRACING_METAL_EDITOR_FILES} )
+        set_target_properties( OgrePathTracingMetalEditor PROPERTIES FOLDER "Tools" )
+    endif()
+
 	set( SAMPLE_COMMON_BASIC_RESOURCES ${SAMPLE_COMMON_BASIC_RESOURCES}
                  ${SAMPLE_COMMON_STORYBOARD_RESOURCE}
 		 ${CMAKE_BINARY_DIR}/bin/resources2.cfg
