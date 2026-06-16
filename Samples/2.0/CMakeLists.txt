@@ -55,6 +55,9 @@ if( APPLE )
         add_library( OgrePathTracingMetalEditor STATIC EXCLUDE_FROM_ALL
                      ${PATH_TRACING_METAL_EDITOR_STUB}
                      ${PATH_TRACING_METAL_EDITOR_FILES} )
+        target_compile_definitions( OgrePathTracingMetalEditor PRIVATE
+                                    PARAMETER_SLOT=23
+                                    UAV_SLOT_START=28 )
         set_target_properties( OgrePathTracingMetalEditor PROPERTIES FOLDER "Tools" )
     endif()
 
