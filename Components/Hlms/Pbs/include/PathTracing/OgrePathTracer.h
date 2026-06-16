@@ -73,6 +73,7 @@ namespace Ogre
         ConstBufferPacked   *mLightsConstBuffer;
         ReadOnlyBufferPacked *mMaterialBuffer;
         ReadOnlyBufferPacked *mGeometryBuffer;
+        ReadOnlyBufferPacked *mInstanceBuffer;
         ReadOnlyBufferPacked *mTriangleBuffer;
         FastArray<TextureGpu *> mDiffuseTextures;
         FastArray<TextureGpu *> mRoughnessTextures;
@@ -110,7 +111,8 @@ namespace Ogre
         void uploadFrameConstants( uint32 numLights );
         uint32 uploadLights( SceneManager *sceneManager );
         void uploadMaterialBuffer();
-        void uploadGeometryBuffer( bool rebuildTriangles );
+        void uploadGeometryBuffer( bool rebuildGeometry, bool rebuildTriangles );
+        void uploadInstanceBuffer();
         void bindJobResources();
         void updateInternalResolution();
         void updateTraceJobThreadGroups();

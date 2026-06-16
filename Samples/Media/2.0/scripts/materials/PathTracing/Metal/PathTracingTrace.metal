@@ -99,6 +99,10 @@ struct PathTracerMaterial
 struct PathTracerGeometry
 {
     float4 material_subMesh;
+};
+
+struct PathTracerInstance
+{
     float4 worldRow0;
     float4 worldRow1;
     float4 worldRow2;
@@ -204,11 +208,10 @@ static PathTracerGeometry load_geometry_by_candidate( uint candidateId,
     return geometryRecords[candidateId];
 }
 
-static PathTracerGeometry load_geometry( uint instanceId,
-                                         device const uint *selectedCandidateIndices,
-                                         device const PathTracerGeometry *geometryRecords )
+static PathTracerInstance load_instance_by_candidate( uint candidateId,
+                                                      device const PathTracerInstance *instanceRecords )
 {
-    return load_geometry_by_candidate( selectedCandidateIndices[instanceId], geometryRecords );
+    return instanceRecords[candidateId];
 }
 
 static PathTracerTriangle load_triangle( const PathTracerGeometry geometry,
@@ -219,18 +222,25 @@ static PathTracerTriangle load_triangle( const PathTracerGeometry geometry,
     return triangleRecords[triangleStart + primitiveId];
 }
 
-static float3 transform_direction( const PathTracerGeometry geometry, float3 direction )
+static PathTracerInstance load_instance( uint instanceId,
+                                         device const uint *selectedCandidateIndices,
+                                         device const PathTracerInstance *instanceRecords )
 {
-    return float3( dot( geometry.worldRow0.xyz, direction ),
-                   dot( geometry.worldRow1.xyz, direction ),
-                   dot( geometry.worldRow2.xyz, direction ) );
+    return load_instance_by_candidate( selectedCandidateIndices[instanceId], instanceRecords );
 }
 
-static float3 transform_normal( const PathTracerGeometry geometry, float3 normal )
+static float3 transform_direction( const PathTracerInstance instanceData, float3 direction )
 {
-    const float3 transformed = float3( dot( geometry.normalRow0.xyz, normal ),
-                                      dot( geometry.normalRow1.xyz, normal ),
-                                      dot( geometry.normalRow2.xyz, normal ) );
+    return float3( dot( instanceData.worldRow0.xyz, direction ),
+                   dot( instanceData.worldRow1.xyz, direction ),
+                   dot( instanceData.worldRow2.xyz, direction ) );
+}
+
+static float3 transform_normal( const PathTracerInstance instanceData, float3 normal )
+{
+    const float3 transformed = float3( dot( instanceData.normalRow0.xyz, normal ),
+                                      dot( instanceData.normalRow1.xyz, normal ),
+                                      dot( instanceData.normalRow2.xyz, normal ) );
     return dot( transformed, transformed ) > kMinFiniteDenominator && all( isfinite( transformed ) ) ?
         normalize( transformed ) : float3( 0.0f, 1.0f, 0.0f );
 }
@@ -329,7 +339,7 @@ static float3 sample_emissive_texture( const SurfaceMaterial material,
 }
 
 static float3 apply_normal_texture( const SurfaceMaterial material,
-                                    const PathTracerGeometry geometry,
+                                    const PathTracerInstance instanceData,
                                     const PathTracerTriangle triangle,
                                     float2 barycentric,
                                     float3 shadingBaseNormal,
@@ -353,12 +363,12 @@ static float3 apply_normal_texture( const SurfaceMaterial material,
     const float3 tangentSample = normalize(
         float3( tangentSampleXY, sqrt( max( 0.0f, 1.0f - dot( tangentSampleXY, tangentSampleXY ) ) ) ) );
 
-    float3 tangent = normalize( transform_direction( geometry, triangle.tangent.xyz ) );
+    float3 tangent = normalize( transform_direction( instanceData, triangle.tangent.xyz ) );
     if( !all( isfinite( tangent ) ) || dot( tangent, tangent ) < kMinFiniteDenominator )
         return shadingBaseNormal;
     tangent = normalize( tangent - shadingBaseNormal * dot( tangent, shadingBaseNormal ) );
 
-    float3 bitangent = normalize( transform_direction( geometry, triangle.bitangent.xyz ) );
+    float3 bitangent = normalize( transform_direction( instanceData, triangle.bitangent.xyz ) );
     if( !all( isfinite( bitangent ) ) || dot( bitangent, bitangent ) < kMinFiniteDenominator )
         bitangent = normalize( cross( shadingBaseNormal, tangent ) );
     bitangent = dot( bitangent, cross( shadingBaseNormal, tangent ) ) < 0.0f ? -bitangent : bitangent;
@@ -752,7 +762,8 @@ kernel void main_metal
     device const uint *selectedCandidateIndices [[buffer(4)]],
     device const PathTracerMaterial *materials [[buffer(TEX_SLOT_START + 0)]],
     device const PathTracerGeometry *geometryRecords [[buffer(TEX_SLOT_START + 1)]],
-    device const PathTracerTriangle *triangleRecords [[buffer(TEX_SLOT_START + 2)]],
+    device const PathTracerInstance *instanceRecords [[buffer(TEX_SLOT_START + 2)]],
+    device const PathTracerTriangle *triangleRecords [[buffer(TEX_SLOT_START + 3)]],
     array<texture2d_array<float>, kTextureArraySlots> diffuseTextures [[texture(17)]],
     array<texture2d_array<float>, kTextureArraySlots> roughnessTextures [[texture(23)]],
     array<texture2d_array<float>, kTextureArraySlots> normalTextures [[texture(29)]],
@@ -824,13 +835,15 @@ kernel void main_metal
             const uint hitCandidateId = selectedCandidateIndices[hitInstanceId];
             const PathTracerGeometry geometry = load_geometry_by_candidate( hitCandidateId,
                                                                             geometryRecords );
+            const PathTracerInstance instanceData = load_instance_by_candidate( hitCandidateId,
+                                                                                instanceRecords );
             const PathTracerTriangle triangle = load_triangle( geometry, hit.primitive_id, triangleRecords );
-            float3 rawShadingBaseNormal = transform_normal( geometry,
+            float3 rawShadingBaseNormal = transform_normal( instanceData,
                                                             interpolate_triangle_normal(
                                                                 triangle,
                                                                 hit.triangle_barycentric_coord,
                                                                 float3( 0.0f, 1.0f, 0.0f ) ) );
-            float3 rawGeometricNormal = transform_normal( geometry,
+            float3 rawGeometricNormal = transform_normal( instanceData,
                                                           triangle_face_normal(
                                                               triangle,
                                                               float3( 0.0f, 1.0f, 0.0f ) ) );
@@ -858,7 +871,7 @@ kernel void main_metal
             float3 shadingBaseNormal = rawShadingBaseNormal;
             if( dot( shadingBaseNormal, geometricNormal ) < 0.0f )
                 shadingBaseNormal = -shadingBaseNormal;
-            const float3 shadingNormal = apply_normal_texture( material, geometry, triangle,
+            const float3 shadingNormal = apply_normal_texture( material, instanceData, triangle,
                                                                hit.triangle_barycentric_coord,
                                                                shadingBaseNormal,
                                                                geometricNormal, normalTextures,

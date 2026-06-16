@@ -132,6 +132,10 @@ namespace Ogre
         struct PathTracerGeometryGpu
         {
             float material_subMesh[4];
+        };
+
+        struct PathTracerInstanceGpu
+        {
             float worldRow0[4];
             float worldRow1[4];
             float worldRow2[4];
@@ -352,6 +356,7 @@ namespace Ogre
         mLightsConstBuffer( 0 ),
         mMaterialBuffer( 0 ),
         mGeometryBuffer( 0 ),
+        mInstanceBuffer( 0 ),
         mTriangleBuffer( 0 ),
         mAccumulatedSamples( 0u ),
         mRngFrameIndex( 0u ),
@@ -471,6 +476,14 @@ namespace Ogre
                 mGeometryBuffer->unmap( UO_UNMAP_ALL );
             mVaoManager->destroyReadOnlyBuffer( mGeometryBuffer );
             mGeometryBuffer = 0;
+        }
+
+        if( mInstanceBuffer )
+        {
+            if( mInstanceBuffer->getMappingState() != MS_UNMAPPED )
+                mInstanceBuffer->unmap( UO_UNMAP_ALL );
+            mVaoManager->destroyReadOnlyBuffer( mInstanceBuffer );
+            mInstanceBuffer = 0;
         }
 
         if( mTriangleBuffer )
@@ -999,7 +1012,7 @@ namespace Ogre
         mMaterialBuffer->upload( staging.data(), 0u, bytesNeeded );
     }
     //-------------------------------------------------------------------------
-    void PathTracer::uploadGeometryBuffer( bool rebuildTriangles )
+    void PathTracer::uploadGeometryBuffer( bool rebuildGeometry, bool rebuildTriangles )
     {
         size_t numGeometryRecords = 0u;
         size_t numTriangleRecords = 0u;
@@ -1023,9 +1036,11 @@ namespace Ogre
         numTriangleRecords = std::max<size_t>( numTriangleRecords, 1u );
         const size_t bytesNeeded = numGeometryRecords * sizeof( PathTracerGeometryGpu );
         const size_t triangleBytesNeeded = numTriangleRecords * sizeof( PathTracerTriangleGpu );
+        const bool needsGeometryUpload = rebuildGeometry || !mGeometryBuffer;
         const bool needsTriangleUpload = rebuildTriangles || !mTriangleBuffer;
 
-        if( !mGeometryBuffer || mGeometryBuffer->getTotalSizeBytes() < bytesNeeded )
+        if( needsGeometryUpload &&
+            ( !mGeometryBuffer || mGeometryBuffer->getTotalSizeBytes() < bytesNeeded ) )
         {
             if( mGeometryBuffer )
                 mVaoManager->destroyReadOnlyBuffer( mGeometryBuffer );
@@ -1042,9 +1057,14 @@ namespace Ogre
                                                                  BT_DEFAULT, 0, false );
         }
 
-        std::vector<PathTracerGeometryGpu> staging( numGeometryRecords );
-        PathTracerGeometryGpu *dst = staging.data();
-        memset( dst, 0, bytesNeeded );
+        std::vector<PathTracerGeometryGpu> staging;
+        PathTracerGeometryGpu *dst = 0;
+        if( needsGeometryUpload )
+        {
+            staging.resize( numGeometryRecords );
+            dst = staging.data();
+            memset( dst, 0, bytesNeeded );
+        }
 
         std::vector<PathTracerTriangleGpu> triangleStaging;
         PathTracerTriangleGpu *triangleDst = 0;
@@ -1073,19 +1093,13 @@ namespace Ogre
                         static_cast<HlmsPbsDatablock *>( datablock ) );
                 }
 
-                dst[geometryIdx].material_subMesh[0] = static_cast<float>( materialIdx );
-                dst[geometryIdx].material_subMesh[1] = static_cast<float>( candidateIdx );
-                dst[geometryIdx].material_subMesh[2] = static_cast<float>( subItemIdx );
-                dst[geometryIdx].material_subMesh[3] = static_cast<float>( triangleIdx );
-
-                const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
-                const Matrix3 normalMatrix = getNormalMatrix( transform );
-                copyMatrixRow( dst[geometryIdx].worldRow0, transform, 0u );
-                copyMatrixRow( dst[geometryIdx].worldRow1, transform, 1u );
-                copyMatrixRow( dst[geometryIdx].worldRow2, transform, 2u );
-                copyMatrix3Row( dst[geometryIdx].normalRow0, normalMatrix, 0u );
-                copyMatrix3Row( dst[geometryIdx].normalRow1, normalMatrix, 1u );
-                copyMatrix3Row( dst[geometryIdx].normalRow2, normalMatrix, 2u );
+                if( needsGeometryUpload )
+                {
+                    dst[geometryIdx].material_subMesh[0] = static_cast<float>( materialIdx );
+                    dst[geometryIdx].material_subMesh[1] = static_cast<float>( candidateIdx );
+                    dst[geometryIdx].material_subMesh[2] = static_cast<float>( subItemIdx );
+                    dst[geometryIdx].material_subMesh[3] = static_cast<float>( triangleIdx );
+                }
 
                 SubMesh *subMesh = selectedInstance.subMesh;
                 VertexArrayObject *vao = subMesh->mVao[VpNormal][vaoLod];
@@ -1303,9 +1317,58 @@ namespace Ogre
                 ++geometryIdx;
         }
 
-        mGeometryBuffer->upload( staging.data(), 0u, bytesNeeded );
+        if( needsGeometryUpload )
+            mGeometryBuffer->upload( staging.data(), 0u, bytesNeeded );
         if( needsTriangleUpload )
             mTriangleBuffer->upload( triangleStaging.data(), 0u, triangleBytesNeeded );
+    }
+    //-------------------------------------------------------------------------
+    void PathTracer::uploadInstanceBuffer()
+    {
+        const RTShadowsMeshCache::CandidateSubMeshInstanceArray &candidateInstances =
+            mMeshCache->getCandidateSubMeshInstances();
+        const size_t numInstanceRecords = std::max<size_t>( candidateInstances.size(), 1u );
+        const size_t bytesNeeded = numInstanceRecords * sizeof( PathTracerInstanceGpu );
+
+        if( !mInstanceBuffer || mInstanceBuffer->getTotalSizeBytes() < bytesNeeded )
+        {
+            if( mInstanceBuffer )
+                mVaoManager->destroyReadOnlyBuffer( mInstanceBuffer );
+            mInstanceBuffer = mVaoManager->createReadOnlyBuffer( PFG_RGBA32_FLOAT, bytesNeeded,
+                                                                 BT_DEFAULT, 0, false );
+        }
+
+        std::vector<PathTracerInstanceGpu> staging( numInstanceRecords );
+        PathTracerInstanceGpu *dst = staging.data();
+        memset( dst, 0, bytesNeeded );
+
+        typedef std::map<Item *, size_t> ItemTransformIndexMap;
+        ItemTransformIndexMap itemTransformIndexMap;
+        for( size_t candidateIdx = 0u; candidateIdx < candidateInstances.size(); ++candidateIdx )
+        {
+            const RTShadowsMeshCache::CandidateSubMeshInstance &candidateInstance =
+                candidateInstances[candidateIdx];
+            Item *item = candidateInstance.item;
+
+            ItemTransformIndexMap::const_iterator itor = itemTransformIndexMap.find( item );
+            if( itor != itemTransformIndexMap.end() )
+            {
+                dst[candidateIdx] = dst[itor->second];
+                continue;
+            }
+
+            const Matrix4 transform = item->getParentSceneNode()->_getFullTransformUpdated();
+            const Matrix3 normalMatrix = getNormalMatrix( transform );
+            copyMatrixRow( dst[candidateIdx].worldRow0, transform, 0u );
+            copyMatrixRow( dst[candidateIdx].worldRow1, transform, 1u );
+            copyMatrixRow( dst[candidateIdx].worldRow2, transform, 2u );
+            copyMatrix3Row( dst[candidateIdx].normalRow0, normalMatrix, 0u );
+            copyMatrix3Row( dst[candidateIdx].normalRow1, normalMatrix, 1u );
+            copyMatrix3Row( dst[candidateIdx].normalRow2, normalMatrix, 2u );
+            itemTransformIndexMap[item] = candidateIdx;
+        }
+
+        mInstanceBuffer->upload( staging.data(), 0u, bytesNeeded );
     }
     //-------------------------------------------------------------------------
     void PathTracer::updateInternalResolution()
@@ -1361,12 +1424,20 @@ namespace Ogre
             mTraceJob->setTexBuffer( 1, geometrySlot );
         }
 
+        if( mInstanceBuffer )
+        {
+            DescriptorSetTexture2::BufferSlot instanceSlot(
+                DescriptorSetTexture2::BufferSlot::makeEmpty() );
+            instanceSlot.buffer = mInstanceBuffer;
+            mTraceJob->setTexBuffer( 2, instanceSlot );
+        }
+
         if( mTriangleBuffer )
         {
             DescriptorSetTexture2::BufferSlot triangleSlot(
                 DescriptorSetTexture2::BufferSlot::makeEmpty() );
             triangleSlot.buffer = mTriangleBuffer;
-            mTraceJob->setTexBuffer( 2, triangleSlot );
+            mTraceJob->setTexBuffer( 3, triangleSlot );
         }
 
         TextureGpu *fallbackMaterialTexture = 0;
@@ -1381,7 +1452,7 @@ namespace Ogre
 
         if( fallbackMaterialTexture )
         {
-            for( size_t i = 3u; i < PathTracerDiffuseTextureSlotStart; ++i )
+            for( size_t i = 4u; i < PathTracerDiffuseTextureSlotStart; ++i )
             {
                 DescriptorSetTexture2::TextureSlot fillerSlot(
                     DescriptorSetTexture2::TextureSlot::makeEmpty() );
@@ -1470,12 +1541,20 @@ namespace Ogre
         uploadFrameConstants( numLights );
         if( mScene.needsMaterialUpload() )
             uploadMaterialBuffer();
-        if( geometrySelectionChanged || mScene.needsBlasRebuild() || mScene.needsTlasRebuild() ||
-            !mGeometryBuffer )
+        const bool needsGeometryUpload =
+            geometrySelectionChanged || mScene.needsBlasRebuild() || !mGeometryBuffer || !mTriangleBuffer;
+        const bool needsInstanceUpload =
+            geometrySelectionChanged || mScene.needsBlasRebuild() || mScene.needsTlasRebuild() ||
+            !mInstanceBuffer;
+        if( needsGeometryUpload )
         {
-            uploadGeometryBuffer( geometrySelectionChanged || mScene.needsBlasRebuild() || !mTriangleBuffer );
+            uploadGeometryBuffer( geometrySelectionChanged || mScene.needsBlasRebuild(),
+                                  geometrySelectionChanged || mScene.needsBlasRebuild() ||
+                                      !mTriangleBuffer );
             mLastGeometryRevision = geometryRevision;
         }
+        if( needsInstanceUpload )
+            uploadInstanceBuffer();
         bindJobResources();
 
         mScene.clearDirtyFlags();
