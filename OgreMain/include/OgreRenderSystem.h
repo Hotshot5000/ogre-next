@@ -879,6 +879,7 @@ namespace Ogre
         virtual void setPathTracerPreferOidnDenoiser( bool preferOidn ) {}
         virtual bool getPathTracerPreferOidnDenoiser() const { return false; }
         virtual bool getPathTracerOidnDenoiserSupported() const { return false; }
+        virtual bool getPathTracerUsingOidnDenoiser() const { return false; }
 
         virtual bool denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
                                               TextureGpu *motionTexture, TextureGpu *normalTexture,

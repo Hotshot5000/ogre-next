@@ -51,7 +51,6 @@ Copyright (c) 2000-2016 Torus Knot Software Ltd
 #include "OgreRoot.h"
 #include "OgreMetalWindow.h"
 #include "OgreViewport.h"
-#include "OgreBitwise.h"
 #include "Vao/OgreIndirectBufferPacked.h"
 #include "Vao/OgreMetalBufferInterface.h"
 #include "Vao/OgreMetalConstBufferPacked.h"
@@ -90,20 +89,32 @@ namespace Ogre
         {
             oidn::DeviceRef device;
             oidn::FilterRef filter;
-            std::vector<float> color;
-            std::vector<float> albedo;
-            std::vector<float> normal;
-            std::vector<float> output;
-            id<MTLBuffer> readbackBuffer;
-            id<MTLBuffer> uploadBuffer;
-            size_t        stagingBytes;
+            oidn::BufferRef inputBuffer;
+            oidn::BufferRef outputBuffer;
+            id<MTLBuffer>   metalInputBuffer;
+            id<MTLBuffer>   metalOutputBuffer;
+            size_t          inputBytesPerRow;
+            size_t          outputBytesPerRow;
+            size_t          inputBytes;
+            size_t          outputBytes;
+            size_t          inputPixelByteStride;
+            size_t          outputPixelByteStride;
+            oidn::Format    inputFormat;
+            oidn::Format    outputFormat;
             uint32        width;
             uint32        height;
 
             PathTracerOidnContext() :
-                readbackBuffer( 0 ),
-                uploadBuffer( 0 ),
-                stagingBytes( 0u ),
+                metalInputBuffer( 0 ),
+                metalOutputBuffer( 0 ),
+                inputBytesPerRow( 0u ),
+                outputBytesPerRow( 0u ),
+                inputBytes( 0u ),
+                outputBytes( 0u ),
+                inputPixelByteStride( 0u ),
+                outputPixelByteStride( 0u ),
+                inputFormat( oidn::Format::Undefined ),
+                outputFormat( oidn::Format::Undefined ),
                 width( 0u ),
                 height( 0u )
             {
@@ -127,107 +138,16 @@ namespace Ogre
             return 0u;
         }
 
-        static void unpackOidnInputTexture( const void *srcBytes, MTLPixelFormat pixelFormat, uint32 width,
-                                            uint32 height, std::vector<float> &dst, bool normaliseNormals )
+        static oidn::Format getOidnCompatiblePixelFormat( MTLPixelFormat pixelFormat )
         {
-            const size_t numPixels = static_cast<size_t>( width ) * static_cast<size_t>( height );
-            dst.resize( numPixels * 3u );
-
-            if( pixelFormat == MTLPixelFormatRGBA16Float )
+            switch( pixelFormat )
             {
-                const uint16 *src = reinterpret_cast<const uint16 *>( srcBytes );
-                for( size_t i = 0u; i < numPixels; ++i )
-                {
-                    const size_t srcIdx = i * 4u;
-                    const size_t dstIdx = i * 3u;
-                    float x = Bitwise::halfToFloat( src[srcIdx + 0u] );
-                    float y = Bitwise::halfToFloat( src[srcIdx + 1u] );
-                    float z = Bitwise::halfToFloat( src[srcIdx + 2u] );
-                    if( normaliseNormals )
-                    {
-                        const float lengthSq = x * x + y * y + z * z;
-                        if( lengthSq > 1e-8f )
-                        {
-                            const float invLength = Math::InvSqrt( lengthSq );
-                            x *= invLength;
-                            y *= invLength;
-                            z *= invLength;
-                        }
-                    }
-                    dst[dstIdx + 0u] = x;
-                    dst[dstIdx + 1u] = y;
-                    dst[dstIdx + 2u] = z;
-                }
+            case MTLPixelFormatRGBA16Float: return oidn::Format::Half3;
+            case MTLPixelFormatRGBA32Float: return oidn::Format::Float3;
+            default: break;
             }
-            else
-            {
-                const float *src = reinterpret_cast<const float *>( srcBytes );
-                for( size_t i = 0u; i < numPixels; ++i )
-                {
-                    const size_t srcIdx = i * 4u;
-                    const size_t dstIdx = i * 3u;
-                    float x = src[srcIdx + 0u];
-                    float y = src[srcIdx + 1u];
-                    float z = src[srcIdx + 2u];
-                    if( normaliseNormals )
-                    {
-                        const float lengthSq = x * x + y * y + z * z;
-                        if( lengthSq > 1e-8f )
-                        {
-                            const float invLength = Math::InvSqrt( lengthSq );
-                            x *= invLength;
-                            y *= invLength;
-                            z *= invLength;
-                        }
-                    }
-                    dst[dstIdx + 0u] = x;
-                    dst[dstIdx + 1u] = y;
-                    dst[dstIdx + 2u] = z;
-                }
-            }
-        }
 
-        static void combineOidnAlbedo( const std::vector<float> &diffuseAlbedo,
-                                       const std::vector<float> &specularAlbedo,
-                                       std::vector<float> &combinedAlbedo )
-        {
-            combinedAlbedo.resize( diffuseAlbedo.size() );
-            const size_t count = diffuseAlbedo.size();
-            for( size_t i = 0u; i < count; ++i )
-                combinedAlbedo[i] = std::max( 0.0f, diffuseAlbedo[i] + specularAlbedo[i] );
-        }
-
-        static void packOidnOutputTexture( const std::vector<float> &src, MTLPixelFormat pixelFormat,
-                                           uint32 width, uint32 height, void *dstBytes )
-        {
-            const size_t numPixels = static_cast<size_t>( width ) * static_cast<size_t>( height );
-
-            if( pixelFormat == MTLPixelFormatRGBA16Float )
-            {
-                uint16 *dst = reinterpret_cast<uint16 *>( dstBytes );
-                for( size_t i = 0u; i < numPixels; ++i )
-                {
-                    const size_t srcIdx = i * 3u;
-                    const size_t dstIdx = i * 4u;
-                    dst[dstIdx + 0u] = Bitwise::floatToHalf( std::max( 0.0f, src[srcIdx + 0u] ) );
-                    dst[dstIdx + 1u] = Bitwise::floatToHalf( std::max( 0.0f, src[srcIdx + 1u] ) );
-                    dst[dstIdx + 2u] = Bitwise::floatToHalf( std::max( 0.0f, src[srcIdx + 2u] ) );
-                    dst[dstIdx + 3u] = Bitwise::floatToHalf( 1.0f );
-                }
-            }
-            else
-            {
-                float *dst = reinterpret_cast<float *>( dstBytes );
-                for( size_t i = 0u; i < numPixels; ++i )
-                {
-                    const size_t srcIdx = i * 3u;
-                    const size_t dstIdx = i * 4u;
-                    dst[dstIdx + 0u] = std::max( 0.0f, src[srcIdx + 0u] );
-                    dst[dstIdx + 1u] = std::max( 0.0f, src[srcIdx + 1u] );
-                    dst[dstIdx + 2u] = std::max( 0.0f, src[srcIdx + 2u] );
-                    dst[dstIdx + 3u] = 1.0f;
-                }
-            }
+            return oidn::Format::Undefined;
         }
 #endif
 
@@ -330,6 +250,7 @@ namespace Ogre
         mPathTracerDenoiserSpecularHitDistanceTexture( 0 ),
         mPathTracerDenoiserActive( false ),
         mPathTracerPreferOidnDenoiser( false ),
+        mPathTracerUsingOidnDenoiser( false ),
         mPathTracerOidnContext( 0 ),
         mPathTracerFrameInterpolator( 0 ),
         mPathTracerFrameGenCurrentColourTexture( 0 ),
@@ -2931,7 +2852,7 @@ namespace Ogre
     void MetalRenderSystem::setPathTracerPreferOidnDenoiser( bool preferOidn )
     {
 #if OGRE_METAL_HAS_OIDN
-        mPathTracerPreferOidnDenoiser = preferOidn;
+        mPathTracerPreferOidnDenoiser = preferOidn && getPathTracerOidnDenoiserSupported();
 #else
         mPathTracerPreferOidnDenoiser = false;
         (void)preferOidn;
@@ -2946,7 +2867,8 @@ namespace Ogre
     bool MetalRenderSystem::getPathTracerOidnDenoiserSupported() const
     {
 #if OGRE_METAL_HAS_OIDN
-        return true;
+        return mActiveDevice && mActiveDevice->mDevice &&
+               oidn::isMetalDeviceSupported( mActiveDevice->mDevice );
 #else
         return false;
 #endif
@@ -3179,6 +3101,7 @@ namespace Ogre
                                                      bool resetHistory )
     {
         mPathTracerDenoiserActive = false;
+        mPathTracerUsingOidnDenoiser = false;
         if( !mActiveDevice || !colourTexture || !outputTexture )
             return false;
 
@@ -3241,7 +3164,7 @@ namespace Ogre
                                        colourHeight ) );
 
 #if OGRE_METAL_HAS_OIDN
-            const bool canUseOidn = mPathTracerPreferOidnDenoiser &&
+            const bool canUseOidn = getPathTracerOidnDenoiserSupported() && mPathTracerPreferOidnDenoiser &&
                                     !mPathTracerFrameGenerationEnabled && inputWidth == outputWidth &&
                                     inputHeight == outputHeight;
             if( canUseOidn )
@@ -3259,105 +3182,107 @@ namespace Ogre
                     if( !oidnContext )
                     {
                         oidnContext = new PathTracerOidnContext();
-                        oidnContext->device = oidn::newDevice( oidn::DeviceType::CPU );
+                        oidnContext->device = oidn::newMetalDevice( mActiveDevice->mMainCommandQueue );
                         oidnContext->device.commit();
                         mPathTracerOidnContext = oidnContext;
                     }
 
                     const size_t colourBytesPerPixel = getOidnCompatiblePixelSize( colourPixelFormat );
                     const size_t outputBytesPerPixel = getOidnCompatiblePixelSize( outputPixelFormat );
+                    const oidn::Format inputFormat = getOidnCompatiblePixelFormat( colourPixelFormat );
+                    const oidn::Format outputFormat = getOidnCompatiblePixelFormat( outputPixelFormat );
                     const size_t inputBytesPerRow = static_cast<size_t>( inputWidth ) * colourBytesPerPixel;
                     const size_t inputBytes = inputBytesPerRow * static_cast<size_t>( inputHeight );
                     const size_t outputBytesPerRow = static_cast<size_t>( outputWidth ) * outputBytesPerPixel;
                     const size_t outputBytes = outputBytesPerRow * static_cast<size_t>( outputHeight );
-                    const size_t stagingBytes = std::max( inputBytes, outputBytes );
 
-                    if( !oidnContext->readbackBuffer || !oidnContext->uploadBuffer ||
-                        oidnContext->stagingBytes < stagingBytes )
+                    const bool needsBufferRecreation = !oidnContext->metalInputBuffer ||
+                                                       !oidnContext->metalOutputBuffer ||
+                                                       oidnContext->inputBytes < inputBytes ||
+                                                       oidnContext->outputBytes < outputBytes;
+                    if( needsBufferRecreation )
                     {
-                        oidnContext->readbackBuffer =
-                            [mActiveDevice->mDevice newBufferWithLength:stagingBytes
-                                                                options:MTLResourceStorageModeShared];
-                        oidnContext->uploadBuffer =
-                            [mActiveDevice->mDevice newBufferWithLength:stagingBytes
-                                                                options:MTLResourceStorageModeShared];
-                        oidnContext->stagingBytes = stagingBytes;
+                        oidnContext->metalInputBuffer =
+                            [mActiveDevice->mDevice newBufferWithLength:inputBytes
+                                                                options:MTLResourceStorageModePrivate];
+                        oidnContext->metalOutputBuffer =
+                            [mActiveDevice->mDevice newBufferWithLength:outputBytes
+                                                                options:MTLResourceStorageModePrivate];
+                        oidnContext->inputBuffer =
+                            oidnContext->device.newBuffer( oidnContext->metalInputBuffer );
+                        oidnContext->outputBuffer =
+                            oidnContext->device.newBuffer( oidnContext->metalOutputBuffer );
                     }
 
-                    if( oidnContext->device && oidnContext->readbackBuffer && oidnContext->uploadBuffer )
+                    if( oidnContext->device && oidnContext->inputBuffer && oidnContext->outputBuffer )
                     {
                         if( !oidnContext->filter || oidnContext->width != inputWidth ||
-                            oidnContext->height != inputHeight )
+                            oidnContext->height != inputHeight ||
+                            oidnContext->inputBytesPerRow != inputBytesPerRow ||
+                            oidnContext->outputBytesPerRow != outputBytesPerRow ||
+                            oidnContext->inputPixelByteStride != colourBytesPerPixel ||
+                            oidnContext->outputPixelByteStride != outputBytesPerPixel ||
+                            oidnContext->inputFormat != inputFormat ||
+                            oidnContext->outputFormat != outputFormat )
                         {
                             oidnContext->width = inputWidth;
                             oidnContext->height = inputHeight;
+                            oidnContext->inputBytesPerRow = inputBytesPerRow;
+                            oidnContext->outputBytesPerRow = outputBytesPerRow;
+                            oidnContext->inputBytes = inputBytes;
+                            oidnContext->outputBytes = outputBytes;
+                            oidnContext->inputPixelByteStride = colourBytesPerPixel;
+                            oidnContext->outputPixelByteStride = outputBytesPerPixel;
+                            oidnContext->inputFormat = inputFormat;
+                            oidnContext->outputFormat = outputFormat;
                             oidnContext->filter = oidnContext->device.newFilter( "RT" );
-                            oidnContext->color.resize( static_cast<size_t>( inputWidth ) * inputHeight * 3u );
-                            oidnContext->output.resize( static_cast<size_t>( inputWidth ) * inputHeight * 3u );
-                            oidnContext->filter.setImage( "color", oidnContext->color.data(),
-                                                          oidn::Format::Float3, inputWidth, inputHeight );
-                            oidnContext->filter.setImage( "output", oidnContext->output.data(),
-                                                          oidn::Format::Float3, inputWidth, inputHeight );
+                            oidnContext->filter.setImage( "color", oidnContext->inputBuffer, inputFormat,
+                                                          inputWidth, inputHeight, 0u,
+                                                          colourBytesPerPixel, inputBytesPerRow );
+                            oidnContext->filter.setImage( "output", oidnContext->outputBuffer,
+                                                          outputFormat, outputWidth, outputHeight, 0u,
+                                                          outputBytesPerPixel, outputBytesPerRow );
                             oidnContext->filter.set( "hdr", true );
                             oidnContext->filter.commit();
                         }
 
                         const MTLSize inputCopySize = MTLSizeMake( inputWidth, inputHeight, 1u );
-                        auto readTextureToBuffer = [&]( id<MTLTexture> srcTexture,
-                                                        MTLPixelFormat srcPixelFormat,
-                                                        std::vector<float> &dstVector,
-                                                        bool normaliseNormals ) {
-                            memset( oidnContext->readbackBuffer.contents, 0, inputBytes );
-                            mActiveDevice->endAllEncoders();
-                            id<MTLBlitCommandEncoder> blitEncoder =
-                                [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
-                            [blitEncoder copyFromTexture:srcTexture
-                                             sourceSlice:0
-                                             sourceLevel:0
-                                            sourceOrigin:MTLOriginMake( 0u, 0u, 0u )
-                                              sourceSize:inputCopySize
-                                                toBuffer:oidnContext->readbackBuffer
-                                       destinationOffset:0u
-                                  destinationBytesPerRow:inputBytesPerRow
-                                destinationBytesPerImage:inputBytes];
-                            [blitEncoder endEncoding];
-                            mActiveDevice->commitAndNextCommandBuffer();
-                            mActiveDevice->_waitUntilCommitedCommandBufferCompleted();
-                            unpackOidnInputTexture( oidnContext->readbackBuffer.contents, srcPixelFormat,
-                                                    inputWidth, inputHeight, dstVector,
-                                                    normaliseNormals );
-                        };
+                        mActiveDevice->endAllEncoders();
+                        id<MTLBlitCommandEncoder> inputBlitEncoder =
+                            [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
+                        [inputBlitEncoder copyFromTexture:colour->getFinalTextureName()
+                                              sourceSlice:0
+                                              sourceLevel:0
+                                             sourceOrigin:MTLOriginMake( 0u, 0u, 0u )
+                                               sourceSize:inputCopySize
+                                                 toBuffer:oidnContext->metalInputBuffer
+                                        destinationOffset:0u
+                                   destinationBytesPerRow:inputBytesPerRow
+                                 destinationBytesPerImage:inputBytes];
+                        [inputBlitEncoder endEncoding];
 
-                        readTextureToBuffer( colour->getFinalTextureName(), colourPixelFormat,
-                                             oidnContext->color, false );
+                        mActiveDevice->commitAndNextCommandBuffer();
+                        oidnContext->filter.executeAsync();
 
-                        oidnContext->filter.execute();
-                        const char *errorMessage = 0;
-                        if( oidnContext->device.getError( errorMessage ) == oidn::Error::None )
-                        {
-                            memset( oidnContext->uploadBuffer.contents, 0, outputBytes );
-                            packOidnOutputTexture( oidnContext->output, outputPixelFormat, outputWidth,
-                                                   outputHeight, oidnContext->uploadBuffer.contents );
+                        mActiveDevice->endAllEncoders();
+                        id<MTLBlitCommandEncoder> outputBlitEncoder =
+                            [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
+                        [outputBlitEncoder copyFromBuffer:oidnContext->metalOutputBuffer
+                                             sourceOffset:0u
+                                        sourceBytesPerRow:outputBytesPerRow
+                                      sourceBytesPerImage:outputBytes
+                                               sourceSize:MTLSizeMake( outputWidth, outputHeight, 1u )
+                                                toTexture:output->getFinalTextureName()
+                                         destinationSlice:0u
+                                         destinationLevel:0u
+                                        destinationOrigin:MTLOriginMake( 0u, 0u, 0u )];
+                        [outputBlitEncoder endEncoding];
 
-                            mActiveDevice->endAllEncoders();
-                            id<MTLBlitCommandEncoder> blitEncoder =
-                                [mActiveDevice->mCurrentCommandBuffer blitCommandEncoder];
-                            [blitEncoder copyFromBuffer:oidnContext->uploadBuffer
-                                           sourceOffset:0u
-                                      sourceBytesPerRow:outputBytesPerRow
-                                    sourceBytesPerImage:outputBytes
-                                             sourceSize:MTLSizeMake( outputWidth, outputHeight, 1u )
-                                              toTexture:output->getFinalTextureName()
-                                       destinationSlice:0u
-                                       destinationLevel:0u
-                                      destinationOrigin:MTLOriginMake( 0u, 0u, 0u )];
-                            [blitEncoder endEncoding];
-
-                            mPathTracerDenoiserActive = true;
-                            mPathTracerFrameGenerationHasHistory = false;
-                            mPathTracerFrameGenerationOutputAvailable = false;
-                            return true;
-                        }
+                        mPathTracerDenoiserActive = true;
+                        mPathTracerUsingOidnDenoiser = true;
+                        mPathTracerFrameGenerationHasHistory = false;
+                        mPathTracerFrameGenerationOutputAvailable = false;
+                        return true;
                     }
                 }
             }

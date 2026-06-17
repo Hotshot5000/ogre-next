@@ -413,9 +413,13 @@ namespace Demo
         outText += "\nPath tracer denoiser: ";
         Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
         if( renderSystem && renderSystem->getPathTracerOidnDenoiserSupported() )
-            outText += mPreferOidnDenoiser ? "OIDN" : "MetalFX";
+        {
+            outText += renderSystem->getPathTracerUsingOidnDenoiser() ? "OIDN" : "MetalFX";
+            outText += renderSystem->getPathTracerPreferOidnDenoiser() ? " [requested: OIDN]" :
+                                                                       " [requested: MetalFX]";
+        }
         else
-            outText += "MetalFX";
+            outText += "MetalFX [OIDN unavailable on current Metal device]";
         outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
