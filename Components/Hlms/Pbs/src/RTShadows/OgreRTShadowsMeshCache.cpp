@@ -753,6 +753,7 @@ namespace Ogre
         mHasCachedAsState( false ),
         mRebuildBlas( true ),
         mRebuildTlas( true ),
+        mRefitTlas( false ),
         mEnabled( true )
     {
         
@@ -770,7 +771,7 @@ namespace Ogre
             return;
 
         mGpuCullDistance = distance;
-        mRebuildTlas = true;
+        mRefitTlas = true;
     }
     //-------------------------------------------------------------------------
     void RTShadowsMeshCache::setGpuCullReflectionConeExpansion( Real expansion )
@@ -780,7 +781,7 @@ namespace Ogre
             return;
 
         mGpuCullReflectionConeExpansion = expansion;
-        mRebuildTlas = true;
+        mRefitTlas = true;
     }
     //-------------------------------------------------------------------------
     void RTShadowsMeshCache::setGpuCullMode( GpuCullMode mode )
@@ -791,7 +792,7 @@ namespace Ogre
             return;
 
         mGpuCullMode = mode;
-        mRebuildTlas = true;
+        mRefitTlas = true;
     }
     //-------------------------------------------------------------------------
     void RTShadowsMeshCache::setForcedLodOverride( RtMeshletTierOverride forcedLodOverride )
@@ -802,7 +803,7 @@ namespace Ogre
             return;
 
         mForcedLodOverride = forcedLodOverride;
-        mRebuildTlas = true;
+        mRefitTlas = true;
     }
     //-------------------------------------------------------------------------
     const RTShadowsMeshCache::ShadowsCachedMesh &RTShadowsMeshCache::addMeshToCache(
@@ -842,7 +843,7 @@ namespace Ogre
     //-------------------------------------------------------------------------
     void RTShadowsMeshCache::markInstancesDirty()
     {
-        mRebuildTlas = true;
+        mRefitTlas = true;
     }
     //-------------------------------------------------------------------------
     void RTShadowsMeshCache::updateAS()
@@ -1144,6 +1145,7 @@ namespace Ogre
             mHasCachedAsState = false;
             renderSystem->clearAccelerationStructure();
             mRebuildTlas = true;
+            mRefitTlas = false;
             return;
         }
 
@@ -1321,6 +1323,7 @@ namespace Ogre
                                                        cullParams );
             mRebuildBlas = false;
             mRebuildTlas = false;
+            mRefitTlas = false;
         }
         else if( mRebuildTlas )
         {
@@ -1328,12 +1331,14 @@ namespace Ogre
                                                         &instanceBounds, &instanceLodBounds,
                                                         &instanceTiers, cullParams );
             mRebuildTlas = false;
+            mRefitTlas = false;
         }
-        else if( instancePayloadChanged || cullParamsChanged )
+        else if( mRefitTlas || instancePayloadChanged || cullParamsChanged )
         {
             renderSystem->refitAccelerationStructure( instanceMeshIndex, instanceTransform,
                                                       &instanceBounds, &instanceLodBounds,
                                                       &instanceTiers, cullParams );
+            mRefitTlas = false;
         }
 
         mLastAsInstanceMeshIndex.swap( instanceMeshIndex );

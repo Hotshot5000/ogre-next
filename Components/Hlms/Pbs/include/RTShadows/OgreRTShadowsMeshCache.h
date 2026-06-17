@@ -140,6 +140,7 @@ namespace Ogre
         bool mHasCachedAsState;
         bool mRebuildBlas;
         bool mRebuildTlas;
+        bool mRefitTlas;
         bool mEnabled;
         
     public:
