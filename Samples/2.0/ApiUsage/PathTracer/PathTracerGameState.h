@@ -49,6 +49,7 @@ namespace Demo
         size_t mGpuCullModeIdx;
         size_t mForcedLodOverrideIdx;
         size_t mAccumulationLimitIdx;
+        size_t mOidnQualityIdx;
         bool mPreferOidnDenoiser;
         Ogre::uint64 mLastGeneratedFrameCount;
         Ogre::uint32 mDisplayFpsRealFrames;

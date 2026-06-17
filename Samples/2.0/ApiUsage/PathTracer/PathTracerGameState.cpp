@@ -41,6 +41,23 @@ namespace
     const Ogre::uint32 cPathTracerForcedLodOverrides[] = { 0u, 1u, 2u, 3u };
     const char *cPathTracerForcedLodOverrideNames[] = { "Auto", "Full", "Simplified", "Proxy" };
     const Ogre::uint32 cPathTracerAccumulationLimits[] = { 0u, 1u, 2u, 4u, 8u, 16u, 32u, 64u };
+    const Ogre::PathTracerOidnQuality cPathTracerOidnQualities[] = {
+        Ogre::PathTracerOidnQualityFast, Ogre::PathTracerOidnQualityBalanced,
+        Ogre::PathTracerOidnQualityHigh
+    };
+    const char *cPathTracerOidnQualityNames[] = { "Fast", "Balanced", "High" };
+
+    size_t getPathTracerOidnQualityIdx( const Ogre::PathTracerOidnQuality quality )
+    {
+        for( size_t i = 0u; i < sizeof( cPathTracerOidnQualities ) / sizeof( cPathTracerOidnQualities[0] );
+             ++i )
+        {
+            if( cPathTracerOidnQualities[i] == quality )
+                return i;
+        }
+
+        return 0u;
+    }
 }
 
 namespace Demo
@@ -59,6 +76,7 @@ namespace Demo
         mGpuCullModeIdx( 0u ),
         mForcedLodOverrideIdx( 0u ),
         mAccumulationLimitIdx( 0u ),
+        mOidnQualityIdx( 2u ),
         mPreferOidnDenoiser( false ),
         mLastGeneratedFrameCount( 0u ),
         mDisplayFpsRealFrames( 0u ),
@@ -90,7 +108,11 @@ namespace Demo
         mPathTracer->setMaxAccumulatedSamples( cPathTracerAccumulationLimits[mAccumulationLimitIdx] );
         mPreferOidnDenoiser = renderSystem && renderSystem->getPathTracerPreferOidnDenoiser();
         if( renderSystem )
+        {
+            mOidnQualityIdx = getPathTracerOidnQualityIdx( renderSystem->getPathTracerOidnQuality() );
             renderSystem->setPathTracerPreferOidnDenoiser( mPreferOidnDenoiser );
+            renderSystem->setPathTracerOidnQuality( cPathTracerOidnQualities[mOidnQualityIdx] );
+        }
         mPathTracer->setEnabled( true );
 
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
@@ -417,6 +439,9 @@ namespace Demo
             outText += renderSystem->getPathTracerUsingOidnDenoiser() ? "OIDN" : "MetalFX";
             outText += renderSystem->getPathTracerPreferOidnDenoiser() ? " [requested: OIDN]" :
                                                                        " [requested: MetalFX]";
+            outText += " OIDN quality: ";
+            outText += cPathTracerOidnQualityNames[getPathTracerOidnQualityIdx(
+                renderSystem->getPathTracerOidnQuality() )];
         }
         else
             outText += "MetalFX [OIDN unavailable on current Metal device]";
@@ -424,6 +449,7 @@ namespace Demo
         outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
         outText += "\nPress N to cycle accumulation limit.";
+        outText += "\nPress O to cycle OIDN quality.";
         outText += "\nPress R to toggle fixed RNG pattern.";
         outText += "\nPress B to cycle GPU meshlet culling mode.";
         outText += "\nPress C to cycle GPU meshlet culling distance.";
@@ -579,6 +605,18 @@ namespace Demo
             {
                 mPreferOidnDenoiser = !mPreferOidnDenoiser;
                 renderSystem->setPathTracerPreferOidnDenoiser( mPreferOidnDenoiser );
+                mPathTracer->resetAccumulation();
+            }
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_O )
+        {
+            Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
+            if( renderSystem && renderSystem->getPathTracerOidnDenoiserSupported() )
+            {
+                const size_t numQualities =
+                    sizeof( cPathTracerOidnQualities ) / sizeof( cPathTracerOidnQualities[0] );
+                mOidnQualityIdx = ( mOidnQualityIdx + 1u ) % numQualities;
+                renderSystem->setPathTracerOidnQuality( cPathTracerOidnQualities[mOidnQualityIdx] );
                 mPathTracer->resetAccumulation();
             }
         }

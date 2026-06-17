@@ -101,6 +101,7 @@ namespace Ogre
             size_t          outputPixelByteStride;
             oidn::Format    inputFormat;
             oidn::Format    outputFormat;
+            PathTracerOidnQuality quality;
             uint32        width;
             uint32        height;
 
@@ -115,6 +116,7 @@ namespace Ogre
                 outputPixelByteStride( 0u ),
                 inputFormat( oidn::Format::Undefined ),
                 outputFormat( oidn::Format::Undefined ),
+                quality( PathTracerOidnQualityHigh ),
                 width( 0u ),
                 height( 0u )
             {
@@ -148,6 +150,19 @@ namespace Ogre
             }
 
             return oidn::Format::Undefined;
+        }
+
+        static oidn::Quality getOidnQuality( const PathTracerOidnQuality quality )
+        {
+            switch( quality )
+            {
+            case PathTracerOidnQualityFast: return oidn::Quality::Fast;
+            case PathTracerOidnQualityBalanced: return oidn::Quality::Balanced;
+            case PathTracerOidnQualityHigh:
+            default: break;
+            }
+
+            return oidn::Quality::High;
         }
 #endif
 
@@ -251,6 +266,7 @@ namespace Ogre
         mPathTracerDenoiserActive( false ),
         mPathTracerPreferOidnDenoiser( false ),
         mPathTracerUsingOidnDenoiser( false ),
+        mPathTracerOidnQuality( PathTracerOidnQualityHigh ),
         mPathTracerOidnContext( 0 ),
         mPathTracerFrameInterpolator( 0 ),
         mPathTracerFrameGenCurrentColourTexture( 0 ),
@@ -2874,6 +2890,20 @@ namespace Ogre
 #endif
     }
     //-------------------------------------------------------------------------
+    void MetalRenderSystem::setPathTracerOidnQuality( PathTracerOidnQuality quality )
+    {
+        mPathTracerOidnQuality = quality;
+
+#if OGRE_METAL_HAS_OIDN
+        PathTracerOidnContext *oidnContext =
+            reinterpret_cast<PathTracerOidnContext *>( mPathTracerOidnContext );
+        if( oidnContext )
+            oidnContext->filter = oidn::FilterRef();
+#else
+        (void)quality;
+#endif
+    }
+    //-------------------------------------------------------------------------
     bool MetalRenderSystem::generatePathTracerFrameGenerationOutputFrom( id<MTLTexture> currentColourTexture )
     {
 #if OGRE_METAL_HAS_METALFX
@@ -3223,7 +3253,8 @@ namespace Ogre
                             oidnContext->inputPixelByteStride != colourBytesPerPixel ||
                             oidnContext->outputPixelByteStride != outputBytesPerPixel ||
                             oidnContext->inputFormat != inputFormat ||
-                            oidnContext->outputFormat != outputFormat )
+                            oidnContext->outputFormat != outputFormat ||
+                            oidnContext->quality != mPathTracerOidnQuality )
                         {
                             oidnContext->width = inputWidth;
                             oidnContext->height = inputHeight;
@@ -3235,6 +3266,7 @@ namespace Ogre
                             oidnContext->outputPixelByteStride = outputBytesPerPixel;
                             oidnContext->inputFormat = inputFormat;
                             oidnContext->outputFormat = outputFormat;
+                            oidnContext->quality = mPathTracerOidnQuality;
                             oidnContext->filter = oidnContext->device.newFilter( "RT" );
                             oidnContext->filter.setImage( "color", oidnContext->inputBuffer, inputFormat,
                                                           inputWidth, inputHeight, 0u,
@@ -3243,6 +3275,7 @@ namespace Ogre
                                                           outputFormat, outputWidth, outputHeight, 0u,
                                                           outputBytesPerPixel, outputBytesPerRow );
                             oidnContext->filter.set( "hdr", true );
+                            oidnContext->filter.set( "quality", getOidnQuality( mPathTracerOidnQuality ) );
                             oidnContext->filter.commit();
                         }
 

@@ -162,6 +162,7 @@ namespace Ogre
         bool   mPathTracerDenoiserActive;
         bool   mPathTracerPreferOidnDenoiser;
         bool   mPathTracerUsingOidnDenoiser;
+        PathTracerOidnQuality mPathTracerOidnQuality;
         void  *mPathTracerOidnContext;
         id     mPathTracerFrameInterpolator;
         id     mPathTracerFrameGenCurrentColourTexture;
@@ -397,6 +398,8 @@ namespace Ogre
         bool getPathTracerPreferOidnDenoiser() const override;
         bool getPathTracerOidnDenoiserSupported() const override;
         bool getPathTracerUsingOidnDenoiser() const override { return mPathTracerUsingOidnDenoiser; }
+        void setPathTracerOidnQuality( PathTracerOidnQuality quality ) override;
+        PathTracerOidnQuality getPathTracerOidnQuality() const override { return mPathTracerOidnQuality; }
         bool generatePathTracerFrameGenerationOutputFrom( id<MTLTexture> currentColourTexture );
         bool copyPathTracerFrameGenerationOutputTo( id<MTLTexture> dstTexture );
 

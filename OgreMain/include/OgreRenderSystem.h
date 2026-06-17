@@ -76,6 +76,13 @@ namespace Ogre
         TEXCALC_PROJECTIVE_TEXTURE
     };
 
+    enum PathTracerOidnQuality
+    {
+        PathTracerOidnQualityFast,
+        PathTracerOidnQualityBalanced,
+        PathTracerOidnQualityHigh
+    };
+
     /// Render window creation parameters.
     struct RenderWindowDescription
     {
@@ -880,6 +887,11 @@ namespace Ogre
         virtual bool getPathTracerPreferOidnDenoiser() const { return false; }
         virtual bool getPathTracerOidnDenoiserSupported() const { return false; }
         virtual bool getPathTracerUsingOidnDenoiser() const { return false; }
+        virtual void setPathTracerOidnQuality( PathTracerOidnQuality quality ) { (void)quality; }
+        virtual PathTracerOidnQuality getPathTracerOidnQuality() const
+        {
+            return PathTracerOidnQualityHigh;
+        }
 
         virtual bool denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
                                               TextureGpu *motionTexture, TextureGpu *normalTexture,
