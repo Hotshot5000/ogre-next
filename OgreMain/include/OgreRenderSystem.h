@@ -876,6 +876,9 @@ namespace Ogre
         virtual bool getPathTracerFrameGenerationEnabled() const { return false; }
         virtual void setPathTracerFrameGenerationSourceTexture( TextureGpu *texture ) {}
         virtual uint64 getPathTracerGeneratedFrameCount() const { return 0u; }
+        virtual void setPathTracerPreferOidnDenoiser( bool preferOidn ) {}
+        virtual bool getPathTracerPreferOidnDenoiser() const { return false; }
+        virtual bool getPathTracerOidnDenoiserSupported() const { return false; }
 
         virtual bool denoisePathTracerOutput( TextureGpu *colourTexture, TextureGpu *depthTexture,
                                               TextureGpu *motionTexture, TextureGpu *normalTexture,

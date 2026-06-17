@@ -29,7 +29,24 @@ else()
 target_link_libraries(RenderSystem_Metal ${OGRE_NEXT}Main "-framework Metal" "-framework MetalFX" "-framework AppKit" "-framework QuartzCore")
 endif()
 
+set( OGRE_METAL_HAS_OIDN 0 )
+if( NOT OGRE_BUILD_PLATFORM_APPLE_IOS )
+  find_path( OIDN_INCLUDE_DIR
+             NAMES OpenImageDenoise/oidn.hpp
+             HINTS /opt/homebrew/include )
+  find_library( OIDN_LIBRARY
+                NAMES OpenImageDenoise
+                HINTS /opt/homebrew/lib )
+
+  if( OIDN_INCLUDE_DIR AND OIDN_LIBRARY )
+    target_include_directories( RenderSystem_Metal PRIVATE ${OIDN_INCLUDE_DIR} )
+    target_link_libraries( RenderSystem_Metal ${OIDN_LIBRARY} )
+    set( OGRE_METAL_HAS_OIDN 1 )
+  endif()
+endif()
+
 target_compile_options(RenderSystem_Metal PRIVATE "-fobjc-arc")
+target_compile_definitions( RenderSystem_Metal PRIVATE OGRE_METAL_HAS_OIDN=${OGRE_METAL_HAS_OIDN} )
 set_target_properties(RenderSystem_Metal PROPERTIES LINK_FLAGS "-fobjc-arc")
 
 if (OGRE_CONFIG_THREADS)

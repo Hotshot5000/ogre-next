@@ -59,6 +59,7 @@ namespace Demo
         mGpuCullModeIdx( 0u ),
         mForcedLodOverrideIdx( 0u ),
         mAccumulationLimitIdx( 0u ),
+        mPreferOidnDenoiser( false ),
         mLastGeneratedFrameCount( 0u ),
         mDisplayFpsRealFrames( 0u ),
         mDisplayFpsGeneratedFrames( 0u ),
@@ -87,6 +88,9 @@ namespace Demo
         mPathTracer->setGpuCullMode( cPathTracerGpuCullModes[mGpuCullModeIdx] );
         mPathTracer->setForcedLodOverride( cPathTracerForcedLodOverrides[mForcedLodOverrideIdx] );
         mPathTracer->setMaxAccumulatedSamples( cPathTracerAccumulationLimits[mAccumulationLimitIdx] );
+        mPreferOidnDenoiser = renderSystem && renderSystem->getPathTracerPreferOidnDenoiser();
+        if( renderSystem )
+            renderSystem->setPathTracerPreferOidnDenoiser( mPreferOidnDenoiser );
         mPathTracer->setEnabled( true );
 
         assert( dynamic_cast<Ogre::HlmsPbs *>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
@@ -406,6 +410,12 @@ namespace Demo
         outText += Ogre::StringConverter::toString(
             mPathTracer ? mPathTracer->getGpuCullReflectionConeExpansion() : 1.0f,
             1u, 0u, ' ', std::ios::fixed );
+        outText += "\nPath tracer denoiser: ";
+        Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
+        if( renderSystem && renderSystem->getPathTracerOidnDenoiserSupported() )
+            outText += mPreferOidnDenoiser ? "OIDN" : "MetalFX";
+        else
+            outText += "MetalFX";
         outText += "\nPress [ or ] to decrease/increase path bounces.";
         outText += "\nPress , or . to decrease/increase samples per pixel per frame.";
         outText += "\nPress U to cycle MetalFX input scale.";
@@ -415,6 +425,7 @@ namespace Demo
         outText += "\nPress C to cycle GPU meshlet culling distance.";
         outText += "\nPress V to cycle GPU reflection cone expansion.";
         outText += "\nPress L to cycle forced path tracer LOD override.";
+        outText += "\nPress M to switch the path tracer denoiser.";
         outText += "\nPress F6 to toggle MetalFX frame generation. ";
         outText += mPathTracer && mPathTracer->getFrameGenerationEnabled() ? "[On]" : "[Off]";
         outText += "\nPress F2 to toggle animation. ";
@@ -556,6 +567,16 @@ namespace Demo
         else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_R )
         {
             mPathTracer->setFreezeRngPattern( !mPathTracer->getFreezeRngPattern() );
+        }
+        else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_M )
+        {
+            Ogre::RenderSystem *renderSystem = mGraphicsSystem->getRoot()->getRenderSystem();
+            if( renderSystem && renderSystem->getPathTracerOidnDenoiserSupported() )
+            {
+                mPreferOidnDenoiser = !mPreferOidnDenoiser;
+                renderSystem->setPathTracerPreferOidnDenoiser( mPreferOidnDenoiser );
+                mPathTracer->resetAccumulation();
+            }
         }
         else if( mPathTracer && arg.keysym.scancode == SDL_SCANCODE_B )
         {
