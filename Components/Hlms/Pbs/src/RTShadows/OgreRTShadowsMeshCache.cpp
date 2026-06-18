@@ -997,8 +997,8 @@ namespace Ogre
                 const uint32 fullLodLevel =
                     std::min<uint32>( item->getCurrentMeshLod(), maxFullLod );
                 const MeshLodRange &fullRange = cachedMesh.lodRanges[fullLodLevel];
-                const uint32 fullSubMeshCount =
-                    std::min<uint32>( item->getNumSubItems(), fullRange.numBlas );
+                const uint32 fullSubMeshCount = static_cast<uint32>(
+                    std::min<size_t>( item->getNumSubItems(), fullRange.numBlas ) );
                 mLastFullTierMeshletCount += fullSubMeshCount;
                 for( uint32 subMeshIdx = 0u; subMeshIdx < fullSubMeshCount; ++subMeshIdx )
                 {
@@ -1018,14 +1018,14 @@ namespace Ogre
                 if( cachedMesh.simplifiedMesh && !cachedMesh.simplifiedSubMeshToSourceSubMesh.empty() &&
                     !cachedMesh.simplifiedSubMeshBounds.empty() )
                 {
-                    const uint32 simplifiedLod =
+                    const uint32 simplifiedTierLod =
                         cachedMesh.proxyMesh ? static_cast<uint32>( cachedMesh.lodRanges.size() - 2u ) :
                                                static_cast<uint32>( cachedMesh.lodRanges.size() - 1u );
-                    const MeshLodRange &simplifiedRange = cachedMesh.lodRanges[simplifiedLod];
-                    const uint32 simplifiedSubMeshCount = std::min<uint32>(
-                        std::min<uint32>( cachedMesh.simplifiedMesh->getNumSubMeshes(),
+                    const MeshLodRange &simplifiedRange = cachedMesh.lodRanges[simplifiedTierLod];
+                    const uint32 simplifiedSubMeshCount = static_cast<uint32>( std::min<size_t>(
+                        std::min<size_t>( cachedMesh.simplifiedMesh->getNumSubMeshes(),
                                           cachedMesh.simplifiedSubMeshToSourceSubMesh.size() ),
-                        cachedMesh.simplifiedSubMeshBounds.size() );
+                        cachedMesh.simplifiedSubMeshBounds.size() ) );
                     mLastSimplifiedTierMeshletCount += simplifiedSubMeshCount;
                     for( uint32 subMeshIdx = 0u; subMeshIdx < simplifiedSubMeshCount; ++subMeshIdx )
                     {
@@ -1053,10 +1053,10 @@ namespace Ogre
                     !cachedMesh.proxySubMeshBounds.empty() )
                 {
                     const MeshLodRange &proxyRange = cachedMesh.lodRanges.back();
-                    const uint32 proxySubMeshCount = std::min<uint32>(
-                        std::min<uint32>( cachedMesh.proxyMesh->getNumSubMeshes(),
+                    const uint32 proxySubMeshCount = static_cast<uint32>( std::min<size_t>(
+                        std::min<size_t>( cachedMesh.proxyMesh->getNumSubMeshes(),
                                           cachedMesh.proxySubMeshToSourceSubMesh.size() ),
-                        cachedMesh.proxySubMeshBounds.size() );
+                        cachedMesh.proxySubMeshBounds.size() ) );
                     mLastProxyTierMeshletCount += proxySubMeshCount;
                     for( uint32 subMeshIdx = 0u; subMeshIdx < proxySubMeshCount; ++subMeshIdx )
                     {
