@@ -56,12 +56,15 @@ namespace Ogre
         {
             const uint32 meshLodCount = std::max<uint32>( mesh->getNumLodLevels(), 1u );
             uint32 lodCount = meshLodCount;
-            const unsigned numSubmeshes = mesh->getNumSubMeshes();
-            for( unsigned subMeshIdx = 0u; subMeshIdx < numSubmeshes; ++subMeshIdx )
+            const uint32 numSubmeshes = mesh->getNumSubMeshes();
+            for( uint32 subMeshIdx = 0u; subMeshIdx < numSubmeshes; ++subMeshIdx )
             {
                 const SubMesh *subMesh = mesh->getSubMesh( subMeshIdx );
-                lodCount = std::min<uint32>( lodCount,
-                                             std::max<size_t>( subMesh->mVao[VpNormal].size(), 1u ) );
+                const size_t subMeshLodCount =
+                    std::max<size_t>( subMesh->mVao[VpNormal].size(), 1u );
+                lodCount = std::min<uint32>(
+                    lodCount,
+                    static_cast<uint32>( std::min<size_t>( subMeshLodCount, 0xffffffffu ) ) );
             }
             return std::max<uint32>( lodCount, 1u );
         }
@@ -554,7 +557,7 @@ namespace Ogre
             const Aabb &meshBounds = sourceMesh->getAabb();
             FastArray<VertexArrayObject *> meshletVaos;
             FastArray<Aabb> meshletBounds;
-            for( unsigned subMeshIdx = 0u; subMeshIdx < sourceMesh->getNumSubMeshes(); ++subMeshIdx )
+            for( uint32 subMeshIdx = 0u; subMeshIdx < sourceMesh->getNumSubMeshes(); ++subMeshIdx )
             {
                 SubMesh *sourceSubMesh = sourceMesh->getSubMesh( subMeshIdx );
                 createSimplifiedMeshletVaos( sourceSubMesh, meshBounds, vaoManager, meshletVaos,
@@ -588,7 +591,7 @@ namespace Ogre
 
             const Aabb &meshBounds = sourceMesh->getAabb();
             FastArray<Aabb> meshletBounds;
-            for( unsigned subMeshIdx = 0u; subMeshIdx < sourceMesh->getNumSubMeshes(); ++subMeshIdx )
+            for( uint32 subMeshIdx = 0u; subMeshIdx < sourceMesh->getNumSubMeshes(); ++subMeshIdx )
             {
                 SubMesh *sourceSubMesh = sourceMesh->getSubMesh( subMeshIdx );
                 calculateSubMeshMeshletBounds( sourceSubMesh, meshBounds, meshletBounds );
@@ -862,7 +865,7 @@ namespace Ogre
             while( itor != end )
             {
                 Mesh *mesh = itor->get();
-                const unsigned numSubmeshes = mesh->getNumSubMeshes();
+                const uint32 numSubmeshes = mesh->getNumSubMeshes();
                 MeshCacheMap::iterator meshCacheIt = mMeshCaches.find( mesh->getName() );
                 const uint32 lodCount = getMeshRtLodCount( mesh );
                 if( meshCacheIt != mMeshCaches.end() )
@@ -874,7 +877,7 @@ namespace Ogre
                     lodRange.blasStart = blasIdx;
                     lodRange.numBlas = numSubmeshes;
 
-                    for( unsigned subMeshIdx = 0u; subMeshIdx < numSubmeshes; ++subMeshIdx )
+                    for( uint32 subMeshIdx = 0u; subMeshIdx < numSubmeshes; ++subMeshIdx )
                     {
                         SubMesh *subMesh = mesh->getSubMesh( subMeshIdx );
                         const size_t vaoLod = std::min<size_t>( lodLevel, subMesh->mVao[VpNormal].size() - 1u );
@@ -903,7 +906,7 @@ namespace Ogre
                     MeshLodRange simplifiedRange;
                     simplifiedRange.blasStart = blasIdx;
                     simplifiedRange.numBlas = simplifiedMesh->getNumSubMeshes();
-                    for( unsigned subMeshIdx = 0u; subMeshIdx < simplifiedMesh->getNumSubMeshes(); ++subMeshIdx )
+                    for( uint32 subMeshIdx = 0u; subMeshIdx < simplifiedMesh->getNumSubMeshes(); ++subMeshIdx )
                     {
                         SubMesh *simplifiedSubMesh = simplifiedMesh->getSubMesh( subMeshIdx );
                         meshVaos.push_back( simplifiedSubMesh->mVao[VpNormal].front() );
@@ -921,7 +924,7 @@ namespace Ogre
                     MeshLodRange proxyRange;
                     proxyRange.blasStart = blasIdx;
                     proxyRange.numBlas = proxyMesh->getNumSubMeshes();
-                    for( unsigned subMeshIdx = 0u; subMeshIdx < proxyMesh->getNumSubMeshes(); ++subMeshIdx )
+                    for( uint32 subMeshIdx = 0u; subMeshIdx < proxyMesh->getNumSubMeshes(); ++subMeshIdx )
                     {
                         SubMesh *proxySubMesh = proxyMesh->getSubMesh( subMeshIdx );
                         meshVaos.push_back( proxySubMesh->mVao[VpNormal].front() );
@@ -1002,7 +1005,7 @@ namespace Ogre
                     CandidateSubMeshInstance candidateInstance;
                     candidateInstance.item = item;
                     candidateInstance.mesh = mesh;
-                    candidateInstance.subMesh = mesh->getSubMesh( static_cast<unsigned>( subMeshIdx ) );
+                    candidateInstance.subMesh = mesh->getSubMesh( static_cast<uint32>( subMeshIdx ) );
                     candidateInstance.localBounds = mesh->getAabb();
                     candidateInstance.subMeshIdx = subMeshIdx;
                     candidateInstance.lodLevel = fullLodLevel;
@@ -1035,7 +1038,7 @@ namespace Ogre
                         candidateInstance.item = item;
                         candidateInstance.mesh = cachedMesh.simplifiedMesh.get();
                         candidateInstance.subMesh = cachedMesh.simplifiedMesh->getSubMesh(
-                            static_cast<unsigned>( subMeshIdx ) );
+                            static_cast<uint32>( subMeshIdx ) );
                         candidateInstance.localBounds = cachedMesh.simplifiedSubMeshBounds[subMeshIdx];
                         candidateInstance.subMeshIdx = sourceSubMeshIdx;
                         candidateInstance.lodLevel = 0u;
@@ -1066,7 +1069,7 @@ namespace Ogre
                         candidateInstance.item = item;
                         candidateInstance.mesh = cachedMesh.proxyMesh.get();
                         candidateInstance.subMesh = cachedMesh.proxyMesh->getSubMesh(
-                            static_cast<unsigned>( subMeshIdx ) );
+                            static_cast<uint32>( subMeshIdx ) );
                         candidateInstance.localBounds = cachedMesh.proxySubMeshBounds[subMeshIdx];
                         candidateInstance.subMeshIdx = sourceSubMeshIdx;
                         candidateInstance.lodLevel = 0u;
